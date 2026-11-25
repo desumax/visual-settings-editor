@@ -1463,10 +1463,10 @@ const CHECKS = [
           seen.push(Math.round(tip - rr.top));
           if (tip < rr.top - 12 || tip > rr.bottom + 12) bad.push(Math.round(tip - rr.top));
         }
-        return { bad, shown, seen: seen.slice(0, 12) };
+        return { bad, shown, seen: seen.slice(0, 40) };
       });
       ok(r.shown > 5, `the finger hardly shows (${r.shown} samples)`);
-      ok(!r.bad.length, `the finger is off the action bar row by ${r.bad.slice(0, 5).join(", ")} px`);
+      ok(!r.bad.length, `the finger is off the action bar row by ${r.bad.slice(0, 5).join(", ")} px; ${r.seen.join(" ")}`);
       await ctx.close();
     },
   },
@@ -1553,6 +1553,35 @@ const CHECKS = [
       ok(typeof r === "object", String(r));
       ok(r.renders === 0, `the covered preview was redrawn ${r.renders} times for 10 values`);
       ok(r.probes <= 16, `the comparison was measured from scratch ${r.probes / 4} times for 10 values`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "theme-backgrounds-as-morphe",
+    report: "Nov 25 (14:58): the look must react to Dark theme background, Custom dark background and Light theme background as the Morphe code expects; Light theme background did nothing",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
+        const look = async (sel, prefs) => { for (const [k, v] of Object.entries(prefs)) setPref(k, v); commit(); goToSetting(sel); await wait(900); const e = document.querySelector("#stage .look7"); return e ? getComputedStyle(e).backgroundColor : "none"; };
+        const ed = () => getComputedStyle($("phone")).getPropertyValue("--m-bg").trim();
+        setPicker(false);
+        out.light = await look("morphe_theme_color_light", { morphe_theme_color_light: "LIGHT_GREEN" });
+        out.custom = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark: "CUSTOM", morphe_theme_color_dark_custom: "#80123456" });
+        out.customEd = ed();
+        out.bad = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark_custom: "not a colour" });
+        out.named = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark_custom: "Navy" });
+        out.dark = await look("morphe_theme_color_dark", { morphe_theme_color_dark: "DARK_RED" });
+        for (const t of ["m3", "glass"]) { theme = t; applyTheme(); out["ed_" + t] = ed(); }
+        return out;
+      });
+      ok(r.light === "rgb(204, 255, 204)", `Light theme background Light green: the App look preview shows ${r.light}`);
+      ok(r.custom === "rgb(18, 52, 86)", `Custom dark background #80123456 (made opaque, as Morphe does): ${r.custom}`);
+      ok(r.customEd === "#123456", `the editor's background with a custom dark theme: ${r.customEd}`);
+      ok(r.bad === "rgb(15, 15, 15)", `a custom colour that isn't one falls back to #0F0F0F: ${r.bad}`);
+      ok(r.named === "rgb(0, 0, 128)", `a colour name (Navy), as Android reads it: ${r.named}`);
+      ok(r.dark === "rgb(41, 0, 0)", `Dark theme background Dark red: ${r.dark}`);
+      ok(r.ed_m3 === "#290000" && r.ed_glass === "#290000", `the Morphe and Glass designs follow the dark theme: ${r.ed_m3} / ${r.ed_glass}`);
       await ctx.close();
     },
   },

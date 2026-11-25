@@ -1471,30 +1471,86 @@ function statusBar() {
   const bat = `<span style="display:inline-flex;align-items:center;gap:2px;font-size:10px">78%<span style="width:18px;height:9px;border:1.3px solid #e8e8e8;border-radius:2.5px;padding:1px;display:inline-block;position:relative"><i style="display:block;height:100%;width:78%;background:#e8e8e8;border-radius:1px"></i></span></span>`;
   return `<div style="height:22px;display:flex;align-items:center;gap:5px;padding:0 12px;font-size:11.5px;color:#e8e8e8"><b style="font-weight:500;margin-right:3px">9:41</b>${left}<span style="flex:1"></span>${sv(alarm, 11)}${sv(wifi)}${sv(sig, 11)}<span style="font-size:9.5px;font-weight:600">5G</span>${bat}</div>`;
 }
-const THEME_DARK = { APP_DEFAULT: "#0f0f0f", PURE_BLACK: "#000000", MATERIAL_YOU_PURE_BLACK: "#000000", MATERIAL_YOU_NEUTRAL: "#1b1b1f", MATERIAL_YOU_PRIMARY: "#1a2433", MATERIAL_YOU_SECONDARY: "#22262e", MATERIAL_YOU_TERTIARY: "#2a2230", CATPPUCCIN_MOCHA: "#181825",
-  // the rest are the exact colours in Morphe's theme patch (BaseThemePatch THEME_COLORS_DARK)
+// ---- Morphe's theme colours, worked out the way its code does (ThemeColorPatch, BaseThemePatch; Max, Nov 25:
+// "the look must react to Dark theme background, Custom dark background and Light theme background exactly
+// as the Morphe code expects"). The colour replaces YouTube's background and raised background (yt_black0-4,
+// raised_background / yt_white1-4), so the page, sheets and Morphe's own settings take it.
+// - App default is YouTube's own: #0F0F0F dark, #FFFFFF light.
+// - Material You colours are the phone's system palette (dark: neutral1_900, accent1/2/3_800; light:
+//   neutral1_100, accent1/2/3_200). The page can't read the phone's wallpaper colours, so they are drawn from
+//   Android's own fallback seed (#1B6EF3) with its Tonal Spot palette: the tone is exact, the hue is Android's
+//   default one.
+// - Custom: Android's Color.parseColor (#RRGGBB, #AARRGGBB or a colour name), made opaque (| 0xFF000000);
+//   anything else falls back to the setting's default (#0F0F0F / #FFFFFF), as Morphe resets it. (Below Android
+//   14 Morphe snaps it to its 256-colour palette; the preview is the Realme GT 8 Pro on Android 16.)
+// - Change foreground colour: text and icons YouTube draws in its foreground white (#F1F1F1) / black
+//   (#0F0F0F) take the other theme's colour, unless the theme shown is App default.
+const THEME_FIXED_DARK = { APP_DEFAULT: "#0f0f0f", PURE_BLACK: "#000000", MATERIAL_YOU_PURE_BLACK: "#000000", CATPPUCCIN_MOCHA: "#181825",
   CLASSIC_YOUTUBE: "#212121", DARK_PINK: "#290025", DARK_BLUE: "#001029", DARK_GREEN: "#002905", DARK_YELLOW: "#282900", DARK_ORANGE: "#291800", DARK_RED: "#290000" };
+const THEME_FIXED_LIGHT = { APP_DEFAULT: "#ffffff", WHITE: "#ffffff", MATERIAL_YOU_WHITE: "#ffffff", CATPPUCCIN_LATTE: "#e6e9ef",
+  LIGHT_PINK: "#fccff3", LIGHT_BLUE: "#d1e0ff", LIGHT_GREEN: "#ccffcc", LIGHT_YELLOW: "#fdffcc", LIGHT_ORANGE: "#ffe6cc", LIGHT_RED: "#ffd6d6" };
+const THEME_YOU = { MATERIAL_YOU_NEUTRAL: ["n1", 4], MATERIAL_YOU_PRIMARY: ["a1", 36], MATERIAL_YOU_SECONDARY: ["a2", 16], MATERIAL_YOU_TERTIARY: ["a3", 24] };
+const ANDROID_COLOR_NAMES = { black: "#000000", darkgray: "#444444", gray: "#888888", lightgray: "#cccccc", white: "#ffffff", red: "#ff0000", green: "#00ff00", blue: "#0000ff", yellow: "#ffff00", cyan: "#00ffff", magenta: "#ff00ff",
+  aqua: "#00ffff", fuchsia: "#ff00ff", darkgrey: "#444444", grey: "#888888", lightgrey: "#cccccc", lime: "#00ff00", maroon: "#800000", navy: "#000080", olive: "#808000", purple: "#800080", silver: "#c0c0c0", teal: "#008080" };
+function androidColor(v) {
+  const s = String(v ?? "").trim();
+  if (s[0] !== "#") return ANDROID_COLOR_NAMES[s.toLowerCase()] || null;
+  const h = s.slice(1);
+  return /^[0-9a-f]{6}$/i.test(h) ? "#" + h.toLowerCase() : /^[0-9a-f]{8}$/i.test(h) ? "#" + h.slice(2).toLowerCase() : null;
+}
+// CIE L*C*h to sRGB, the chroma lowered until it fits (a tone of a tonal palette: L* is the tone)
+function lchHex(L, C, h) {
+  const f = t => t > 6 / 29 ? t ** 3 : 3 * (6 / 29) ** 2 * (t - 4 / 29), g = c => { c = c <= .0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - .055; return c; };
+  for (let c = C; c >= 0; c -= .5) {
+    const a = c * Math.cos(h * Math.PI / 180), b = c * Math.sin(h * Math.PI / 180), fy = (L + 16) / 116;
+    const X = .95047 * f(fy + a / 500), Y = f(fy), Z = 1.08883 * f(fy - b / 200);
+    const rgb = [3.2406 * X - 1.5372 * Y - .4986 * Z, -.9689 * X + 1.8758 * Y + .0415 * Z, .0557 * X - .2040 * Y + 1.0570 * Z].map(g);
+    if (rgb.every(x => x >= -.001 && x <= 1.001) || c < .5) return "#" + rgb.map(x => Math.round(Math.max(0, Math.min(1, x)) * 255).toString(16).padStart(2, "0")).join("");
+  }
+}
+const YOU_SEED_HUE = 290; // Android's fallback seed #1B6EF3, as a CIE LCh hue
+function youColor(name, dark) {
+  const [pal, chroma] = THEME_YOU[name], hue = YOU_SEED_HUE + (pal === "a3" ? 60 : 0);
+  return lchHex(dark ? (pal === "n1" ? 10 : 20) : (pal === "n1" ? 90 : 80), chroma, hue);
+}
+// the background a theme shows with the settings as they are (get: V for the preview's values, or the saved state)
+function themeColor(dark, get = V) {
+  if (typeof mode !== "undefined" && mode === "orig") return dark ? "#0f0f0f" : "#ffffff";
+  const t = get(dark ? "morphe_theme_color_dark" : "morphe_theme_color_light") || (dark ? "PURE_BLACK" : "WHITE");
+  if (t === "CUSTOM") return androidColor(get(dark ? "morphe_theme_color_dark_custom" : "morphe_theme_color_light_custom")) || (dark ? "#0f0f0f" : "#ffffff");
+  if (THEME_YOU[t]) return youColor(t, dark);
+  return (dark ? THEME_FIXED_DARK : THEME_FIXED_LIGHT)[t] || (dark ? "#0f0f0f" : "#ffffff");
+}
+// YouTube's foreground (text and icons) in a theme: its own white / black, or the other theme's colour
+function themeInk(dark, get = V) {
+  const t = get(dark ? "morphe_theme_color_dark" : "morphe_theme_color_light");
+  const appDefault = (typeof mode !== "undefined" && mode === "orig") || t === "APP_DEFAULT";
+  return !appDefault && get("morphe_theme_color_change_foreground") ? themeColor(!dark, get) : dark ? "#f1f1f1" : "#0f0f0f";
+}
+const THEME_DARK = THEME_FIXED_DARK; // (kept for older callers)
+// The App look preview shows the light theme while a light theme setting is the one selected (YouTube shows
+// one theme at a time; the light one is how the light background setting can be seen), the dark one otherwise.
+const LIGHT_LOOK = new Set(["morphe_theme_color_light", "morphe_theme_color_light_custom"]);
 SCENES.look = () => {
-  const t = V("morphe_theme_color_dark");
-  const bg = t === "CUSTOM" ? String(V("morphe_theme_color_dark_custom") || "#0f0f0f").replace(/^#(..)(......)$/, "#$2") : (THEME_DARK[t] || "#0f0f0f");
+  const dark = !LIGHT_LOOK.has(selected), bg = themeColor(dark), ink = themeInk(dark), soft = dark ? "rgba(255,255,255," : "rgba(0,0,0,";
   const font = V("morphe_custom_font_type") === "SYSTEM" ? "system-ui, sans-serif" : V("morphe_custom_font_type") === "CUSTOM" ? "Georgia, serif" : "inherit";
   const wide = V("morphe_searchbar_type") === "EXTRA_WIDE";
   const grad = !!V("morphe_gradient_loading_screen");
-  return `<div style="background:${bg};height:330px;position:relative;overflow:hidden;font-family:${font};transition:background .3s">
+  return `<div class="look7${dark ? "" : " lite7"}" style="--ink7:${ink};background:${bg};color:${ink};fill:${ink};height:330px;position:relative;overflow:hidden;font-family:${font};transition:background .3s,color .3s">
     ${C("hide_status_bar", statusBar(), { blk: 1 })}
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 12px">
       ${wide ? "" : `<div style="width:24px;height:17px;border-radius:5px;background:#ff0033"></div><b style="font-size:16px;letter-spacing:-.4px">YouTube</b><div style="flex:1"></div>`}
-      ${C("searchbar_type", wide ? `<div style="flex:1;display:flex;align-items:center;gap:8px;height:34px;border-radius:17px;background:rgba(255,255,255,.1);padding:0 12px;color:#aaa;font-size:13px;min-width:250px">${I("search", "ico", 'style="width:18px;height:18px;fill:#aaa"')}Search YouTube</div>` : `<div class="pbtn">${I("search")}</div>`, { style: wide ? "flex:1" : "" })}
+      ${C("searchbar_type", wide ? `<div style="flex:1;display:flex;align-items:center;gap:8px;height:34px;border-radius:17px;background:${soft}.1);padding:0 12px;color:${dark ? "#aaa" : "#606060"};font-size:13px;min-width:250px">${I("search", "ico", 'style="width:18px;height:18px;fill:#aaa"')}Search YouTube</div>` : `<div class="pbtn">${I("search")}</div>`, { style: wide ? "flex:1" : "" })}
       <div class="pbtn">${I("bell")}</div>
     </div>
-    ${C("gradient_loading_screen", `<div style="margin:6px 12px;height:110px;border-radius:12px;background:${grad ? "linear-gradient(110deg,#222 30%,#3a3a3a 50%,#222 70%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite" : "#272727"}"></div>
-      <div style="margin:8px 12px;height:12px;width:70%;border-radius:6px;background:#272727"></div><div style="margin:6px 12px;height:12px;width:45%;border-radius:6px;background:#272727"></div>`, { blk: 1 })}
+    ${C("gradient_loading_screen", `<div style="margin:6px 12px;height:110px;border-radius:12px;background:${grad ? (dark ? "linear-gradient(110deg,#222 30%,#3a3a3a 50%,#222 70%)" : "linear-gradient(110deg,#e5e5e5 30%,#f5f5f5 50%,#e5e5e5 70%)") + " 0 0/300% 100%;animation:shimmer 1.4s linear infinite" : soft + ".1)"}"></div>
+      <div style="margin:8px 12px;height:12px;width:70%;border-radius:6px;background:${soft}.1)"></div><div style="margin:6px 12px;height:12px;width:45%;border-radius:6px;background:${soft}.1)"></div>`, { blk: 1 })}
     <div style="display:flex;gap:10px;padding:10px 12px">${av(2, 32)}<div><div class="t1">${esc(VIDEOS[2].t)}</div><div class="t2">${VIDEOS[2].c} · ${VIDEOS[2].v}</div></div></div>
-    <style>@keyframes shimmer{to{background-position:-300% 0}}</style>
+    <style>@keyframes shimmer{to{background-position:-300% 0}}.look7 .t2{color:${dark ? "#aaa" : "#606060"}}[data-icons="REGULAR"] .look7 .pbtn svg:not(.sty) path{stroke:var(--ink7)}.look7 .pbtn svg{fill:var(--ink7)}.look7.lite7 [data-k="morphe_hide_status_bar"]{color:#1f1f1f}.look7.lite7 [data-k="morphe_hide_status_bar"] svg{fill:#1f1f1f!important}</style>
   </div>`;
 };
 def("look", "vis", "hide_status_bar");
-def("look", "style", "theme_color_dark theme_color_dark_custom custom_font_type searchbar_type gradient_loading_screen");
+def("look", "style", "theme_color_dark theme_color_dark_custom theme_color_light theme_color_light_custom custom_font_type searchbar_type gradient_loading_screen");
 
 SCENES.snackbar = () => {
   const custom = !!V("morphe_custom_snackbar_theme");

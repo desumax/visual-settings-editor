@@ -500,16 +500,24 @@ scen("look", "spoof_app_version", (box, on) => {
   // (no message pill naming what the version brings back, Max, Nov 25: the version shown is the story)
   return "";
 });
-// Morphe: "Use the theme color for text and icons". Stock keeps text and icons white; on, they take the theme colour.
+// Morphe: "Use the theme color for text and icons" (ThemeColorPatch.getForegroundColor): the text and icons
+// YouTube draws in its own white (#F1F1F1, dark theme) or black (#0F0F0F, light theme) take the colour of the
+// other theme instead, so the dark theme writes in your light theme's colour. Drawn with your colours: the
+// dark theme unless it is App default (then nothing changes there, and the light theme is shown); when the
+// other theme's colour is too close to the stock white / black to see, Light pink / Material You (Primary)
+// stand in so the change can be seen.
+// (Max, Nov 25: the look must follow the theme settings as Morphe's code does; it used to show a made-up teal.)
 scen("look", "theme_color_change_foreground", (box, on) => {
-  situation("Your custom theme colour is teal");
+  const dark = V("morphe_theme_color_dark") !== "APP_DEFAULT", bg = themeColor(dark), stock = dark ? "#f1f1f1" : "#0f0f0f";
+  const near = (x, y) => [1, 3, 5].every(i => Math.abs(parseInt(x.substr(i, 2), 16) - parseInt(y.substr(i, 2), 16)) < 24);
+  let ink = themeColor(!dark); if (near(ink, stock)) ink = dark ? "#fccff3" : youColor("MATERIAL_YOU_PRIMARY", true);
   const items = [["clock", "History"], ["plist", "Playlists"], ["dl", "Downloads"], ["gear", "Settings"]];
-  box.innerHTML = device("port", pageRows(top7("You", ["cast", "search", "gear"]) + `<div style="display:grid;gap:3px">${items.map(([i, t]) => `<div class="fg7" style="display:flex;gap:5px;align-items:center;font-size:7px;color:#f1f1f1;fill:#f1f1f1;transition:color .4s,fill .4s">${I(i, "ico", 'style="width:9px;height:9px;fill:inherit;transition:fill .4s"')}<span>${t}</span></div>`).join("")}</div><div style="height:10px;border-radius:5px;background:#26a69a;width:60%"></div>`));
-  const dev = box.querySelector(".dev");
-  dev.querySelectorAll(".pg7 > div:first-child svg").forEach(e => { e.style.transition = "fill .4s"; });
-  toast7(dev, on ? "Text and icons take the theme colour" : "Text and icons stay white", "78%");
-  at(300, () => { if (!on) return; dev.querySelectorAll(".fg7").forEach(e => { e.style.color = "#4db6ac"; e.style.fill = "#4db6ac"; }); dev.querySelectorAll(".pg7 > div:first-child svg").forEach(e => { e.style.fill = "#4db6ac"; }); });
-  return on ? "Text and icons use your theme colour" : "Text and icons stay white (stock)";
+  box.innerHTML = device("port", pageRows(top7("You", ["cast", "search", "gear"]) + `<div style="display:grid;gap:3px">${items.map(([i, t]) => `<div class="fg7" style="display:flex;gap:5px;align-items:center;font-size:7px;color:${stock};fill:${stock};transition:color .4s,fill .4s">${I(i, "ico", 'style="width:9px;height:9px;fill:inherit;transition:fill .4s"')}<span>${t}</span></div>`).join("")}</div>`));
+  const dev = box.querySelector(".dev"), pg = dev.querySelector(".pg7") || dev;
+  dev.style.background = bg; pg.style.background = bg; pg.style.color = stock;
+  dev.querySelectorAll(".pg7 > div:first-child svg").forEach(e => { e.style.transition = "fill .4s"; e.style.fill = stock; });
+  at(300, () => { if (!on) return; dev.querySelectorAll(".fg7").forEach(e => { e.style.color = ink; e.style.fill = ink; }); pg.style.color = ink; dev.querySelectorAll(".pg7 > div:first-child svg").forEach(e => { e.style.fill = ink; }); });
+  return "";
 });
 scen("look", "custom_filter", (box, on) => {
   situation("Your own custom filter");

@@ -265,21 +265,22 @@ function setGlassForce(v) {
   try { if (glassForced === null) localStorage.removeItem(LS + "-glassforce"); else localStorage.setItem(LS + "-glassforce", String(glassForced)); } catch { /* storage unavailable */ }
   applyTheme(); renderBar();
 }
-// Morphe's theme patch (Pure black / AMOLED, Material You, Catppuccin, custom) changes YouTube's
-// background, so the preview and, in the YouTube look, the editor itself follow it.
-function appBg() {
-  if (mode === "orig") return "#0f0f0f";
-  const t = state.morphe_theme_color_dark;
-  if (t === "CUSTOM") return String(state.morphe_theme_color_dark_custom || "#0f0f0f").replace(/^#(..)(......)$/, "#$2");
-  return (typeof THEME_DARK !== "undefined" && THEME_DARK[t]) || "#0f0f0f";
-}
+// Morphe's theme patch (Pure black / AMOLED, Material You, Catppuccin, custom) changes YouTube's background,
+// and Morphe's own settings take the same colour (ThemeColorPatch hands it to Morphe), so the preview and
+// the editor follow it in every design (Max, Nov 25): Original takes it as YouTube does (page, sheets and
+// raised surfaces), Morphe as its page with its surfaces a step lighter, Glass as the ground under its glows.
+// (The light theme's colour shows in the App look preview; the editor itself is drawn in the dark theme.)
+function appBg() { return themeColor(true, k => state[k]); }
 function lift(hex, amt) { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.min(255, Math.round(v + (255 - v) * amt))); return "#" + c.map(v => v.toString(16).padStart(2, "0")).join(""); }
+const APP_VARS = ["--m-bg", "--m-surface", "--m-c", "--m-c-high", "--m-c-highest", "--g-bg"];
 function applyAppColors() {
   const ph = $("phone"), bg = appBg();
   ph.style.setProperty("--app-bg", bg);
-  if (theme !== "yt") { ["--m-bg", "--m-surface", "--m-c", "--m-c-high", "--m-c-highest"].forEach(v => ph.style.removeProperty(v)); return; }
-  ph.style.setProperty("--m-bg", bg); ph.style.setProperty("--m-surface", bg); ph.style.setProperty("--m-c", bg);
-  ph.style.setProperty("--m-c-high", lift(bg, .13)); ph.style.setProperty("--m-c-highest", lift(bg, .22));
+  APP_VARS.forEach(v => ph.style.removeProperty(v));
+  ph.style.setProperty("--m-bg", bg); ph.style.setProperty("--m-surface", bg);
+  if (theme === "glass") { ph.style.setProperty("--g-bg", bg); return; }
+  const [c, hi, top] = theme === "yt" ? [0, .13, .22] : [.016, .055, .1];
+  ph.style.setProperty("--m-c", lift(bg, c)); ph.style.setProperty("--m-c-high", lift(bg, hi)); ph.style.setProperty("--m-c-highest", lift(bg, top));
 }
 // Portrait tablet: the preview sits on top and the settings fill two columns below it, on every tab.
 // (This used to be limited to tabs with a 16:9 player, so Playback, Player menu, Home and the others

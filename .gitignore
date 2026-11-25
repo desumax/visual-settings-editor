@@ -137,3 +137,7 @@ local.properties
 editor/tools/**/out/
 editor/animcheck-out/
 captions.md
+
+### Python
+__pycache__/
+*.pyc

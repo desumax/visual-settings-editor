@@ -79,7 +79,8 @@ function up() {
 $("list").addEventListener("click", e => { const b = e.target.closest("[data-act]"); if (b && !b.disabled) { e.stopPropagation(); select(b.dataset.act, "list"); runActionRow(b.dataset.act); } });
 $("list").addEventListener("change", e => {
   const inp = e.target.closest("input[data-file]"); if (!inp || !inp.files || !inp.files[0]) return;
-  const k = inp.dataset.file, file = inp.files[0];
+  const k = inp.dataset.file, file = inp.files[0], fp = FILE_PICK[k];
+  if (fp && fp.only && !fp.only.test(file.name)) { inp.value = ""; snack(fp.bad); return; } // Morphe turns it down the same way
   if (pickedFiles[k]) URL.revokeObjectURL(pickedFiles[k]);
   pickedFiles[k] = URL.createObjectURL(file);
   const before = state[k]; setPref(k, file.name); afterChange(k, before);

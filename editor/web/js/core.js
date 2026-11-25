@@ -302,9 +302,14 @@ const store = {
   save() { try { localStorage.setItem(LS, JSON.stringify({ state: changedOnly(), section })); } catch { /* storage unavailable */ } },
 };
 
+// defaults Morphe works out while it runs, as its code does: the first choice this version offers
+// (SplashAnimationPatch.getDefaultStyle: Morphe Glow 1 where the app has Rive animations, 21.30+, otherwise
+// Morphe Color, since Morphe's patches include Custom branding)
+const COMPUTED_DEFAULTS = { morphe_splash_screen_style: ["RIVE_GLOW_MORPHE", "MORPHE_COLOR"] };
 function initialValue(p) {
   let d = p.default;
   const vals = (p.entries || []).map(e => e.value);
+  if (d == null && COMPUTED_DEFAULTS[p.key]) d = COMPUTED_DEFAULTS[p.key].find(v => vals.includes(v)) ?? d;
   if (p.type === "boolean") return d === true;
   if (p.type === "integer" || p.type === "long" || p.type === "float") {
     if (typeof d === "number") return d;

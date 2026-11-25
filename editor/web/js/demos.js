@@ -594,28 +594,47 @@ scen("comments", "search_comments", (box, on) => {
   return "";
 });
 SCN_HOLD.morphe_search_comments = 3060;
+// Morphe (ChannelSearchPatch): on a channel page a second button, Morphe's own channel search icon (a
+// magnifier with a person in it, tinted like the toolbar), sits just left of YouTube's search. It opens the
+// same search field with the hint "Search channel"; the search then opens a sheet (SheetBottomDialog, slides
+// up in 300 ms, 8dp from the edges, 12dp corners, handle bar): the query in bold, "Channel search results •
+// <channel>", a divider, Videos / Posts chips and the sort button, then the channel's matching videos. Off:
+// YouTube's only search button searches all of YouTube, results from other channels on the results page.
+const CH_SEARCH_ICO = sz => `<svg viewBox="0 0 24 24" style="width:${sz}px;height:${sz}px;flex:none;display:block"><path d="M3,11a8,8 0,1 0,16 0a8,8 0,1 0,-16 0M16.66,16.66L21,21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path fill="currentColor" d="M11,8.6m-2.1,0a2.1,2.1 0,1 0,4.2 0a2.1,2.1 0,1 0,-4.2 0M7.3,15.2C7.6,13.1 9.1,12 11,12C12.9,12 14.4,13.1 14.7,15.2C13.7,15.9 12.4,16.3 11,16.3C9.6,16.3 8.3,15.9 7.3,15.2Z"/></svg>`;
 scen("channel", "channel_search", (box, on) => {
-  const ico = (c) => I("search", "ico", `style="width:10px;height:10px;${c ? "fill:" + c : ""}"`);
-  box.innerHTML = device("port", pageRows(`<div class="top7" style="height:14px;display:flex;align-items:center;justify-content:flex-end;gap:6px;white-space:nowrap;overflow:hidden">${on ? `<span style="display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:rgba(62,166,255,.18)">${ico("#3ea6ff")}</span>` : ""}${ico()}</div><div style="height:22px;border-radius:4px;background:${ART[3]}"></div><div style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:${AV[0]}"></span><b style="font-size:8px">Fjord &amp; Timber</b></div><div class="body7" style="display:grid;gap:5px">${bar7(80)}${bar7(60)}${[0, 1, 2].map(i => `<div style="display:flex;gap:4px;align-items:center"><div style="width:26px;height:15px;border-radius:2px;background:${ART[i + 1]}"></div>${bar7(50)}</div>`).join("")}</div>`));
-  const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"); const W = dev.clientWidth, H = dev.clientHeight;
-  const top = dev.querySelector(".top7"), body = dev.querySelector(".body7");
-  const tx = on ? W - 6 - 10 - 6 - 7 : W - 6 - 5, ty = 6 + 7;
-  at(200, () => fingerTo(f, tx, ty)); at(550, () => tapF(f));
-  at(800, () => {
+  const ico = () => I("search", "ico", 'style="width:10px;height:10px;display:block"');
+  const btn = (inner, cls) => `<span class="${cls}" style="display:grid;place-items:center;width:14px;height:14px;border-radius:50%;color:#f1f1f1;transition:background .18s">${inner}</span>`;
+  box.innerHTML = device("port", pageRows(`<div class="top7" style="height:14px;display:flex;align-items:center;justify-content:flex-end;gap:2px;white-space:nowrap;overflow:hidden">${on ? btn(CH_SEARCH_ICO(10), "chb7") : ""}${btn(ico(), "ysb7")}</div><div style="height:22px;border-radius:4px;background:${ART[3]}"></div><div style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:${AV[0]}"></span><b style="font-size:8px">Fjord &amp; Timber</b></div><div class="body7" style="display:grid;gap:5px">${bar7(80)}${bar7(60)}${[0, 1, 2].map(i => `<div style="display:flex;gap:4px;align-items:center"><div style="width:26px;height:15px;border-radius:2px;background:${ART[i + 1]}"></div>${bar7(50)}</div>`).join("")}</div>`));
+  const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"); const W = dev.clientWidth;
+  const top = dev.querySelector(".top7"), body = dev.querySelector(".body7"), hit = dev.querySelector(on ? ".chb7" : ".ysb7");
+  const tx = hit.offsetLeft + 7 + 6, ty = 6 + 7; // the button's middle (pageRows pads 6px)
+  at(150, () => fingerTo(f, tx, ty));
+  at(500, () => { tapF(f); hit.style.background = "rgba(255,255,255,.2)"; });
+  // the field opens out of the tapped button, its hint fades in
+  at(720, () => {
     f.classList.remove("show");
     top.style.justifyContent = "flex-start";
-    top.innerHTML = `${I("back", "ico", 'style="width:9px;height:9px;flex:none"')}<div style="flex:1;min-width:0;height:13px;border-radius:7px;background:#2c2c2c;font-size:7px;line-height:13px;padding:0 6px;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"><span class="q7" style="color:#fff"></span><span class="ph7" style="color:#888">${on ? "Search this channel" : "Search YouTube"}</span></div>`;
+    top.innerHTML = `${I("back", "ico", 'style="width:9px;height:9px;flex:none;opacity:0;transition:opacity .2s"')}<div class="fld7" style="flex:1;min-width:0;height:13px;border-radius:7px;background:#2c2c2c;font-size:7px;line-height:13px;padding:0 6px;color:#ddd;overflow:hidden;white-space:nowrap;transform-origin:${tx - 6}px 50%;transform:scaleX(.12);opacity:.4;transition:transform .32s var(--spring-soft, var(--ease)),opacity .2s"><span class="q7" style="color:#fff"></span><span class="ph7" style="color:#888">${on ? "Search channel" : "Search YouTube"}</span></div>`;
+    void top.offsetWidth; top.querySelector(".fld7").style.transform = "none"; top.querySelector(".fld7").style.opacity = "1"; top.querySelector(".ico").style.opacity = "1";
   });
-  "stove".split("").forEach((ch, i) => at(1050 + i * 90, () => { dev.querySelector(".ph7")?.remove(); const q = dev.querySelector(".q7"); if (q) q.textContent += ch; }));
-  at(1600, () => {
-    body.style.transition = "opacity .2s"; body.style.opacity = "0";
-    later(() => {
-      body.innerHTML = `<span style="color:#aaa;font-size:6.5px">${on ? "Results from Fjord &amp; Timber" : "Results from all of YouTube"}</span>` + [0, 1, 2].map(i => `<div style="display:flex;gap:4px;align-items:center"><div style="width:26px;height:15px;border-radius:2px;background:${ART[on ? i : i + 4]};flex:none"></div><span style="font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${on ? ["Stove install, part 1", "Stove vs rain", "Cabin stove tour"][i] : ["Other channel · stove", "Stove review 2026", "Camping stoves ranked"][i]}</span></div>`).join("");
-      body.style.opacity = "1";
-    }, 210);
+  "stove".split("").forEach((ch, i) => at(1000 + i * 85, () => { dev.querySelector(".ph7")?.remove(); const q = dev.querySelector(".q7"); if (q) q.textContent += ch; }));
+  const row = (art, name, ch, d) => `<div class="rw7" style="display:flex;gap:4px;align-items:center;opacity:0;transform:translateY(5px);transition:opacity .22s ${d}ms,transform .3s var(--ease) ${d}ms"><div style="width:26px;height:15px;border-radius:2px;background:${ART[art]};flex:none"></div><span style="display:grid;gap:1px;min-width:0"><span style="font-size:6.5px;color:#f1f1f1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span><span style="display:flex;gap:2px;align-items:center;font-size:5.5px;color:#aaa;white-space:nowrap"><i style="width:5px;height:5px;border-radius:50%;background:${AV[ch]};flex:none"></i>${ch ? ["", "Pocket Camp", "Tapes", "Nico Outdoors"][ch] : "Fjord &amp; Timber"}</span></span></div>`;
+  const rise = host => requestAnimationFrame(() => requestAnimationFrame(() => host.querySelectorAll(".rw7").forEach(r => { r.style.opacity = "1"; r.style.transform = "none"; })));
+  at(1550, () => {
+    if (!on) {
+      // YouTube's results page: videos from all of YouTube, other channels among them
+      body.style.transition = "opacity .16s"; body.style.opacity = "0";
+      later(() => { body.innerHTML = [[4, "Stove review 2026", 1], [5, "Camping stoves ranked", 2], [6, "Wood stove in a van", 3], [1, "Stove install, part 1", 0]].map(([a, n, c], i) => row(a, n, c, i * 60)).join(""); body.style.opacity = "1"; rise(body); }, 170);
+      return;
+    }
+    // Morphe's sheet slides up over a dimmed page with this channel's videos only
+    dev.insertAdjacentHTML("beforeend", `<div class="dim7" style="position:absolute;inset:0;background:rgba(0,0,0,0);transition:background .3s;z-index:5"></div><div class="sht7" style="position:absolute;left:2px;right:2px;bottom:2px;height:60%;border-radius:4px;background:#212121;z-index:6;padding:3px 4px 0;display:grid;grid-template-columns:minmax(0,1fr);grid-auto-rows:max-content;gap:3px;overflow:hidden;font-size:7px;color:#f1f1f1;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,0,0,1)"><i style="justify-self:center;width:12px;height:1.5px;border-radius:1px;background:#4a4a4a"></i><div style="display:flex;gap:4px;align-items:center">${I("search", "ico", 'style="width:7px;height:7px;flex:none"')}<span style="display:grid;min-width:0;flex:1"><b style="font-size:8px">stove</b><span style="font-size:5.5px;opacity:.7;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Channel search results  •  Fjord &amp; Timber</span></span></div><i style="height:.5px;margin:0 -5px;background:#3a3a3a"></i><div style="display:flex;gap:2px;font-size:5px;white-space:nowrap"><span style="padding:1px 2.5px;border-radius:5px;background:#f1f1f1;color:#0f0f0f">Videos</span><span style="padding:1px 2.5px;border-radius:5px;background:rgba(255,255,255,.1)">Posts</span><span style="padding:1px 2.5px;border-radius:5px;background:rgba(255,255,255,.1)">Relevance</span></div><div class="lst7" style="display:grid;gap:4px">${[[1, "Stove install, part 1"], [2, "Stove vs rain"], [3, "Cabin stove tour"]].map(([a, n], i) => row(a, n, 0, 160 + i * 60)).join("")}</div></div>`);
+    const sh = dev.querySelector(".sht7"); void sh.offsetWidth;
+    dev.querySelector(".dim7").style.background = "rgba(0,0,0,.5)"; sh.style.transform = "none"; rise(sh);
   });
-  return on ? "Second search button: results only from this channel" : "Search button: searches all of YouTube (stock)";
+  return "";
 });
+SCN_HOLD.morphe_channel_search = 3200;
 // Morphe (CopyTextPatch.showSelectTextDialog): holding a description or a post opens a "Select text" dialog
 // with the whole text, selectable (setTextIsSelectable), and Cancel / "Copy all"; Copy all puts it all on the
 // clipboard with "Text copied to clipboard". So On: hold, the dialog opens, a word is held and the selection
@@ -856,22 +875,38 @@ const styledIcons = (html, style) => {
   });
 };
 { const base = SCENES.player; SCENES.player = () => { const st = V("morphe_player_icon_style") || "AUTO"; return styledIcons(base(), st).replace(/^\s*<div/, `<div data-icons="${esc(st)}"`); }; }
+// Open Shorts with (Max, Nov 25: review these animations): the tapped Short grows out of its tile into
+// the player the option picks, so each side ends on a clearly different screen and no sentences are needed.
+// Shorts player: the Short fills the screen, the action column on the right, title and channel at the
+// bottom, the thin Shorts progress line. Regular player: a 16:9 player with the vertical video between black
+// bars, the title, channel and comments under it. Regular player fullscreen: black screen, the video at full
+// height with the regular player's seekbar and time (no Shorts buttons).
+SCN_HOLD.morphe_shorts_player_type = 2400; // three plays per loop
 scen("shorts", "shorts_player_type", (box, v) => {
-  situation("Tapping a Short in the Home feed");
   const shelf = `<div class="dv-feed" style="position:absolute;inset:0;background:#0f0f0f;padding:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;align-content:start;transition:opacity .25s">
     <div style="grid-column:1/-1;height:8px;width:40%;border-radius:3px;background:#ff0033;opacity:.8"></div>
-    ${[5, 6].map(i => `<div style="aspect-ratio:9/16;border-radius:5px;background:${ART[i]}"></div>`).join("")}<i style="grid-column:1/-1;height:8px;border-radius:3px;background:#2a2a2a"></i><i style="grid-column:1/-1;height:8px;width:70%;border-radius:3px;background:#2a2a2a"></i></div>`;
+    ${[5, 6].map(i => `<div class="${i === 5 ? "sh7" : ""}" style="aspect-ratio:9/16;border-radius:5px;background:${ART[i]}"></div>`).join("")}<i style="grid-column:1/-1;height:8px;border-radius:3px;background:#2a2a2a"></i><i style="grid-column:1/-1;height:8px;width:70%;border-radius:3px;background:#2a2a2a"></i></div>`;
   box.innerHTML = device("port", shelf);
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"); const W = dev.clientWidth, H = dev.clientHeight;
-  at(150, () => fingerTo(f, W * .28, H * .3)); at(650, () => tapF(f));
-  at(900, () => {
+  const tile = dev.querySelector(".sh7"), tx = tile.offsetLeft + 6, ty = tile.offsetTop + 6; // pageRows-like 6px padding is inside .dv-feed
+  const vid = (css) => `<div style="position:absolute;${css};background:${ART[5]}"></div>`;
+  const screen = v === "REGULAR_PLAYER"
+    ? `<div style="position:absolute;inset:0;background:#0f0f0f"><div style="position:absolute;left:0;right:0;top:0;height:${Math.round(W * 9 / 16)}px;background:#000">${vid("left:39%;right:39%;top:0;bottom:0")}<div style="position:absolute;left:0;right:0;bottom:0;height:2px;background:rgba(255,255,255,.25)"><div style="width:22%;height:2px;background:#ff0033"></div></div></div><div style="position:absolute;left:6px;right:6px;top:${Math.round(W * 9 / 16) + 5}px;display:grid;gap:4px"><i style="display:block;height:6px;width:85%;border-radius:3px;background:#eee"></i><div style="display:flex;gap:3px;align-items:center"><span style="width:10px;height:10px;border-radius:50%;background:${AV[2]}"></span><i style="height:5px;width:40%;border-radius:3px;background:#555"></i></div><i style="display:block;height:14px;border-radius:4px;background:#272727"></i><i style="display:block;height:14px;border-radius:4px;background:#1e1e1e"></i></div></div>`
+    : v === "REGULAR_PLAYER_FULLSCREEN"
+    ? `<div style="position:absolute;inset:0;background:#000">${vid("left:14%;right:14%;top:0;bottom:0")}<div style="position:absolute;left:8%;right:8%;bottom:9%;height:2px;background:rgba(255,255,255,.35)"><div style="width:22%;height:2px;background:#ff0033"></div><i style="position:absolute;left:22%;top:-2px;width:6px;height:6px;margin-left:-3px;border-radius:50%;background:#ff0033"></i></div><span style="position:absolute;left:8%;bottom:calc(9% + 5px);font-size:5.5px;color:#ddd">0:04 / 0:19</span>${ico7("full", 7, "#fff").replace('style="', 'style="position:absolute;right:8%;bottom:calc(9% + 4px);')}</div>`
+    : `<div style="position:absolute;inset:0">${vid("inset:0")}<div style="position:absolute;right:4px;bottom:20%;display:grid;gap:6px;justify-items:center">${["like", "dislike", "comment", "share"].map(n => ico7(n, 9, "#fff")).join("")}</div><div style="position:absolute;left:6px;bottom:7%;display:grid;gap:3px;width:62%"><div style="display:flex;gap:3px;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:${AV[2]}"></span><i style="height:4px;width:50%;border-radius:2px;background:rgba(255,255,255,.75)"></i></div><i style="display:block;height:4px;border-radius:2px;background:rgba(255,255,255,.55)"></i></div><div style="position:absolute;left:0;right:0;bottom:0;height:1.5px;background:rgba(255,255,255,.3)"><div style="width:22%;height:1.5px;background:#fff"></div></div></div>`;
+  at(150, () => fingerTo(f, tx + tile.offsetWidth * .5, ty + tile.offsetHeight * .5));
+  at(450, () => tapF(f));
+  at(620, () => {
     f.classList.remove("show");
-    if (v === "REGULAR_PLAYER") devContent(dev, `<div class="dv-video" style="background:#000"><div style="position:absolute;left:36%;right:36%;top:0;bottom:0;background:${ART[5]}"></div></div><div class="dv-below"><i></i><i></i><i></i></div>`);
-    else if (v === "REGULAR_PLAYER_FULLSCREEN") devContent(dev, `<div style="position:absolute;inset:0;background:#000"><div style="position:absolute;left:0;right:0;top:8%;bottom:8%;background:${ART[5]}"></div><div style="position:absolute;left:8%;right:8%;bottom:4%;height:2px;background:rgba(255,255,255,.4)"><div style="width:30%;height:2px;background:#ff0033"></div></div></div>`);
-    else devContent(dev, `<div style="position:absolute;inset:0;background:${ART[5]}"><div style="position:absolute;right:5px;bottom:18%;display:grid;gap:5px">${[0, 1, 2, 3].map(() => `<i style="display:block;width:12px;height:12px;border-radius:50%;background:rgba(255,255,255,.3)"></i>`).join("")}</div><div style="position:absolute;left:6px;bottom:8%;width:50%;height:6px;border-radius:3px;background:rgba(255,255,255,.5)"></div></div>`);
+    // the tile grows into the screen
+    const r = tile.getBoundingClientRect(), d = dev.getBoundingClientRect(), z = d.width / W;
+    const x = (r.left - d.left) / z, y = (r.top - d.top) / z, w = r.width / z, h = r.height / z;
+    dev.insertAdjacentHTML("beforeend", `<div class="grow7" style="position:absolute;inset:0;overflow:hidden;z-index:2;transform-origin:0 0;border-radius:${5 * W / w}px;transform:translate(${x}px,${y}px) scale(${w / W},${h / H});transition:transform ${380 * scStretch}ms cubic-bezier(.2,0,0,1),border-radius ${380 * scStretch}ms">${screen}</div>`);
+    const g = dev.querySelector(".grow7"); void g.offsetWidth; g.style.transform = "none"; g.style.borderRadius = "0";
+    dev.querySelector(".dv-feed").style.opacity = ".35";
   });
-  return v === "REGULAR_PLAYER" ? "Opens in the regular player, with comments and related videos below"
-    : v === "REGULAR_PLAYER_FULLSCREEN" ? "Opens in the regular player, straight to fullscreen" : "Opens in the Shorts player (stock)";
+  return "";
 });
 
 Object.assign(DEMOS, {

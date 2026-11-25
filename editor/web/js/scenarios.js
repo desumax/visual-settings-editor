@@ -51,7 +51,7 @@ const CROP7 = {};
   + "remember_video_quality_last_selected remember_shorts_quality_last_selected vot_enabled dearrow_connection_toast "
   + "restore_original_titles playlist_wide_drag_handles post_image_download open_channel_of_live_avatar "
   + "fullscreen_video_scale_button_fullscreen_only disable_rolling_number_animations "
-  + "search_comments copy_select_text copy_video_title remove_viewer_discretion_dialog").split(" ").forEach(k => CROP7["morphe_" + k] = "top");
+  + "search_comments copy_select_text copy_video_title remove_viewer_discretion_dialog channel_search").split(" ").forEach(k => CROP7["morphe_" + k] = "top");
 ("queue_type hide_ask_gemini_button hide_sync_button download_force_4k auto_translate_additional_languages "
   + "advanced_video_quality_menu hide_premium_video_quality live_chat_translate "
   + "live_chat_translate_bold live_chat_translate_use_color live_chat_translate_copy_button hide_comments_live_chat_donators_bar "
@@ -1346,10 +1346,13 @@ scen("nav", "navigation_bar_animations", (box, on) => {
   situation("Switching tabs");
   box.innerHTML = device("port", `<div class="pg" style="position:absolute;inset:0 0 16px 0;background:${ART[1]};transition:${on ? "opacity .4s, transform .4s" : "none"}"></div>${nav7()}`); // the bar shows its tab icons (Max, Nov 20)
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), pg = box.querySelector(".pg"); const W = dev.clientWidth, H = dev.clientHeight;
-  at(150, () => fingerTo(f, W * .3, H - 8)); // onto the Shorts tab at(400, () => tapF(f));
+  at(150, () => fingerTo(f, W * .3, H - 8)); at(400, () => tapF(f)); // onto the Shorts tab (the tap had slipped into the comment)
   at(450, () => { if (on) { pg.style.opacity = "0"; pg.style.transform = "translateX(-12px)"; later(() => { pg.style.transition = "none"; pg.style.background = ART[5]; pg.style.transform = "translateX(12px)"; void pg.offsetWidth; pg.style.transition = "opacity .4s, transform .4s"; pg.style.opacity = "1"; pg.style.transform = "none"; }, 400); } else pg.style.background = ART[5]; });
   return on ? "The new tab slides and fades in" : "The new tab appears instantly";
 });
+// four plays per loop instead of two (Max, Nov 25): a body under SC_TOTAL / (4 x 1.45), the story itself
+// ends by 1250 ms, so each play is slowed only to fit its slot (stretch 1.3)
+SCN_HOLD.morphe_navigation_bar_animations = 1800;
 
 // ------------------------------------------------------------------ miniplayer gestures (scenarios)
 const miniDev = () => `${playerArea(3)}<div class="mp2" style="position:absolute;right:6px;bottom:20px;width:40px;height:23px;border-radius:4px;background:${ART[0]};box-shadow:0 2px 6px #000;transition:all .55s var(--ease)"></div><div style="position:absolute;left:0;right:0;bottom:0;height:14px;background:#0f0f0f;border-top:1px solid #333"></div>`;

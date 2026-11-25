@@ -1353,6 +1353,80 @@ const CHECKS = [
     },
   },
   {
+    name: "setting-never-hides-itself",
+    report: "Nov 25 (15:17): Navigation bar style broke and disappeared when Opaque was chosen (Opaque makes the glass bar unavailable, and the style row sat in the glass bar's card)",
+    async run() {
+      const { p, ctx } = await open();
+      // every switch and every option of every setting with a parent: picking a value never hides the row
+      // it was picked on
+      const r = await p.evaluate(() => {
+        const bad = []; let n = 0;
+        for (const k of Object.keys(PARENT_OF)) {
+          const pr = PREF[k]; if (!pr) continue;
+          const vals = pr.type === "boolean" ? [true, false] : (pr.entries || []).map(e => e.value);
+          if (!vals.length) continue;
+          const was = state[k];
+          for (const v of vals) {
+            setPref(k, v === undefined ? was : v);
+            if (!kidVisible(k)) continue; // hidden for another reason before the pick
+            for (const w of vals) { if (w === v) continue; setPref(k, w); n++; if (!kidVisible(k)) bad.push(`${k.replace("morphe_", "")} = ${w}`); setPref(k, v); }
+          }
+          setPref(k, was);
+        }
+        return { n, bad: [...new Set(bad)].slice(0, 8) };
+      });
+      ok(r.n > 100, `picks tried: ${r.n}`);
+      ok(!r.bad.length, `rows that hide themselves: ${r.bad.join(", ")}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "stories-as-asked-nov25-1517",
+    report: "Nov 25 (15:17): Navigation bar animations loops 4 times; Narrow navigation buttons, Long press to reorder playlist videos, Search within channel without white sentences; Search within channel half-faded with Morphe's channel search icon; Open Shorts with reviewed; Subscribed channels bar shows 4 icons like Subscribed channel names; Dim while scrolling actually scrolls",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        const go = async k => { setPicker(false); quickSection(sectionOf(k)); await wait(400); select(k, "list"); };
+        const words = () => [...document.querySelectorAll("#canvas .sit, #canvas .sf7")].filter(e => e.offsetHeight && e.textContent.trim()).map(e => e.textContent.trim());
+        const out = { lines: [], runs: 0, tapped: false, icon: false, crop: false, avatars: [], scrolled: false, dimOn: 1, dimOff: 0 };
+        for (const k of ["morphe_narrow_navigation_buttons", "morphe_playlist_long_press_drag", "morphe_channel_search", "morphe_shorts_player_type", "morphe_enhanced_ambient_mode_dim_while_scrolling"]) {
+          await go(k);
+          const seen = new Set();
+          for (let t = 0; t < 2600; t += 130) {
+            await wait(130); words().forEach(w => seen.add(w));
+            const devs = [...document.querySelectorAll("#canvas .dev")];
+            if (k === "morphe_channel_search") { if (devs.some(d => d.innerHTML.includes("M3,11a8,8"))) out.icon = true; if (devs.length && devs.every(d => d.classList.contains("crop7"))) out.crop = true; }
+            if (k === "morphe_enhanced_ambient_mode_dim_while_scrolling") devs.forEach((d, i) => {
+              const c = d.querySelector(".acn7"), l = d.querySelector(".aml7"); if (!c || !l) return;
+              if (new DOMMatrix(getComputedStyle(c).transform).m42 < -20) out.scrolled = true;
+              const o = +getComputedStyle(l).opacity; if (i) out.dimOn = Math.min(out.dimOn, o); else out.dimOff = Math.max(out.dimOff, o);
+            });
+          }
+          if (seen.size) out.lines.push(`${k.replace("morphe_", "")}: ${[...seen].join(" / ")}`);
+        }
+        const nk = "morphe_navigation_bar_animations"; const L = SCN_HOLD[nk] || SC_HOLD; out.runs = Math.floor(SC_TOTAL / (L * 1.45));
+        await go(nk);
+        for (let t = 0; t < 1500 && !out.tapped; t += 40) { await wait(40); if (document.querySelector("#canvas .tap, #scFinger.tap")) out.tapped = true; }
+        for (const k of ["morphe_hide_subscribed_channels_bar", "morphe_hide_subscribed_channels_bar_names"]) {
+          await go(k); await wait(300);
+          const d = document.querySelector("#canvas .dev");
+          out.avatars.push(d ? [...d.querySelectorAll('span[style*="border-radius:50%"]')].filter(e => e.style.width === "13px").length : -1);
+        }
+        return out;
+      });
+      ok(!r.lines.length, `stories still have sentences: ${r.lines.join("; ")}`);
+      ok(r.runs >= 4, `Navigation bar animations plays ${r.runs} times per loop (4)`);
+      ok(r.tapped, "Navigation bar animations: the finger never taps the tab");
+      ok(r.icon, "Search within channel does not draw Morphe's channel search icon");
+      ok(r.crop, "Search within channel phones are not half phones");
+      ok(r.avatars[0] === 4 && r.avatars[1] === 4, `subscribed channels bar icons ${r.avatars.join(" / ")} (4 / 4)`);
+      ok(r.scrolled, "Dim while scrolling: the page never scrolls");
+      ok(r.dimOn < .4 && r.dimOff > .6, `Dim while scrolling: light on ${r.dimOn.toFixed(2)} (dims), off ${r.dimOff.toFixed(2)} (stays)`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

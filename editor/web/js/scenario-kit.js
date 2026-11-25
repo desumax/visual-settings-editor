@@ -287,7 +287,7 @@ hidePage("feed", "hide_notifications_menu_header", "Tapping the bell: the Notifi
 hidePage("feed", "hide_notify_me_button", "An upcoming premiere in the feed", feed7(big7(6, "Premieres Friday 18:00", `<span style="position:absolute;left:3px;bottom:3px;padding:0 3px;border-radius:2px;background:rgba(0,0,0,.7);font-size:5px">UPCOMING</span>`) + `<div style="display:flex;justify-content:flex-end;margin-top:-2px">${tgt7(`<span style="padding:2px 6px;border-radius:7px;background:#f1f1f1;color:#000;font-size:6px;display:inline-flex;gap:2px;align-items:center">${ico7("bell", 7, "#000")}Notify me</span>`, 1)}</div>` + row7(3, "Building a tiny cabin")), { hidden: "No reminder button on upcoming streams and premieres" });
 hidePage("feed", "hide_search_term_thumbnails", "Search suggestions", search7("cab", `<div style="display:grid;gap:3px">${["cabin build", "cabin tour", "cabin in the woods"].map((t, i) => `<div style="display:flex;gap:4px;align-items:center;font-size:6.5px">${ico7("search", 7)}<span style="flex:1">${t}</span>${tgt7(`<div style="width:20px;height:11px;border-radius:2px;background:${ART[i + 2]}"></div>`, 1)}</div>`).join("")}</div>`));
 hidePage("feed", "hide_show_more_button", "Search results", search7("cabin", row7(2, "Cabin build in 30 days") + row7(3, "Cabin tour") + tgt7(`<div style="text-align:center;font-size:6px;padding:2px;border:1px solid #333;border-radius:8px">Show more</div>`) + row7(4, "Off-grid cabin")));
-hidePage("feed", "hide_subscribed_channels_bar", "Subscriptions", top7("Subscriptions", ["search"]) + tgt7(`<div style="display:flex;gap:4px">${[0, 1, 2, 3, 4].map(i => `<span style="width:13px;height:13px;border-radius:50%;background:${AV[i]}"></span>`).join("")}</div>`) + row7(3, "Building a tiny cabin") + row7(5, "Why ice is slippery"));
+hidePage("feed", "hide_subscribed_channels_bar", "Subscriptions", top7("Subscriptions", ["search"]) + tgt7(`<div style="display:flex;gap:5px">${[0, 1, 2, 3].map(i => `<span style="width:13px;height:13px;border-radius:50%;background:${AV[i]}"></span>`).join("")}</div>`) + row7(3, "Building a tiny cabin") + row7(5, "Why ice is slippery"));
 hidePage("feed", "hide_subscribed_channels_bar_names", "Subscriptions", top7("Subscriptions", ["search"]) + `<div style="display:flex;gap:5px">${["Fjord", "Pocket", "Tapes", "Nico"].map((n, i) => `<div style="display:grid;justify-items:center;gap:1px"><span style="width:13px;height:13px;border-radius:50%;background:${AV[i]}"></span>${tgt7(`<span style="font-size:5px">${n}</span>`)}</div>`).join("")}</div>` + row7(3, "Building a tiny cabin"));
 hidePage("feed", "hide_unavailable_videos_hidden_banner", "A playlist with removed videos", top7("Road trip mix", ["search", "more"]) + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b;font-size:6px;color:#aaa">2 unavailable videos are hidden</div>`) + row7(1, "Night train to Bodø") + row7(2, "Lo-fi beats"));
 hidePage("feed", "hide_web_search_results", "Search results", search7("how to split wood", row7(2, "Splitting wood the easy way") + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b;font-size:6px">${ico7("search", 7)} Results from the web · wikihow.com</div>`) + row7(3, "Axe vs maul")));
@@ -304,14 +304,13 @@ scen("feed", "open_channel_of_live_avatar", (box, on) => {
   return on ? "The avatar opens the channel" : "The avatar opens the live stream (stock)";
 });
 scen("feed", "playlist_long_press_drag", (box, on) => {
-  situation("Reordering a playlist");
   box.innerHTML = device("port", pageRows(top7("Road trip mix", ["search", "more"]) + `<div class="pl7" style="display:grid;gap:4px;position:relative">${[1, 2, 3, 4].map(i => `<div class="pi7" style="transition:transform .3s">${row7(i, ["Night train to Bodø", "Lo-fi beats", "Fjord drive", "Coffee jazz"][i - 1])}</div>`).join("")}</div>`));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), it = dev.querySelectorAll(".pi7"); const W = dev.clientWidth, H = dev.clientHeight;
   at(250, () => holdAt(f, W * .5, H * .15));
   at(1000, () => { if (!on) { f.classList.remove("hold", "show"); sheet7(dev, sheetRows([["clock", "Save to Watch later"], ["close", "Remove from playlist"]])); return; } it[0].style.transform = "scale(1.05)"; it[0].style.background = "#333"; });
   at(1300, () => { if (!on) return; fingerTo(f, W * .5, H * .37, 600); it[0].style.transform = "translateY(42px) scale(1.05)"; it[1].style.transform = "translateY(-21px)"; it[2].style.transform = "translateY(-21px)"; });
   at(2000, () => { if (!on) return; f.classList.remove("hold", "show"); it[0].style.transform = "translateY(42px)"; it[0].style.background = ""; });
-  return on ? "Hold anywhere on a row and drag it to a new place" : "Hold opens the menu; drag only from the small handle (stock)";
+  return ""; // no sentences (Max, Nov 25): the drag and the menu say it
 });
 scen("feed", "playlist_wide_drag_handles", (box, on) => {
   situation("Grabbing a playlist row to move it");
@@ -526,7 +525,7 @@ scen("nav", "disable_toolbar_navigation_tabs", (box, on) => {
 hidePage("nav", "hide_toolbar_microphone_button", "The search bar", search7("", "").replace(ico7("mic"), tgt7(ico7("mic"), 1)) + `<div style="display:grid;gap:3px">${item7("clock", "cabin build")}${item7("clock", "lo-fi beats")}</div>`);
 // A small watch page for the Ambient mode comparisons: the film's glow under the player (.amg7), or with
 // enhanced: the whole page lit (.aml7). Same film and colours as the live preview (AMB_ART, AMB_GLOW).
-const ambPage = (enh) => `<div class="pg7" style="position:absolute;inset:0;background:#0f0f0f;overflow:hidden">${enh ? `<div class="aml7" style="position:absolute;inset:-12px;background:${AMB_ART};background-size:100% 60%;background-repeat:no-repeat;filter:blur(6px) saturate(1.3);opacity:.8;transition:opacity .45s"></div>` : `<div class="amg7" style="position:absolute;left:-15%;right:-15%;top:30px;height:60px;background:${AMB_GLOW};filter:blur(5px);transition:opacity .45s"></div>`}<div style="position:relative;height:44px;background:${enh ? "transparent" : "#000"}"><div style="position:absolute;left:0;right:0;top:7px;bottom:7px;background:${AMB_ART}"></div></div><div style="position:relative;padding:5px 6px;display:grid;gap:4px;font-size:7px;color:#ddd"><b style="font-size:7px">Building a tiny cabin</b><div style="display:flex;gap:3px">${chip7("Like")}${chip7("Share")}${chip7("Save")}</div>${row7(2, "Up next · Night train")}${row7(4, "Up next · Lo-fi beats")}${row7(1, "Up next · Rain on a roof")}</div></div>`;
+const ambPage = (enh) => `<div class="pg7" style="position:absolute;inset:0;background:#0f0f0f;overflow:hidden">${enh ? `<div class="aml7" style="position:absolute;inset:-12px;background:${AMB_ART};background-size:100% 60%;background-repeat:no-repeat;filter:blur(6px) saturate(1.3);opacity:.8;transition:opacity .45s"></div>` : `<div class="amg7" style="position:absolute;left:-15%;right:-15%;top:30px;height:60px;background:${AMB_GLOW};filter:blur(5px);transition:opacity .45s"></div>`}<div class="apl7" style="position:relative;height:44px;background:${enh ? "transparent" : "#000"}"><div style="position:absolute;left:0;right:0;top:7px;bottom:7px;background:${AMB_ART}"></div></div><div class="acn7" style="position:relative;padding:5px 6px;display:grid;gap:4px;font-size:7px;color:#ddd"><b style="font-size:7px">Building a tiny cabin</b><div style="display:flex;gap:3px">${chip7("Like")}${chip7("Share")}${chip7("Save")}</div>${row7(2, "Up next · Night train")}${row7(4, "Up next · Lo-fi beats")}${row7(1, "Up next · Rain on a roof")}</div></div>`;
 // Bypass Ambient mode restrictions: battery saver comes on. Stock turns the glow off to save power; on, it stays.
 scen("ambient", "bypass_ambient_mode_restrictions", (box, on) => {
   situation("Battery saver turns on");
@@ -536,15 +535,32 @@ scen("ambient", "bypass_ambient_mode_restrictions", (box, on) => {
   at(900, () => { if (!on) glow.style.opacity = 0; toast7(dev, on ? "The glow stays on" : "The glow is switched off", "80%"); });
   return "";
 });
-// Dim while scrolling (enhanced): the page scrolls; the light dims while it moves, then comes back.
+// Dim while scrolling (Morphe AmbientLightController): a touch on the page below the player, or the page
+// scrolling after it, dims the light to a quarter (DIMMED_STRENGTH 64 of 256) in 180 ms; while the page
+// scrolls the player gets shorter and crops the video. When nothing has been touched for the Dim duration
+// the light comes back over 1.6 s (RESTORE_DURATION_MS). Off: the light stays as it is. (Max, Nov 25: the
+// story did not actually show scrolling; no sentences.)
+SCN_HOLD.morphe_enhanced_ambient_mode_dim_while_scrolling = 3600;
 scen("ambient", "enhanced_ambient_mode_dim_while_scrolling", (box, on) => {
-  situation("Scrolling the watch page");
   box.innerHTML = device("port", ambPage(true));
   const dev = box.querySelector(".dev"), lit = dev.querySelector(".aml7"), f = box.querySelector("#scFinger"), W = dev.clientWidth, H = dev.clientHeight;
-  at(250, () => fingerTo(f, W * .5, H * .75)); at(500, () => fingerTo(f, W * .5, H * .4, 600));
-  at(550, () => { if (on) lit.style.opacity = .25; toast7(dev, on ? "The light dims while you scroll" : "The light stays bright", "80%"); });
-  at(1200, () => { f.classList.remove("show"); });
-  at(1700, () => { lit.style.opacity = .8; });
+  const pl = dev.querySelector(".apl7"), cn = dev.querySelector(".acn7"); pl.style.zIndex = 2; // the page scrolls under the player
+  cn.insertAdjacentHTML("beforeend", row7(3, "Up next · Fjord drive") + row7(5, "Up next · Coffee jazz") + row7(0, "Up next · Cabin tour"));
+  at(150, () => fingerTo(f, W * .55, H * .82));
+  at(450, () => {
+    f.classList.add("hold");
+    if (on) { lit.style.transition = "opacity .18s linear"; lit.style.opacity = .2; } // the touch dims it
+  });
+  at(600, () => {
+    // the finger pushes the page up: the rows scroll, the player gets shorter
+    fingerTo(f, W * .55, H * .38, 750);
+    // the rows that pass the player's bottom edge go out of sight there (clip-path follows the scroll)
+    pl.style.transition = cn.style.transition = ["height", "transform", "clip-path"].map(x => `${x} ${750 * scStretch}ms cubic-bezier(.3,0,.3,1)`).join(",");
+    cn.style.clipPath = "inset(0 0 0 0)"; void cn.offsetWidth;
+    pl.style.height = "28px"; cn.style.transform = "translateY(-46px)"; cn.style.clipPath = "inset(46px 0 0 0)";
+  });
+  at(1350, () => { f.classList.remove("hold", "show"); cn.style.transition = ["transform", "clip-path"].map(x => `${x} ${500 * scStretch}ms cubic-bezier(.1,.6,.3,1)`).join(","); cn.style.transform = "translateY(-58px)"; cn.style.clipPath = "inset(58px 0 0 0)"; }); // a short fling after the lift
+  at(2000, () => { if (on) { lit.style.transition = `opacity ${1600 * scStretch}ms ease`; lit.style.opacity = .8; } }); // nothing touched: the light comes back
   return "";
 });
 scen("ambient", "disable_fullscreen_ambient_mode", (box, on) => {
@@ -1269,7 +1285,6 @@ hidePage("dearrow", "dearrow_connection_toast", "DeArrow can't reach its server"
 // preview flipped between both without saying which was which.)
 SCN_HOLD.morphe_narrow_navigation_buttons = 1800;
 scen("nav", "narrow_navigation_buttons", (box, on) => {
-  situation("The bar at the bottom");
   const tabs = [["home", "Home"], ["shorts", "Shorts"], ["plus", ""], ["subs", "Subs"], ["you", "You"]];
   box.innerHTML = device("port", pageRows(feed7(big7(3, "Building a tiny cabin") + row7(2, "Night train"))) + `<div class="chg7" style="position:absolute;left:0;right:0;bottom:0;height:19px;background:#0f0f0f;border-top:1px solid #222;display:flex;justify-content:center;align-items:center">${tabs.map(([n, t]) => `<span class="nb7" style="display:grid;justify-items:center;gap:1px;font-size:4.5px;line-height:1;flex:1 1 0;min-width:0;transition:flex .52s var(--ease)">${ico7(n, 8)}<span>${t}</span></span>`).join("")}</div>`);
   // Nov 24 (Max: broken): 16 px buttons filled nearly the whole 92 px bar, so both sides looked the same.
@@ -1278,7 +1293,7 @@ scen("nav", "narrow_navigation_buttons", (box, on) => {
   // four plays per loop and 15% faster than v146 (Max, Nov 24): body 1800 ms (4 runs, stretch 1.3), the
   // pull starts at 320 x 1.3 = 416 ms (was 480) and takes .52 s (was .6)
   if (on) at(320, () => box.querySelectorAll(".nb7").forEach(e => { e.style.flex = "0 0 14px"; }));
-  return on ? "The buttons sit close together in the middle" : "The buttons spread over the whole width (stock)";
+  return ""; // no sentences (Max, Nov 25): the bars say it
 });
 
 function inScope(p, scopes) { return scopes.some(([s, sub]) => p.screen === s && (p.subScreen || null) === sub); }
@@ -1369,14 +1384,17 @@ function buildKids() {
   for (const k in PARENT_OF) { let r = PARENT_OF[k], g = 0; while (PARENT_OF[r] && g++ < 6) r = PARENT_OF[r]; PARENT_OF[k] = r; }
   for (const k in PARENT_OF) (KIDS[PARENT_OF[k]] = KIDS[PARENT_OF[k]] || []).push(k);
 }
-function kidVisible(k, depth = 0) {
+function kidVisible(k, depth = 0, from = null) {
   const m = MANUAL_PARENT[k];
   if (m && m.always) return true;
   if (m && (m.mode === "not" ? !!state[m.key] : !state[m.key])) return false;
-  if (!(classicParentsOk(k) && availOk(k))) return false;
+  // a parent that is unavailable only because of the sub-option asking does not take that sub-option with
+  // it: Navigation bar style sits in the glass bar's card, and its Opaque makes the glass bar unavailable,
+  // which hid the style itself, so it could not be set back (Max, Nov 25)
+  if (!classicParentsOk(k) || (!availOk(k) && !(from && availKeys(k).includes(from)))) return false;
   // a sub-sub-option also hides with its own parent
   const d = DIRECT_PARENT[k];
-  return !d || !PARENT_OF[d] || depth > 6 || kidVisible(d, depth + 1);
+  return !d || !PARENT_OF[d] || depth > 6 || kidVisible(d, depth + 1, k);
 }
 const sectionKeys = () => MEMBERS[section] ? [...MEMBERS[section].live, ...MEMBERS[section].misc] : [];
 const sectionOf0 = k => SECTIONS.find(s => MEMBERS[s.id].live.includes(k) || MEMBERS[s.id].misc.includes(k))?.id || "misc";

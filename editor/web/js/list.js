@@ -609,7 +609,7 @@ function controlFor(k) {
   }
   if (p.type === "string") {
     // Morphe opens the system file picker for these; the preview does the same and draws the image
-    if (p.widget === "NonInteractivePreference" && /_file$/.test(k)) return `<div class="ctl"><label class="opt filepick" ${dis ? 'aria-disabled="true"' : ""}>${I("image")}${v ? "Change image" : "Choose image"}<input type="file" accept="image/*" data-file="${k}" ${dis} hidden></label>${v ? `<span class="val">${esc(v)}</span>` : ""}</div>`;
+    if (p.widget === "NonInteractivePreference" && /_file$/.test(k)) return `<div class="ctl side"><label class="opt filepick" ${dis ? 'aria-disabled="true"' : ""}>${I("image")}${v ? "Change image" : "Choose image"}<input type="file" accept="image/*" data-file="${k}" ${dis} hidden></label>${v ? `<span class="val">${esc(v)}</span>` : ""}</div>`;
     if (/color/.test(k) && /^#/.test(String(v))) return `<div class="ctl side"><input type="color" value="#${String(v).slice(-6)}" data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}"><span class="val">${esc(v)}</span></div>`;
     if (isListBox(k)) return listBox(k, dis);
     return `<div class="ctl"><input type="text" value="${esc(v)}" data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}"></div>`;

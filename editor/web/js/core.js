@@ -166,7 +166,7 @@ const SECTIONS = [
 const GROUPS = [
   { id: "g_player", icon: "play", title: "Player", tabs: [["player", "Controls"], ["seekbar", "Seekbar & gestures"], ["fullscreen", "Fullscreen"], ["flyout", "Player menu"], ["miniplayer", "Miniplayer"]] },
   { id: "g_playback", icon: "speed", title: "Playback", tabs: [["playback", "Video & audio"], ["behaviour", "Behaviour"], ["endscreen", "End screen"], ["captions", "Captions"], ["sponsorblock", "SponsorBlock"]] },
-  { id: "g_watch", icon: "like", title: "Watch page", tabs: [["watch", "Actions"], ["description", "Description"], ["comments", "Comments"], ["danmaku", "Flying comments"], ["ambient", "Ambient mode"]] },
+  { id: "g_watch", icon: "like", title: "Watch page", tabs: [["watch", "Actions"], ["description", "Description"], ["ambient", "Ambient mode"], ["comments", "Comments"], ["danmaku", "Flying comments"]] },
   { id: "g_feed", icon: "home", title: "Feed", tabs: [["feed", "Home"], ["shorts", "Shorts"], ["ads", "Ads"], ["dearrow", "DeArrow"]] },
   { id: "g_browse", icon: "layout", title: "Browsing", tabs: [["channel", "Channel page"], ["explore", "Explore menu"], ["nav", "Navigation"]] },
   { id: "g_app", icon: "palette", title: "App", tabs: [["look", "App look"], ["snackbar", "Snackbar"], ["misc", "Miscellaneous"]] },

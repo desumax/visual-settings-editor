@@ -1505,7 +1505,7 @@ def("snackbar", "style", "custom_snackbar_theme custom_snackbar_color_dark custo
 
 // ------------------------------------------------------------------ section order with the new ones
 {
-  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "sponsorblock", "playback", "behaviour", "watch", "description", "comments", "ambient", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "ads", "look", "snackbar", "dearrow", "misc"];
+  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "sponsorblock", "playback", "behaviour", "watch", "description", "ambient", "comments", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "ads", "look", "snackbar", "dearrow", "misc"];
   const all = [...SECTIONS]; SECTIONS.length = 0;
   order.forEach(id => { const s = all.find(x => x.id === id); if (s) SECTIONS.push(s); });
 }

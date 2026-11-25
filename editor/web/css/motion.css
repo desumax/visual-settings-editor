@@ -163,3 +163,4 @@
 html:not(.touchwait) .phone:not(.theme-glass) :is(.ctl .opt, .tab7, .seg3 button, .seg button, .kidbtn, .ordreset, .offnew):not(.lift):active { transform: scale(.96); }
 /* a dialog or a text-selection bar in a comparison phone pops in from a little smaller (Select text, Nov 24) */
 @keyframes dlgin7 { from { opacity: 0; scale: .92; } }
+.row .ctl.side:has(> .filepick) .val { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long file name stays under its pill */

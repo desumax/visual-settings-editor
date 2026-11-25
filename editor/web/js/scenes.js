@@ -409,7 +409,7 @@ const EXTRA_SECTIONS = [
 {
   const watch = SECTIONS.find(s => s.id === "watch");
   watch.scopes = watch.scopes.filter(([, sub]) => sub !== "morphe_hide_description_components_screen");
-  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "watch", "description", "comments", "ambient", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "misc"];
+  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "watch", "description", "ambient", "comments", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "misc"];
   const all = [...SECTIONS, ...EXTRA_SECTIONS];
   SECTIONS.length = 0;
   order.forEach(id => SECTIONS.push(all.find(s => s.id === id)));

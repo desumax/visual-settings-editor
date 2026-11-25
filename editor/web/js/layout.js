@@ -22,11 +22,14 @@ function applyTheme() {
 //   0 Flat:  no backdrop-filter at all (the same paint): no backdrop-filter support, reduced transparency
 //            asked for, or a low-end device (2 GB or 2 cores or fewer).
 // While glass is on, frames are timed during scrolls and menu/dialog openings (glassSample); a device
-// that keeps falling behind drops a tier, remembered for GLASS_CAP_DAYS.
+// that keeps falling behind over a longer measurement drops a tier for good (Max, Nov 25: a drop that
+// expired after a week meant a weak phone lagged again every week). Only a new System WebView (it may draw
+// glass faster) measures again.
 let glassTier = null, glassCap = null;
 // the preview's own page can force a level, to see each one on any computer (Max, Nov 23 PM); the app never does
 let glassForced = null; try { const f = localStorage.getItem(LS + "-glassforce"); if (f !== null && /^[012]$/.test(f)) glassForced = +f; else if (f === "x" || f === "w") glassForced = f; } catch { /* storage unavailable */ }
-const GLASS_CAP_KEY = LS + "-glasscap", GLASS_CAP_DAYS = 7;
+const GLASS_CAP_KEY = LS + "-glasscap", GLASS_WIN_KEY = LS + "-glasswin";
+const webViewMajor = () => (/\bChrome\/(\d+)/.exec(navigator.userAgent) || [])[1] || "";
 // a flagship never gets the slow warning, and starts at Full (Max, Nov 23 evening: a Snapdragon 8 Gen 5
 // was warned; WebViews often don't say how much memory there is, so unknown memory counts as enough)
 function glassHighEnd() { const c = navigator.hardwareConcurrency || 0, m = navigator.deviceMemory || 8; return c >= 8 && m >= 4; }
@@ -46,7 +49,8 @@ function glassTierApply() {
     try {
       localStorage.removeItem(LS + "-glass"); // the old, permanent cap: one slow moment kept a phone down for good
       const c = JSON.parse(localStorage.getItem(GLASS_CAP_KEY) || "null");
-      if (c && c.cap >= 0 && c.cap <= 2 && Date.now() - c.t < GLASS_CAP_DAYS * 864e5) glassCap = c.cap; else localStorage.removeItem(GLASS_CAP_KEY);
+      if (c && c.cap >= 0 && c.cap <= 2 && c.wv === webViewMajor()) glassCap = c.cap;
+      else { localStorage.removeItem(GLASS_CAP_KEY); localStorage.removeItem(GLASS_WIN_KEY); }
     } catch { /* storage unavailable */ }
   }
   if (typeof glassForced === "number") glassTier = glassForced;
@@ -219,10 +223,13 @@ function liquidSoon() { if (!lensRaf && theme === "glass") lensRaf = requestAnim
 // while the list or the menu scrolls, or a menu or dialog opens, leaving out the first frames (the first
 // paint of a new layer is always slow) and gaps from a hidden page. A window is slow when its median frame
 // takes over 22 ms (most frames under 45 fps), whatever the display's rate: a device held at a steady 30 fps
-// is slow, though it never shows a fast frame to compare with (it used to pass that way). Two slow windows
-// in a row drop the tier one step, quietly; only Flat still being slow, on a device that isn't high-end,
-// shows the warning (glass itself costs nothing in Flat, but the device can't keep up with this look).
-let glassWatch = null, glassStrikes = 0;
+// is slow, though it never shows a fast frame to compare with (it used to pass that way).
+// The verdict takes the last GLASS_WINDOWS windows at the current level, kept across visits, so one busy
+// moment never decides it: when GLASS_SLOW_OF of them were slow the level drops one step, quietly and for
+// good (until the System WebView changes). Only Flat still being slow, on a device that isn't high-end, shows
+// the warning (glass itself costs nothing in Flat, but the device can't keep up with this look).
+const GLASS_WINDOWS = 8, GLASS_SLOW_OF = 6;
+let glassWatch = null;
 function glassSample(ev) {
   if (ev && ev.type === "scroll") { if (ev.target !== $("scroller") && ev.target !== $("picker")) return; } // the preview's own motion isn't a scroll of the list
   else setTimeout(liquidSoon, 40); // a menu or dialog opening: its glass gets its lens once it shows (a scroll never asks: the
@@ -239,12 +246,14 @@ function glassSample(ev) {
 }
 function glassJudge(dts) {
   dts.sort((a, b) => a - b);
-  glassStrikes = dts[dts.length >> 1] > 22 ? glassStrikes + 1 : 0;
-  if (glassStrikes < 2 || theme !== "glass") return;
-  glassStrikes = 0;
+  let w = { tier: glassTier, r: [] }; try { const o = JSON.parse(localStorage.getItem(GLASS_WIN_KEY) || "null"); if (o && o.tier === glassTier && Array.isArray(o.r)) w = o; } catch { /* storage unavailable */ }
+  w.r = [...w.r, dts[dts.length >> 1] > 22 ? 1 : 0].slice(-GLASS_WINDOWS);
+  const slow = w.r.length >= GLASS_WINDOWS && w.r.reduce((a, b) => a + b, 0) >= GLASS_SLOW_OF;
+  try { localStorage.setItem(GLASS_WIN_KEY, JSON.stringify(slow ? { tier: glassTier - 1, r: [] } : w)); } catch { /* storage unavailable */ }
+  if (!slow || theme !== "glass") return;
   if (glassTier > 0) {
     glassTier--; glassCap = glassTier;
-    try { localStorage.setItem(GLASS_CAP_KEY, JSON.stringify({ cap: glassCap, t: Date.now() })); } catch { /* storage unavailable */ }
+    try { localStorage.setItem(GLASS_CAP_KEY, JSON.stringify({ cap: glassCap, wv: webViewMajor(), t: Date.now() })); } catch { /* storage unavailable */ }
     $("phone").dataset.gt = glassTier;
     if (typeof renderBar === "function" && $("picker").classList.contains("open")) renderBar();
   } else if (!glassHighEnd()) glassSlowWarn();

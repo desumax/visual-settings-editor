@@ -232,7 +232,7 @@ def("shorts", "gesture", "disable_shorts_double_tap_to_like");
 def("nav", "vis", "hide_navigation_bar hide_home_button hide_shorts_button hide_create_button hide_subscriptions_button hide_notifications_button hide_navigation_button_labels show_search_button show_settings_button show_watch_later_button hide_navigation_new_content_dot");
 def("nav", "vis", "hide_toolbar_create_button hide_toolbar_notification_button hide_toolbar_search_button hide_toolbar_chat_button show_toolbar_settings_button");
 def("nav", "layout", "swap_create_with_notifications_button header_logo");
-def("nav", "style", "narrow_navigation_buttons navigation_bar_style");
+def("nav", "style", "narrow_navigation_buttons navigation_bar_style disable_icon_only_navigation_buttons");
 
 def("comments", "vis", "hide_comments_filter_bar_options hide_comments_ai_chat_summary hide_comments_community_guidelines hide_comments_channel_guidelines hide_comments_emoji_button hide_comments_timestamp_button hide_comments_gif_button hide_comments_thanks_button hide_comments_create_a_short_button hide_comments_dislike_button hide_comments_translate_button hide_comments_menu_button hide_comments_gift_button hide_comments_info_button");
 

@@ -8,6 +8,8 @@ MAP = {"play": "playericons/drawable/morphe_player_play", "pause": "playericons/
        "link": "copyvideolinkbutton/drawable/morphe_yt_copy", "loop": "loopvideobutton/drawable/morphe_loop_video_button_off", "vol": "mutevideobutton/drawable/morphe_mute_video_button_off",
        "pip": "pictureinpicturebutton/drawable/morphe_pip_button", "reload": "reloadbutton/drawable/morphe_reload_video_button", "clock": "savetowatchlaterbutton/drawable/morphe_save_to_watch_later_button",
        "queue": "playallbutton/drawable/morphe_play_all_button", "crop": "fullscreenvideoscalebutton/drawable/morphe_fullscreen_video_scale_fit", "dl": "downloads/drawable/morphe_yt_download_button"}
+# "Shorts icon style": the action buttons on the right of a Short (shortsicons/drawable)
+SHORTS_MAP = {n: "shortsicons/drawable/morphe_shorts_" + n for n in ["like", "dislike", "comment", "share", "remix", "save"]}
 def col(v):
     if v is None: return None
     if "white" in v: return "#fff"
@@ -48,20 +50,26 @@ def node(e):
         return "<path " + " ".join(at) + "/>"
     if tag == "clip-path": return ""
     return "".join(node(c) for c in e)
-out = {}
-for st, suf in STYLES.items():
-    out[st] = {}
-    for k, base in MAP.items():
-        p = os.path.join(R, base + suf + ".xml")
-        if not os.path.exists(p): continue
-        v = ET.parse(p).getroot()
-        if v.tag != "vector": v = v.find(".//vector")
-        if v is None: print("skip", p); continue
-        out[st][k] = [f'0 0 {v.get(A+"viewportWidth")} {v.get(A+"viewportHeight")}', "".join(node(c) for c in v)]
-js = ("// Generated from morphe-patches@31234a8 (patches/src/main/resources/*/drawable/*_<style>.xml) by\n"
+def build(mapping):
+    res = {}
+    for st, suf in STYLES.items():
+        res[st] = {}
+        for k, base in mapping.items():
+            p = os.path.join(R, base + suf + ".xml")
+            if not os.path.exists(p): continue
+            v = ET.parse(p).getroot()
+            if v.tag != "vector": v = v.find(".//vector")
+            if v is None: print("skip", p); continue
+            res[st][k] = [f'0 0 {v.get(A+"viewportWidth")} {v.get(A+"viewportHeight")}', "".join(node(c) for c in v)]
+        if not res[st]: del res[st]
+    return res
+out = build(MAP); shorts = build(SHORTS_MAP)
+js = ("// Generated from morphe-patches@ff240eb (patches/src/main/resources/*/drawable/*_<style>.xml) by\n"
       "// editor/tools/convert_icon_styles.py: the real icons of each \"Player icon style\" (MIT and\n"
       "// Apache 2.0 icon sets: Fluent UI, Phosphor, Ionicons, Material Symbols Sharp; see the source files).\n"
       "// [viewBox, svg markup] per preview icon name.\n"
-      "const ICON_STYLES = " + json.dumps(out, separators=(",", ":")) + ";\n")
+      "const ICON_STYLES = " + json.dumps(out, separators=(",", ":")) + ";\n"
+      "// the same for \"Shorts icon style\" (the buttons on the right of a Short)\n"
+      "const SHORTS_ICON_STYLES = " + json.dumps(shorts, separators=(",", ":")) + ";\n")
 open(OUT, "w").write(js)
-print({k: len(v) for k, v in out.items()}, len(js))
+print({k: len(v) for k, v in out.items()}, {k: len(v) for k, v in shorts.items()}, len(js))

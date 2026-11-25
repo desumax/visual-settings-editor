@@ -714,6 +714,17 @@ final class WebEditorDialog extends Dialog {
     /** Closes the editor together with the Morphe settings screen, without showing the list. */
     private void leaveSettings() {
         hiddenList = null; // stays hidden: the activity is finishing
+        // Max, Nov 25: leaving went white, then animated. The page has already faded into the editor's dark
+        // background; the settings screen under the editor is made that same dark, with its own views hidden,
+        // so taking the editor's window away shows no change and the screen then closes as one dark page.
+        try {
+            View content = activity.findViewById(android.R.id.content);
+            if (content != null) content.setVisibility(View.INVISIBLE);
+            Window aw = activity.getWindow();
+            if (aw != null) aw.getDecorView().setBackgroundColor(0xFF0F0F0F);
+        } catch (Throwable ex) {
+            Logger.printDebug(() -> "Visual editor: could not darken the settings screen");
+        }
         dismiss();
         try {
             if (!activity.isFinishing()) activity.finish();

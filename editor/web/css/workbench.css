@@ -111,6 +111,29 @@ pre.json { background: var(--m-c-lowest); border: 1px solid var(--line); border-
 .kids .row.hide { display: none; }
 .kids .row.deep, .theme-yt .kids .row.deep { padding-left: 54px; }
 .kids .row.deep::after { left: 40px; }
+/* a family of plain switches two to a line, title then toggle (compactWord / familyCard in list.js; Max, Nov 25):
+   each cell is a row of its own, so selecting, holding and the switches work as on any row. Every cell keeps
+   12px before its title, so the selection line never touches the text (Max: it clipped the left column). */
+:is(.kids, .shared) > .kin.duo2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); position: relative; }
+.kids > .kin.duo2 { padding-left: 22px; }
+.shared > .kin.duo2 { padding: 0 0 4px 4px; }
+.kids > .kin.duo2::before { content: ""; position: absolute; left: 20px; top: 0; bottom: 0; width: 2px; background: rgba(164,201,255,.18); }
+.theme-yt .kids > .kin.duo2::before { background: #303030; }
+:is(.kids, .shared) > .kin.duo2 > .row { padding: 8px 8px 8px 12px; min-height: 50px; gap: 8px; }
+.shared > .kin.duo2 > .row { border-top: 0; }
+.shared > .kin.duo2 > .row:only-child { grid-column: 1 / -1; }
+.shared[data-area] .over { display: none; } /* the box says where; a lone sub-screen row takes its title (AREA_OVER) */
+.shared > .kin.duo2.one { grid-template-columns: minmax(0, 1fr); } /* titles too long for two columns (fitLines) */ /* an area with one plain card: it spans the box */
+:is(.kids, .shared) > .kin.duo2 > .row:not(.pressing)::after { display: none; }
+:is(.kids, .shared) > .kin.duo2 > .row :is(.sum, .need3, .goto) { display: none; }
+:is(.kids, .shared) > .kin.duo2 .ttl { font-size: 14px; }
+:is(.kids, .shared) > .kin.duo2 .lt7 { height: 30px; font-size: 11px; }
+:is(.kids, .shared) > .kin.duo2 .lt7 > span { min-width: 30px; padding: 0 5px; }
+/* a title beside a toggle stays on one line: when it doesn't fit it fades out with an ellipsis under the
+   toggle, and a press slides it right to left to show the rest (fitLine in list.js; Max, Nov 25) */
+:is(.kids, .shared) > .kin.duo2 .ttl, .lchn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
+:is(.kids, .shared) > .kin.duo2 .ttl.ovf, .lchn.ovf { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
+:is(.kids, .shared) > .kin.duo2 .ttl.mq, .lchn.mq { text-overflow: clip; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); }
 .ttl .nw { white-space: nowrap; }
 #devTourBtn { position: fixed; left: 10px; bottom: 10px; z-index: 9998; border: 0; border-radius: 14px; padding: 6px 12px; background: #1a73e8; color: #fff; font: 600 12px/1.2 system-ui, sans-serif; cursor: pointer; opacity: .85; }
 #devTour { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 9998; display: flex; align-items: center; gap: 6px; width: min(460px, calc(100vw - 20px)); padding: 6px; border-radius: 16px; background: #1b2a44; box-shadow: 0 4px 18px rgba(0,0,0,.5); color: #fff; font-family: system-ui, sans-serif; }
@@ -145,9 +168,13 @@ html:not(.touchwait) .lt7[data-at="r"]:active > i { transform: translateX(calc(1
 .designrow .dcol { display: grid; gap: 8px; justify-items: start; flex: 1; min-width: 0; }
 /* "Disable new design" sits beside the three-way toggle, centred on it (Max, Nov 22) */
 .designrow .drow { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
-.offnew { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: var(--m-on-var, #aaa); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px 6px 10px; border-radius: 16px; cursor: pointer; text-align: left; line-height: 1.2; max-width: 128px; }
-.offnew svg { width: 16px; height: 16px; fill: currentColor; }
+/* "Disable new design" (Max, Nov 25 14:35): as wide as its longer line, no empty space at its right (a
+   wrapped line left the box at its full max width), and a faded red, as an exit should look */
+.offnew { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,140,128,.32); background: rgba(255,90,78,.09); color: #f0a49b; font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 11px 6px 9px; border-radius: 16px; cursor: pointer; text-align: left; line-height: 1.2; }
+.offnew .ofl > span { display: block; white-space: nowrap; }
+.offnew svg { flex: none; width: 16px; height: 16px; fill: currentColor; }
 .offnew:hover, .offnew:focus-visible { color: #ffb4ab; border-color: rgba(255,180,171,.5); }
+.phone.theme-glass .offnew { background-color: color-mix(in srgb, var(--g-ctl) 70%, rgba(255,90,78,.22)); color: #f0a49b; }
 .seg3 { display: inline-flex; flex: none; padding: 3px; border-radius: 999px; background: var(--m-c-highest, #303134); position: relative; isolation: isolate; }
 .seg3 button { border: 0; background: transparent; color: var(--m-on-var, #aaa); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: color 300ms var(--ease); }
 .seg3 button[aria-checked="true"] { color: var(--m-on-primary, #062e6f); }
@@ -219,9 +246,15 @@ html:not(.touchwait) .lt7[data-at="r"]:active > i { transform: translateX(calc(1
 .navbar.narrow .ntab { flex: 0 0 52px; }
 .navbar .ntab.sizing { flex: 0 0 auto !important; }
 /* the glass navigation bar (scenarios.js): a floating capsule, buttons sized by Maximum width and Button spacing */
-.navbar.glassnav { display: flex; align-items: center; margin: 0 auto 10px; padding: 0; overflow: hidden; justify-content: center; }
-.navbar.glassnav .ntab { flex: 1 1 0; min-width: 48px; }
-.navbar.glassnav > .ntab:first-child { align-self: stretch; display: grid; align-content: center; margin: 4px 0; border-radius: calc(var(--gr, 16px) - 4px); background: rgba(255,255,255,.15); max-width: 96px; }
+/* the glass navigation bar (scenarios.js, after YouTubeGlassNavigationBar): a capsule as wide as its buttons,
+   10 dp above the bottom; buttons that don't fit are left out; the selected one has a rounded indicator */
+.navbar.glassnav { display: flex; align-items: center; margin: 0 auto 10px; padding: 0; justify-content: center; box-sizing: border-box; border-top-width: 1.5px; }
+.navbar.glassnav .ntab { flex: 0 0 var(--gbw, 72px); min-width: 0; position: relative; align-self: stretch; display: grid; align-content: center; }
+.navbar.glassnav .ntab.gcut { display: none !important; }
+/* (on the button's content, positioned against the button: the part's own ::before and ::after are its ring and glow) */
+.navbar.glassnav .ntab.gsel > div { position: static !important; }
+.navbar.glassnav .ntab.gsel > div::before { content: ""; position: absolute; top: 4px; bottom: 4px; left: 50%; width: min(calc(100% - 8px), 96px); translate: -50% 0; border-radius: max(0px, calc(var(--gr, 16px) - 4px)); background: rgba(255,255,255,.15); pointer-events: none; }
+.navbar.glassnav .ntab.gsel > div > * { position: relative; }
 .pg.pvis { position: relative; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 2px)), 1fr)); gap: 4px; }
 .pick.lifted { position: relative; z-index: 5; background: var(--m-c-highest) !important; box-shadow: 0 10px 28px rgba(0,0,0,.55); transition: none; cursor: grabbing; }
 .arranging .pick:not(.lifted) { animation: wig .28s ease-in-out infinite alternate; }

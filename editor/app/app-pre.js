@@ -108,8 +108,10 @@ if (INAPP) {
   // these rows ("custom"). Where the editor has a control made for the format (the chip list for
   // words, speeds and channel whitelists, the colour field) that control stays; any other such row
   // is tapped like an action row and opens Morphe's own editor for it. Numbers stay numbers.
+  // (a value of code or JSON is never "words" here, whatever its key says: Morphe's own editor opens it)
+  const codeLike = v => /^\s*[[{]/.test(v) || String(v).split("\n").some(t => t.length > 80 || /[{}<>;=\\`]|":/.test(t)) || String(v).split("\n").length > 60;
   const opensInMorphe = (k, m, def) => !!m.custom && m.type === "string" && !(Array.isArray(m.entries) && m.entries.length)
-    && !(String(m.default ?? def ?? "").includes("\n") || /strings|phrases|speeds|whitelist|filter|color/.test(k));
+    && (codeLike(String(m.default ?? def ?? "")) && !/_channel_whitelist$/.test(k) || !(String(m.default ?? def ?? "").includes("\n") || /strings|phrases|speeds|whitelist|filter|color/.test(k)));
   function applyLive(cat) {
     const meta = LIVE.meta || {};
     const known = new Set(cat.preferences.map(p => p.key));

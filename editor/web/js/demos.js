@@ -88,7 +88,16 @@ function fadeBack(els, back) {
   }, FADE_BACK);
 }
 function fadeBackStop(els) { els.forEach(e => { if (e && e._fadeBack) { e._fadeBack = null; e.style.opacity = ""; } }); }
-function place(f, x, y, ms) { fingerShow(f, x, y, ms); }
+// Demos give the finger's spot in the preview's coordinates (from #stage's box). The finger is drawn
+// inside a part of the scene, often one that scrolls (the watch page), so the spot is turned into that
+// part's own coordinates, scroll included: measured while the page still scrolled back to its top, the
+// finger otherwise appeared at the very top of the screen and stayed off its target (Max, Nov 25,
+// Video action bar layout). Every stage demo places its finger through here.
+function place(f, x, y, ms) {
+  const p = f.offsetParent, st = $("stage");
+  if (p && p !== st && st.contains(p)) { const a = st.getBoundingClientRect(), b = p.getBoundingClientRect(); x += a.left - b.left + p.scrollLeft - p.clientLeft; y += a.top - b.top + p.scrollTop - p.clientTop; }
+  fingerShow(f, x, y, ms);
+}
 function hideF(f, after) { dT(() => { f.classList.remove("show", "hold"); }, after); }
 function tapAt(x, y, f = finger()) { if (!f) return; place(f, x, y); f.classList.remove("tap"); void f.offsetWidth; f.classList.add("tap"); hideF(f, 520); }
 function fmt(total, pct) { const s = Math.round(total * pct / 100); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
@@ -562,28 +571,29 @@ scen("comments", "copy_comments", (box, on) => {
 // comments" dialog (hint "Words to search for"; Clear, Cancel, Search). Search reloads the panel with only the
 // loaded comments that contain all the words, and the button's icon is filled while a search is on.
 scen("comments", "search_comments", (box, on) => {
-  const list = ["The wood stove at 12:04 is pure cosiness", "Which stove model is that?", "Subscribed for part 2", "Stove + rain = perfect"];
+  const list = ["The wood stove at 12:04 is pure cosiness", "Which stove model is that?", "Subscribed for part 2", "Rain on the roof = perfect"];
   const icon = fill => `<span class="srch7" style="width:11px;height:11px;display:grid;place-items:center;border-radius:50%;transition:background .2s;${fill ? "background:#f1f1f1" : ""}">${I("search", "ico", `style="width:8px;height:8px;${fill ? "fill:#0f0f0f" : ""}"`)}</span>`;
   box.innerHTML = device("port", pageRows(`<div style="display:flex;align-items:center;gap:5px"><b style="font-size:8px;flex:1">Comments</b>${on ? icon(false) : ""}${I("close", "ico", 'style="width:9px;height:9px"')}</div><div class="cl7" style="display:grid;gap:5px;transition:opacity .2s">${list.map((t, i) => cmt7([2, 5, 3, 1][i], t)).join("")}</div>`));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"); const W = dev.clientWidth, H = dev.clientHeight;
   if (!on) return "Not searchable";
+  const T = ms => Math.round(ms * .9); // Max, Nov 25: 10% faster
   const spot = q => { const e = dev.querySelector(q), r = e.getBoundingClientRect(), d = dev.getBoundingClientRect(), z = d.width / W; return [(r.left - d.left + r.width / 2) / z, (r.top - d.top + r.height / 2) / z]; };
-  at(150, () => fingerTo(f, ...spot(".srch7"))); at(450, () => tapF(f));
-  at(650, () => {
+  at(T(150), () => fingerTo(f, ...spot(".srch7"))); at(T(450), () => tapF(f));
+  at(T(650), () => {
     f.classList.remove("show");
     dev.insertAdjacentHTML("beforeend", `<div class="dim7" style="position:absolute;inset:0;background:rgba(0,0,0,.55);animation:ghostin .2s var(--ease);z-index:5"></div><div class="dlg7" style="position:absolute;left:8%;right:8%;top:24%;background:#282828;border-radius:7px;padding:7px;display:grid;gap:6px;font-size:6.5px;color:#ddd;z-index:6;animation:dlgin7 .25s var(--ease)"><b style="font-size:8px;color:#fff">Search comments</b><div style="border-bottom:1px solid #3ea6ff;padding:2px 1px;font-size:7px"><span class="q7" style="color:#fff"></span><span class="ph7" style="color:#888">Words to search for</span></div><div style="display:flex;gap:7px;font-weight:600;color:#3ea6ff"><span style="flex:1">Clear</span><span>Cancel</span><span class="go7">Search</span></div></div>`);
   });
-  "stove".split("").forEach((ch, i) => at(950 + i * 110, () => { dev.querySelector(".ph7")?.remove(); const q = dev.querySelector(".q7"); if (q) q.textContent += ch; }));
-  at(1650, () => fingerTo(f, ...spot(".go7"))); at(1900, () => tapF(f));
+  "stove".split("").forEach((ch, i) => at(T(950 + i * 110), () => { dev.querySelector(".ph7")?.remove(); const q = dev.querySelector(".q7"); if (q) q.textContent += ch; }));
+  at(T(1650), () => fingerTo(f, ...spot(".go7"))); at(T(1900), () => tapF(f));
   // the panel reloads with the matches only, and the button stays filled
-  at(2100, () => {
+  at(T(2100), () => {
     f.classList.remove("show"); dev.querySelectorAll(".dim7, .dlg7").forEach(n => n.remove());
     const cl = dev.querySelector(".cl7"), s7 = dev.querySelector(".srch7"); cl.style.opacity = "0";
-    later(() => { cl.innerHTML = list.map((t, i) => /stove/i.test(t) ? cmt7([2, 5, 3, 1][i], t.replace(/stove/i, m => `<b style="color:#fff">${m}</b>`)) : "").join(""); cl.style.opacity = "1"; s7.style.background = "#f1f1f1"; s7.querySelector("svg").style.fill = "#0f0f0f"; }, 220);
+    later(() => { cl.innerHTML = list.map((t, i) => /stove/i.test(t) ? cmt7([2, 5, 3, 1][i], t.replace(/stove/i, m => `<b style="color:#fff">${m}</b>`)) : "").join(""); cl.style.opacity = "1"; s7.style.background = "#f1f1f1"; s7.querySelector("svg").style.fill = "#0f0f0f"; }, T(220));
   });
   return "";
 });
-SCN_HOLD.morphe_search_comments = 3400;
+SCN_HOLD.morphe_search_comments = 3060;
 scen("channel", "channel_search", (box, on) => {
   const ico = (c) => I("search", "ico", `style="width:10px;height:10px;${c ? "fill:" + c : ""}"`);
   box.innerHTML = device("port", pageRows(`<div class="top7" style="height:14px;display:flex;align-items:center;justify-content:flex-end;gap:6px;white-space:nowrap;overflow:hidden">${on ? `<span style="display:grid;place-items:center;width:14px;height:14px;border-radius:50%;background:rgba(62,166,255,.18)">${ico("#3ea6ff")}</span>` : ""}${ico()}</div><div style="height:22px;border-radius:4px;background:${ART[3]}"></div><div style="display:flex;gap:4px;align-items:center"><span style="width:16px;height:16px;border-radius:50%;background:${AV[0]}"></span><b style="font-size:8px">Fjord &amp; Timber</b></div><div class="body7" style="display:grid;gap:5px">${bar7(80)}${bar7(60)}${[0, 1, 2].map(i => `<div style="display:flex;gap:4px;align-items:center"><div style="width:26px;height:15px;border-radius:2px;background:${ART[i + 1]}"></div>${bar7(50)}</div>`).join("")}</div>`));
@@ -902,7 +912,8 @@ DEMOS.morphe_video_action_bar_layout = v => {
   // back at the start; parts whose pop origin was worked out at the clipped edge get it again
   if (!demoStep) onDemoStop(() => { row.__tw = (row.__tw || 0) + 1; row.scrollLeft = 0; row.querySelectorAll('[style*="--pop"]').forEach(popOrigin); });
   const fwd = demoStep % 2 === 0, [x0, y] = at(row, fwd ? .82 : .25), x1 = at(row, fwd ? .25 : .82)[0];
+  // the sideways drag, 15% quicker than it was (650 ms, Max, Nov 25)
   place(f, x0, y); f.classList.add("hold");
-  dT(() => { place(f, x1, y, 650); scrollTween(row, fwd ? Math.min(max, 220) : 0, 650); }, 120);
-  hideF(f, 900);
+  dT(() => { place(f, x1, y, 553); scrollTween(row, fwd ? Math.min(max, 220) : 0, 553); }, 120);
+  hideF(f, 780);
 };

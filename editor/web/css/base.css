@@ -34,6 +34,8 @@
   /* iOS-like spring (Max, Nov 24, every design): a damped spring (damping .68) that passes its end at 40%
      of the time, overshoots by about 5% and settles. Presses, toggle thumbs, glides and cards use it. */
   --spring: linear(0, 0.019, 0.07, 0.143, 0.23, 0.323, 0.419, 0.513, 0.602, 0.684, 0.758, 0.822, 0.877, 0.924, 0.962, 0.992, 1.015, 1.031, 1.043, 1.05, 1.054, 1.054, 1.053, 1.05, 1.046, 1.041, 1.036, 1.03, 1.025, 1.021, 1.016, 1.012, 1.009, 1.006, 1.004, 1.002, 1, 0.999, 0.998, 0.998, 1);
+  /* the same spring with half its overshoot (Max, Nov 25: the screen menu growing from the Back arrow, "50% less bouncy") */
+  --spring-soft: linear(0, 0.019, 0.07, 0.143, 0.23, 0.323, 0.419, 0.513, 0.602, 0.684, 0.758, 0.822, 0.877, 0.924, 0.962, 0.992, 1.0075, 1.0155, 1.0215, 1.025, 1.027, 1.027, 1.0265, 1.025, 1.023, 1.0205, 1.018, 1.015, 1.0125, 1.0105, 1.008, 1.006, 1.0045, 1.003, 1.002, 1.001, 1, 0.9995, 0.999, 0.999, 1);
   --spring-dur: 460ms; --spring-dur-l: 560ms;
   --disabled: .38;
   /* YouTube preview */

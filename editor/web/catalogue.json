@@ -1,5 +1,5 @@
 {
- "source": "MorpheApp/morphe-patches@31234a846 2026-11-16",
+ "source": "MorpheApp/morphe-patches@ff240eb 2026-11-23",
  "youtubeVersions": [
   {
    "version": "21.45.82",
@@ -39,7 +39,7 @@
   "preferences": 761,
   "settingsDeclared": 800,
   "internalOnly": 108,
-  "unresolvedScreen": 5
+  "unresolvedScreen": 6
  },
  "screens": {
   "ADS": "Ads",
@@ -18847,29 +18847,6 @@
    "locationConfidence": "exact"
   },
   {
-   "key": "morphe_settings_screen_00_about",
-   "title": "About",
-   "summary": null,
-   "summaryOn": null,
-   "summaryOff": null,
-   "widget": "NonInteractivePreference",
-   "type": null,
-   "default": null,
-   "rebootApp": false,
-   "dialog": null,
-   "parents": [],
-   "customAvailability": [],
-   "screen": "SHORTS",
-   "screenTitle": "Shorts",
-   "subScreen": "morphe_shorts_player_screen",
-   "subScreenTitle": "Shorts player",
-   "category": null,
-   "patch": null,
-   "patchDescription": null,
-   "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/misc/settings/SettingsPatch.kt",
-   "locationConfidence": "variable"
-  },
-  {
    "key": "morphe_sb_about_api",
    "title": null,
    "summary": "SponsorBlock is a crowdsourced database of video segments such as sponsors, intros, outros and reminders to subscribe. Segments are submitted and voted on by the community, and the database is open and free to download\n\nThe ID of the video you watch is sent to the SponsorBlock API to get its segments",
@@ -22273,6 +22250,29 @@
      "value": "CUSTOM"
     }
    ]
+  },
+  {
+   "key": "morphe_settings_screen_00_about",
+   "title": "About",
+   "summary": null,
+   "summaryOn": null,
+   "summaryOff": null,
+   "widget": "NonInteractivePreference",
+   "type": null,
+   "default": null,
+   "rebootApp": false,
+   "dialog": null,
+   "parents": [],
+   "customAvailability": [],
+   "screen": null,
+   "screenTitle": null,
+   "subScreen": null,
+   "subScreenTitle": null,
+   "category": null,
+   "patch": null,
+   "patchDescription": null,
+   "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/misc/settings/SettingsPatch.kt",
+   "locationConfidence": "root"
   }
  ],
  "internalSettings": [

@@ -66,7 +66,10 @@ function paint(el, html, ...marks) {
 const listTouched = new Set();
 const cardOf = n => { let e = n.nodeType === 1 ? n : n.parentElement; while (e && e.__src === undefined) e = e.parentElement; return e || null; };
 const listNote = recs => recs.forEach(r => { const c = cardOf(r.target); if (c) listTouched.add(c); });
-const listSeen = new MutationObserver(listNote);
+// one-line titles are measured again a frame after anything in the list changed (a selection can change a
+// card's width); only a title whose fit changed gets its class changed
+let fitLinesRaf = 0;
+const listSeen = new MutationObserver(recs => { listNote(recs); if (!fitLinesRaf) fitLinesRaf = requestAnimationFrame(() => { fitLinesRaf = 0; if (typeof fitLines === "function") listQuiet(() => fitLines($("list"))); }); });
 listSeen.observe($("list"), { subtree: true, childList: true, attributes: true, characterData: true });
 // a step that only finishes how new cards are drawn (fitting pills, clamping descriptions): what it sets is
 // part of the card as drawn, not a change to it; anything noticed before it still counts
@@ -145,7 +148,7 @@ function paintPicker() {
     // UI design sits right above the list design (Max, Nov 23)
     // one line: the title on the left, its toggle on the right (Max, Nov 23 PM)
     + `<div class="themerow uirow"><span class="pi">${I("palette")}</span><div class="tt">UI design${theme === "glass" && glassTier !== null ? `<small>${GLASS_TIER_NAMES[glassTier]}${typeof glassForced === "number" ? " (forced)" : ""}</small>` : ""}</div>${seg3("UI design", "ui", UI_DESIGNS, theme, uiOff())}</div>`
-    + `<div class="themerow designrow"><div class="dcol"><div class="dsg"><span class="pi">${I("list")}</span><div class="tt">Settings list design</div></div><div class="drow">${seg3("Settings list design", "design", LIST_DESIGNS, design)}<button class="offnew" data-editor-off>${I("power")}Disable new design</button></div></div></div>`);
+    + `<div class="themerow designrow"><div class="dcol"><div class="dsg"><span class="pi">${I("list")}</span><div class="tt">Settings list design</div></div><div class="drow">${seg3("Settings list design", "design", LIST_DESIGNS, design)}<button class="offnew" data-editor-off>${I("power")}<span class="ofl"><span>Disable</span> <span>new design</span></span></button></div></div></div>`);
   placeSeg3(); centreIcons($("pickGrid"));
   $("barOrd").disabled = !customOrder;
   fitMenuSoon();
@@ -216,7 +219,9 @@ document.addEventListener("click", e => {
   if (!DEV_WEB || e.pointerType !== "mouse" || !(e.target instanceof Element) || e.target.closest("#devTour")) return;
   const row = e.target.closest(".row .ttl") && e.target.closest("[data-row]"), res = e.target.closest(".sres .ttl") && e.target.closest("[data-res]");
   const plain = e.target.closest(".gc-t, .tab7, .pick .pt, .sit, .gtitle, #canvas .cap");
-  const t = row ? shownTitle(row.dataset.row) : res ? title(res.dataset.res) : plain ? plain.textContent : "";
+  // (a row in an area box shows its title shortened: "'New posts'" is copied as shown, not with "button")
+  const inBox = row && row.closest(".shared[data-area]"), shownTtl = inBox && row.querySelector(".ttl");
+  const t = row ? (shownTtl ? shownTtl.textContent : shownTitle(row.dataset.row)) : res ? title(res.dataset.res) : plain ? plain.textContent : "";
   if (t) devCopy(t, e.clientX, e.clientY);
 }, true);
 // Animation tour: step through every setting that has an animation (a two-phone comparison or a live
@@ -227,9 +232,14 @@ function tourKeys() {
   for (const id of ids) { const m = MEMBERS[id]; if (m) for (const k of [...m.live, ...m.misc]) if ((SCN[k] || DEMOS[k]) && inVersion(k) && !out.includes(k)) out.push(k); }
   return out;
 }
+// The tour keeps its own place (Max, Nov 25: it jumped to random numbers): it used to start each step from
+// the selected setting, which a story, a parent or a screen still opening had often changed meanwhile.
+let tourAt = -1;
 function tourGo(d) {
   const ks = tourKeys(); if (!ks.length) return;
-  let i = ks.indexOf(selected); i = i < 0 ? (d > 0 ? 0 : ks.length - 1) : (i + d + ks.length) % ks.length;
+  let i = tourAt;
+  if (i < 0 || i >= ks.length) { const s = ks.indexOf(selected); i = s < 0 ? (d > 0 ? -1 : ks.length) : s; }
+  i = (i + d + ks.length) % ks.length; tourAt = i;
   goToSetting(ks[i]); tourLabel(ks[i], i, ks.length);
 }
 function tourLabel(k, i, n) {
@@ -252,7 +262,7 @@ function tourOpen(open) {
     b.addEventListener("wheel", e => { e.preventDefault(); const now = performance.now(); if (now - wheelAt < 350 || !e.deltaY) return; wheelAt = now; tourGo(e.deltaY > 0 ? 1 : -1); }, { passive: false });
   }
   b.hidden = !open; document.getElementById("devTourBtn").hidden = open;
-  if (open && selected) { const ks = tourKeys(), i = ks.indexOf(selected); if (i >= 0) tourLabel(selected, i, ks.length); }
+  if (open) { const ks = tourKeys(), i = selected ? ks.indexOf(selected) : -1; tourAt = i; if (i >= 0) tourLabel(selected, i, ks.length); }
 }
 document.addEventListener("keydown", e => {
   const b = document.getElementById("devTour"); if (!b || b.hidden || e.target.closest?.("input, textarea, [contenteditable]")) return;
@@ -356,10 +366,16 @@ function endPickDrag() {
 $("pickGrid").addEventListener("pointerup", endPickDrag);
 $("pickGrid").addEventListener("pointercancel", endPickDrag);
 $("pickGrid").addEventListener("contextmenu", e => { if (e.target.closest(".pick")) e.preventDefault(); });
-function setPicker(open) {
-  pickerOpen = open;
+let pickFrom = null; // the button the screen menu grew out of (the pill, or App view's back arrow); it closes into it
+// src: the button the menu grows from (default: the button just tapped, else the screen pill); null: no
+// growth at all, the menu is already in place (the app's Back swipe drew it behind the screen, Max Nov 25:
+// it popped in a second time, from whatever button the swipe started on)
+function setPicker(open, src) {
+  const was = pickerOpen; pickerOpen = open;
   if (open && pickDirty) paintPicker(); // a change made in a screen, not drawn yet
+  if (open && !was) { const t = cardTap && performance.now() - cardTap.t < 1500 && cardTap.el; pickFrom = src !== undefined ? src : t && t.matches("button") && !t.closest("#picker") ? t : $("secPill"); cardTap = null; }
   $("picker").classList.toggle("open", open); $("pickScrim").classList.toggle("open", open);
+  if (open !== was && src !== null && !(open && !pickFrom)) popFrom($("picker"), pickFrom || $("secPill"), open, null, "--spring-soft");
   if (open) { placeSeg3(); glassSample(); } // drawn while hidden: its thumb is placed once it can be measured
   $("secPill").setAttribute("aria-expanded", String(open));
   document.documentElement.classList.toggle("pickopen", open);
@@ -375,16 +391,35 @@ function fitMenu() {
   if (!pg || !pk.clientHeight) { if (!pg) grid.classList.remove("gfit"); return; }
   grid.classList.remove("gfit");
   const cards = [...pg.children]; if (!cards.length) return;
-  const nat = Math.max(...cards.map(c => c.offsetHeight)), rows = Math.ceil(cards.length / 2);
+  // columns as laid out (two; three on a phone turned sideways, app.css)
+  const cols = Math.max(1, getComputedStyle(pg).gridTemplateColumns.split(" ").filter(Boolean).length);
+  const nat = Math.max(...cards.map(c => c.offsetHeight)), rows = Math.ceil(cards.length / cols);
   const gs = getComputedStyle(grid), ps = getComputedStyle(pk), gap = parseFloat(gs.rowGap) || 0, rgap = parseFloat(getComputedStyle(pg).rowGap) || 0;
-  const kids = [...grid.children], rest = kids.filter(k => k !== pg).reduce((a, k) => a + k.offsetHeight + (parseFloat(getComputedStyle(k).marginTop) || 0) + (parseFloat(getComputedStyle(k).marginBottom) || 0), 0);
-  const avail = pk.clientHeight - parseFloat(ps.paddingTop) - parseFloat(ps.paddingBottom) - rest - gap * (kids.length - 1);
+  // the rows under the cards, however they are laid out (one under the other, or two side by side): their extent
+  // (layout boxes, not screen rects: the menu grows from its button with a scale, and rects measured
+  // mid-growth were smaller, so the cards were fitted too tall and the menu scrolled)
+  const others = [...grid.children].filter(k => k !== pg && k.offsetHeight);
+  const mg = (k, side) => parseFloat(getComputedStyle(k)["margin" + side]) || 0;
+  const rest = others.length ? Math.max(...others.map(k => k.offsetTop + k.offsetHeight + mg(k, "Bottom"))) - Math.min(...others.map(k => k.offsetTop - mg(k, "Top"))) : 0;
+  const avail = pk.clientHeight - parseFloat(ps.paddingTop) - parseFloat(ps.paddingBottom) - rest - (rest ? gap : 0);
   // larger only while every line still fits its card's width: a zoomed card is narrower in its own px
   // (W / z), and the rail and paddings beside the words keep their size in them
+  // Words are measured in layout px: the menu may be mid-growth from its button (popFrom scales it), and a
+  // scaled word read narrower, so the cards were zoomed past their width ("Seekbar & ge…" in the web view)
+  // and refitted bigger or smaller once the growth ended (the text resized after a Back to the menu).
   let wide = MENU_ZOOM[1];
-  cards.forEach(c => c.querySelectorAll(".gc-t, .gc-tabs span").forEach(el => { const r = document.createRange(); r.selectNodeContents(el); const w = r.getBoundingClientRect().width; if (w > 0) wide = Math.min(wide, c.offsetWidth / (w + c.offsetWidth - el.clientWidth)); }));
-  const fit = (avail - rgap * (rows - 1)) / rows;
-  const want = fit / nat, z = want < 1 ? Math.max(MENU_ZOOM[0], want) : Math.min(want, Math.max(1, wide * .99));
+  const was = parseFloat(grid.style.getPropertyValue("--gz")) || 0;
+  grid.style.removeProperty("--gz");
+  cards.forEach(c => { const k = c.getBoundingClientRect().width / c.offsetWidth || 1; c.querySelectorAll(".gc-t, .gc-tabs span").forEach(el => { const r = document.createRange(); r.selectNodeContents(el); const w = r.getBoundingClientRect().width / k; if (w > 0) wide = Math.min(wide, c.offsetWidth / (w + c.offsetWidth - el.clientWidth)); }); });
+  // sideways the screen is too short for the whole menu: the cards keep their size (and the menu scrolls)
+  // instead of shrinking to small print
+  const sideways = pk.clientWidth > pk.clientHeight * 1.5;
+  const fit = Math.max((avail - rgap * (rows - 1)) / rows, sideways ? nat : 0);
+  // every card's longest line fits its width (Max, Nov 25: "Seekbar & ge…", "Flying comm…" were cut): the
+  // one zoom for all cards is never more than the narrowest fit allows, even below the usual smallest
+  const want = fit / nat, z0 = Math.max(.5, Math.min(want < 1 ? Math.max(MENU_ZOOM[0], want) : want, wide * .99));
+  // a refit that only differs by rounding keeps the zoom it has: no visible resize of the menu's text
+  const z = was && Math.abs(z0 - was) < .012 && z0 >= was - .012 && was <= wide * .99 ? was : z0;
   const rowH = Math.max(nat * MENU_ZOOM[0], fit);
   // height the zoom leaves over goes between the lines (up to 4.5 px each), the rest stays below them
   const spare = Math.max(0, rowH / z - nat), most = Math.max(...cards.map(c => c.querySelectorAll(".gc-tabs span").length), 1);
@@ -402,6 +437,11 @@ if (document.fonts) { document.fonts.addEventListener("loadingdone", () => fitMe
 let stageHold = 0;
 let renderCount = 0;
 let stageStale = false; // the preview skipped a redraw while a comparison covered it (select.js)
+// One preview height (Max, Nov 25: the previews' heights differed from tab to tab). The player-type previews
+// (a 16:9 video: Player, SponsorBlock, Flying comments, Seekbar, Fullscreen, Captions, End screen) and Shorts
+// (a full phone screen) keep their own; every other preview is SCENE_H tall, the tallest of them before.
+const SCENE_H = 350;
+const ownHeight = root => root.matches(".video") || root.id === "shortsStage";
 function renderStage() {
   if (stageHold) return;
   stageStale = false;
@@ -422,6 +462,7 @@ function renderStage() {
   // greying is a mark pass (see paint): set after a style read, .fixed7 played its opacity transition and
   // every redraw faded the greyed parts (times, seekbar, Cast): Player icon style, Max, Nov 23
   paint(st, scene().replace(/background:#0f0f0f/g, "background:var(--app-bg,#0f0f0f)"), markFixed, fillFingers);
+  const root = st.firstElementChild; if (root && !ownHeight(root)) root.style.height = SCENE_H + "px";
   if (section === "flyout") { st.dataset.flysub = flySub || ""; if (flyFrom && flyFrom.html && flyFrom.sub !== (flySub || "")) flyTransition(st, flyFrom, flySub || ""); }
   st.querySelectorAll(".inner-scroll").forEach((e, i) => { if (scrollers[i]) e.scrollTop = scrollers[i]; });
   st.querySelectorAll('[style*="overflow-x:auto"]').forEach((e, i) => { e.dataset.hs = ""; if (hscroll[i]) e.scrollLeft = hscroll[i]; });
@@ -508,7 +549,10 @@ function stateChip(k) {
   }
   return "";
 }
-function summaryFor(k) { const p = PREF[k]; const v = V(k); if (p.type === "boolean") return cleanSum(k, fmtSum(k, (v ? p.summaryOn : p.summaryOff) || p.summary || "")); return fmtSum(k, p.summary || ""); }
+function summaryFor(k) { const p = PREF[k]; const v = V(k);
+  // a list drawn as toggles (listChoices): Morphe's "Enter ... separated by new lines" would ask for typing
+  if (p.type === "string" && isListBox(k) && !listJSON(k) && !listNumeric(k) && listNames(k)) return "Hide takes out everything whose title contains the name";
+  if (p.type === "boolean") return cleanSum(k, fmtSum(k, (v ? p.summaryOn : p.summaryOff) || p.summary || "")); return fmtSum(k, p.summary || ""); }
 // "Disable X" reads "X" in the clean design, with On on the left and Off on the right, but Morphe's
 // description still tells what turning it on does ("Disables playlist and live chat panels from opening
 // automatically" under "Player popup panels: On | Off" said the opposite of the toggle; Max, Nov 23, again).
@@ -547,7 +591,9 @@ function controlFor(k) {
   // up to 8 choices: a row of pills; 9 to 16 (icon styles, theme colours, qualities): a 3-column grid
   // of pills built from the same entries, so it follows whatever list Morphe ships; more: a dropdown
   if (ents.length && ents.length <= 16) return `<div class="ctl optgrid">${ents.map(e => `<button class="opt${NEG_WORD.has(String(e.label)) ? " neg" : ""}${sameVal(e.value, defaults[k]) ? " def" : ""}${OFF_CHOICE.test(String(e.label)) ? " offw" : ""}" data-set="${k}" data-val="${esc(e.value)}" aria-pressed="${sameVal(e.value, v)}" ${dis}><span class="ol">${esc(e.label)}</span></button>`).join("")}</div>`; // .ol: the label sits over the gliding colour, the colour over the pill borders
-  if (ents.length) return `<div class="ctl"><select data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}">${ents.map(e => `<option value="${esc(e.value)}" ${sameVal(e.value, v) ? "selected" : ""}>${esc(e.label)}</option>`).join("")}</select></div>`;
+  // more than 16: a button that opens the choices as one of the editor's own dialogs (Max, Nov 25: the system's
+  // dropdown was plain white in every design and had no pop-in), growing out of the button (openDialog)
+  if (ents.length) { SEL_ENTS[k] = ents; const cur = ents.find(e => sameVal(e.value, v)); return `<div class="ctl"><button class="selbtn" data-selbtn="${k}" ${dis} aria-haspopup="listbox" aria-label="${esc(shownTitle(k))}"><span>${esc(cur ? cur.label : String(v ?? ""))}</span>${I("expand")}</button></div>`; }
   if (p.type === "integer" || p.type === "float" || p.type === "long") {
     const r = Object.entries(RANGES).find(([n]) => k.includes(n));
     // a range Morphe states in the description ("0-5000 ms", "(5-75)") makes a slider too, so a new
@@ -555,9 +601,11 @@ function controlFor(k) {
     const sr = /\(?(\d+)\s*[-–]\s*(\d+)\s*(ms|dp|sp|%)?\)/.exec(String(p.summary || ""));
     if (r || sr || /opacity|scale|strength|display_area/.test(k)) {
       const [min, max] = r ? r[1] : sr ? [Number(sr[1]), Number(sr[2])] : [0, 100];
-      return `<div class="ctl"><input type="range" min="${min}" max="${max}" step="1" value="${v}" data-set="${k}" style="--pct:${max > min ? Math.round((v - min) / (max - min) * 1000) / 10 : 0}%;--pf:${max > min ? Math.round((v - min) / (max - min) * 1000) / 1000 : 0}" ${dis} aria-label="${esc(shownTitle(k))}"><span class="val" data-val-of="${k}">${v}</span></div>`;
+      return `<div class="ctl side whl">${wheelHTML(k, min, max, 1, v, dis)}<input class="wsrc" type="range" min="${min}" max="${max}" step="1" value="${v}" data-set="${k}" style="--pct:${max > min ? Math.round((v - min) / (max - min) * 1000) / 10 : 0}%;--pf:${max > min ? Math.round((v - min) / (max - min) * 1000) / 1000 : 0}" ${dis} tabindex="-1" aria-hidden="true"><span class="val" data-val-of="${k}">${v}</span></div>`;
     }
-    return `<div class="ctl side"><input type="number" value="${v}" data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}" step="${p.type === "float" ? "0.05" : "1"}"></div>`;
+    // a number without a stated range: the same wheel, open-ended upward (and below 0 only if it already is)
+    const st = p.type === "float" ? .05 : 1, n = Number(v) || 0;
+    return `<div class="ctl side whl">${wheelHTML(k, Math.min(0, n), Infinity, st, n, dis)}<input class="wsrc" type="number" value="${v}" data-set="${k}" ${dis} tabindex="-1" aria-hidden="true" step="${st}"></div>`;
   }
   if (p.type === "string") {
     // Morphe opens the system file picker for these; the preview does the same and draws the image
@@ -572,12 +620,24 @@ function controlFor(k) {
 // one shared editor for all of them. Each entry is a chip with a remove button, and a field at the end
 // adds one (Enter or +). It reads and writes exactly Morphe's format, the entries joined by new lines,
 // so Morphe parses what it always did.
-const isListBox = k => PREF[k].type === "string" && (String(PREF[k].default ?? "").includes("\n") || /strings|phrases|speeds|whitelist|filter/.test(k));
+// Only a list of words, names or numbers becomes chips (Max, Nov 25: "Edit video effects" in Miscellaneous,
+// a setting this editor doesn't know that holds code, showed hundreds of removable pills of garbled code).
+// Code, JSON objects, long lines or a very long list keep a plain text field (or Morphe's own editor, app-pre.js).
+const LIST_MAX = 60;
+const wordLine = t => t.length <= 80 && !/[{}<>;=\\`]|":|^\s*"|\b(function|return|var|const)\b/.test(t);
+const isListBox = k => {
+  if (PREF[k].type !== "string" || !(String(PREF[k].default ?? "").includes("\n") || /strings|phrases|speeds|whitelist|filter/.test(k))) return false;
+  if (/_channel_whitelist$/.test(k)) return true;
+  const v = String(V(k) ?? PREF[k].default ?? "");
+  if (/^\s*[[{]/.test(v)) return false; // JSON that isn't a channel whitelist
+  const items = listItems(k, v);
+  return items.length <= LIST_MAX && items.every(wordLine);
+};
 const listNumeric = k => /speeds/.test(k);
 // Channel whitelists are stored by Morphe as JSON ([{"id":"UC…","name":"Fjord & Timber"}]), not one per line.
 // Their chips show the names and can be removed; channels are added from a video's ⋮ menu (Morphe needs the
 // channel id), so they have no add field. Their format is kept exactly, so Morphe still parses it.
-const listJSON = k => /_channel_whitelist$/.test(k) || /^\s*\[/.test(String(V(k) ?? ""));
+const listJSON = k => /_channel_whitelist$/.test(k);
 function jsonEntries(v) { try { const a = JSON.parse(String(v || "[]")); return Array.isArray(a) ? a.filter(e => e && typeof e === "object") : []; } catch (e) { return []; } }
 function listItems(k, from = V(k)) {
   if (listJSON(k)) return jsonEntries(from).map(e => String(e.name || e.id || "")).filter(Boolean);
@@ -586,7 +646,34 @@ function listItems(k, from = V(k)) {
   const parts = v.includes("\n") || !listNumeric(k) ? v.split("\n") : v.split(/[\s,]+/);
   return parts.map(x => x.trim()).filter(Boolean);
 }
+// A list whose Morphe description names its entries ("Enter a keyword or full name (e.g., Ask, Community,
+// Hype, Listen)", Comments carousel filter) gets one toggle per name instead of typing (Max, Nov 25), two to
+// a line like a family of switches. Hide adds the name as its own line, Show takes that line out, so the value
+// stays Morphe's newline list and Morphe matches it as before (title.contains, case as written). A line that
+// was typed before (or in Morphe) and isn't one of the names gets a toggle of its own, so nothing is lost;
+// one switched to Show keeps its toggle until the editor reloads. The names are read from the description, of
+// the setting or of its parent, so a name Morphe adds there shows up on its own.
+const lchOff = {}; // names switched to Show in this visit that aren't Morphe's: their toggles stay
+function listNames(k) {
+  const src = [PREF[k].summary, ...(PREF[k].parents || []).map(x => PREF[x.key]?.summary)].map(t => /\(e\.g\.,?\s*([^)]+)\)/i.exec(String(t || ""))).find(Boolean);
+  return src ? src[1].split(",").map(x => x.trim().replace(/\.$/, "")).filter(Boolean) : null;
+}
+function listChoices(k, dis) {
+  const names = listNames(k), items = listItems(k);
+  const all = [...names, ...items.filter(t => !names.includes(t)), ...(lchOff[k] || []).filter(t => !names.includes(t) && !items.includes(t))];
+  const tog = (t, on) => design === "clean"
+    ? `<button class="lt7" role="switch" data-lch="${esc(t)}" aria-checked="${on}" data-at="${on ? "l" : "r"}" data-tone="${on ? "neg" : "pos"}" ${dis} aria-label="${esc(t)}: ${on ? "Hide" : "Show"}"><i></i><span>Hide</span><span>Show</span></button>`
+    : `<button class="sw" role="switch" data-lch="${esc(t)}" aria-checked="${on}" ${dis} aria-label="Hide ${esc(t)}"></button>`;
+  return `<div class="ctl lch2" data-lst="${k}">${all.map(t => `<span class="lchc"><span class="lchn">${esc(t)}</span>${tog(t, items.includes(t))}</span>`).join("")}</div>`;
+}
+function listChoose(k, t) {
+  const items = listItems(k), i = items.indexOf(t);
+  if (i >= 0) { items.splice(i, 1); if (!listNames(k).includes(t)) (lchOff[k] ||= []).includes(t) || lchOff[k].push(t); }
+  else { const names = listNames(k); items.push(t); items.sort((a, b) => (names.indexOf(a) + 1 || 1e3) - (names.indexOf(b) + 1 || 1e3)); }
+  ensureMod(); touchSel(k); const before = state[k]; setPref(k, items.join("\n")); afterChange(k, before);
+}
 function listBox(k, dis) {
+  if (!listJSON(k) && !listNumeric(k) && listNames(k)) return listChoices(k, dis);
   const items = listItems(k), num = listNumeric(k);
   const chips = items.map((t, i) => `<span class="lchip">${esc(t)}${num ? "×" : ""}<button class="lx" data-lx="${i}" ${dis} aria-label="Remove ${esc(t)}">${I("close")}</button></span>`).join("");
   if (listJSON(k)) return `<div class="ctl lst" data-lst="${k}">${chips}<span class="lhint">${items.length ? "Add more" : "No channels yet. Add one"} from a video's ⋮ menu: Whitelist channel</span></div>`;
@@ -616,17 +703,48 @@ function shortNeed(k) {
 }
 function needText(k) {
   if (!classicParentsOk(k)) return "Needs " + PREF[k].parents.map(x => `“${esc(shownTitle(x.key))}” set to ${stateWord(x.key, x.mode !== "not")}${whereOf(x.key)}`).join(", ");
-  const av = String(PREF[k].availability || ""), sk = [...new Set([...av.matchAll(/S\("([^"]+)"\)/g)].map(m => m[1]))].filter(x => PREF[x] && inVersion(x));
-  if (sk.length > 1 && av.includes("||")) return `Available once one of these is set: ${sk.map(x => `“${esc(shownTitle(x))}”${PREF[x].type === "boolean" ? " " + stateWord(x, true) : ""}${whereOf(x)}`).join(", ")}`;
   if (needsTablet(k)) return deviceWhy(k); // one wording for every device lock
+  const un = unmetClauses(k).map(clauseText).filter(Boolean);
+  if (un.length) return "Needs " + un.join(" and ");
   const ap = (PREF[k].availabilityParents || []).filter(x => PREF[x]);
   return ap.length ? `Not available with the current ${ap.map(x => `“${esc(shownTitle(x))}”`).join(", ")}` : "Not available here";
+}
+// A Morphe availability rule split at its top-level "and"s, keeping the parts that are not met now (Max,
+// Nov 25: Glass miniplayer needs a bar miniplayer AND the glass navigation bar; it said "one of these", led
+// to the first only, and setting it left the card locked with nothing more to do). Each part names its
+// settings and the values that unlock it, and the lock leads to the first part still unmet.
+function splitAnd(rule) {
+  let r = String(rule).trim();
+  const wraps = t => { if (t[0] !== "(") return false; let d = 0, q = null; for (let i = 0; i < t.length; i++) { const c = t[i]; if (q) { if (c === q && t[i - 1] !== "\\") q = null; continue; } if (c === '"' || c === "'") q = c; else if (c === "(") d++; else if (c === ")" && --d === 0 && i < t.length - 1) return false; } return true; };
+  while (wraps(r)) r = r.slice(1, -1).trim();
+  const out = []; let d = 0, q = null, from = 0;
+  for (let i = 0; i < r.length; i++) { const c = r[i]; if (q) { if (c === q && r[i - 1] !== "\\") q = null; continue; } if (c === '"' || c === "'") q = c; else if (c === "(") d++; else if (c === ")") d--; else if (!d && c === "&" && r[i + 1] === "&") { out.push(r.slice(from, i).trim()); from = i + 2; i++; } }
+  out.push(r.slice(from).trim());
+  return out.filter(Boolean);
+}
+function unmetClauses(k) {
+  const av = PREF[k] && PREF[k].availability; if (!av) return [];
+  const get = x => (x in PREF ? V(x) : null);
+  return splitAnd(av).filter(c => { try { return !evalRule(c, get); } catch { return true; } });
+}
+function clauseText(c) {
+  const keys = [...new Set([...c.matchAll(/S\("([^"]+)"\)/g)].map(m => m[1]))].filter(x => PREF[x] && inVersion(x));
+  if (!keys.length) return "";
+  const label = (x, v) => (PREF[x].entries || []).find(e => String(e.value) === v)?.label;
+  const one = x => {
+    const vals = [...new Set([...c.matchAll(new RegExp(`S\\("${x}"\\)\\)?\\s*===?\\s*"([^"]*)"`, "g"))].map(m => m[1]))];
+    if (vals.length) { const ls = vals.map(v => label(x, v)).filter(Boolean); return `“${esc(shownTitle(x))}” set to ${ls.length ? ls.join(" or ") : vals.join(" or ")}${whereOf(x)}`; }
+    if (PREF[x].type === "boolean") return `“${esc(shownTitle(x))}” ${stateWord(x, !new RegExp(`!\\s*\\(?S\\("${x}"`).test(c))}${whereOf(x)}`;
+    return `a different “${esc(shownTitle(x))}”${whereOf(x)}`;
+  };
+  return keys.length === 1 ? one(keys[0]) : (c.includes("||") ? "one of " : "") + keys.map(one).join(c.includes("||") ? " or " : " and ");
 }
 // The setting to visit so that k becomes available.
 function blockerOf(k) {
   const p = PREF[k];
   if (!classicParentsOk(k)) return (p.parents.find(x => x.mode === "not" ? !!state[x.key] : !state[x.key]) || p.parents[0]).key;
-  const cands = availKeys(k).filter(x => PREF[x] && inVersion(x));
+  const un = unmetClauses(k), first = un.length ? [...un[0].matchAll(/[SD]\("([^"]+)"\)/g)].map(m => m[1]) : [];
+  const cands = [...new Set([...first, ...availKeys(k)])].filter(x => PREF[x] && inVersion(x));
   // prefer a setting on this screen (e.g. a DeArrow title place) over one on another screen
   return cands.find(x => sectionOf(x) === section) || cands[0] || null;
 }
@@ -667,6 +785,20 @@ function importText(text) {
   commit();
   snack(Object.keys(json).length ? `Imported ${n} settings` : "Morphe settings reset to default");
 }
+const SEL_ENTS = {}; // a long list's choices, as its button was drawn with them
+function choiceDialog(k) {
+  const ents = SEL_ENTS[k] || PREF[k].entries || [], v = V(k);
+  openDialog(`<h2 id="dlgTitle">${esc(shownTitle(k))}</h2><div class="chlist" role="listbox" aria-labelledby="dlgTitle">${ents.map(e => `<button class="chopt" role="option" data-chv="${esc(e.value)}" aria-selected="${sameVal(e.value, v)}"><i class="rad"></i><span>${esc(e.label)}</span></button>`).join("")}</div>
+    <div class="acts"><button class="dbtn tonal" id="dBack">Cancel</button></div>`);
+  const box = $("dlgBox"), on = box.querySelector('.chopt[aria-selected="true"]'), list = box.querySelector(".chlist");
+  if (on && list) list.scrollTop = on.offsetTop - list.clientHeight / 2 + on.offsetHeight / 2;
+  $("dBack").onclick = closeDialog;
+  list.onclick = e => {
+    const b = e.target.closest(".chopt"); if (!b) return;
+    list.querySelectorAll(".chopt").forEach(x => x.setAttribute("aria-selected", String(x === b))); tapFeel("tick");
+    setTimeout(() => { closeDialog(); ensureMod(); const before = state[k]; setPref(k, coerce(k, b.dataset.chv)); afterChange(k, before); }, 140);
+  };
+}
 function importExportDialog() {
   openDialog(`<h2 id="dlgTitle">Import / Export</h2><textarea class="iex" id="iexText" spellcheck="false" autocomplete="off"></textarea>
     <div class="iexrow"><button class="dbtn tonal" id="iexOut">Export to file</button><button class="dbtn tonal" id="iexIn">Import from file</button></div>
@@ -674,8 +806,10 @@ function importExportDialog() {
   const ta = $("iexText"); ta.value = exportText();
   if (!ta.value) setTimeout(() => ta.focus(), 60); // nothing set yet: ready for pasting, as Morphe does
   $("iexSave").onclick = () => { const v = ta.value; closeDialog(); importText(v); };
-  $("iexCopy").onclick = () => { try { navigator.clipboard.writeText(ta.value); } catch { /* no clipboard */ } closeDialog(); };
+  $("iexCopy").onclick = () => { try { navigator.clipboard.writeText(ta.value).catch(() => { ta.select(); document.execCommand("copy"); }); } catch { try { ta.select(); document.execCommand("copy"); } catch { /* no clipboard */ } } snack("Copied to clipboard"); closeDialog(); };
   $("dBack").onclick = closeDialog;
+  // in the app the files go through Morphe's own Import / Export (it holds the system's file pickers)
+  if (window.__morpheAction) { $("iexOut").onclick = $("iexIn").onclick = () => { closeDialog(); window.__morpheAction("morphe_pref_import_export"); }; return; }
   $("iexOut").onclick = () => {
     try {
       const a = document.createElement("a"), d = new Date(), pad = x => String(x).padStart(2, "0");
@@ -726,6 +860,150 @@ function deepKidPill(k) {
 // the lock pill of a parent whose sub-settings are hidden: a button that shows them, locked
 const peeking = x => x === peekKid || (!!peekPar && (PARENT_OF[x] === peekPar || DIRECT_PARENT[x] === peekPar));
 const kidLock = (k, n) => `<button class="kidbtn kidoff" data-kidpeek="${k}" aria-expanded="${peekPar === k}" title="Show the ${n} locked sub-settings" aria-label="${n} sub-settings, locked: show them">${n}${I("lock")}</button>`;
+// Two columns for a family of plain switches (Max, Nov 25: Fullscreen's Action bar). A parent whose
+// sub-settings are all on/off, at least four of them, each Morphe title ending in the same word ("Hide Like
+// button", "Hide Dislike button"), lists them two to a line, title then toggle. The shared word is dropped
+// from each title ("Like") and said once on the parent ("Action bar buttons"). It is read from Morphe's
+// titles, so a button Morphe adds joins the grid, and a family that stops matching gets the usual list.
+const COMPACT_MIN = 4;
+const lastWord = x => ((/([A-Za-z]+)\W*$/.exec(String(PREF[x]?.title || "")) || [])[1] || "").toLowerCase().replace(/(.{4,})s$/, "$1"); // "Previous & Next buttons" is one of the buttons
+function compactWord(k) {
+  const ks = KIDS[k]; if (!ks || ks.length < COMPACT_MIN) return "";
+  if (!ks.every(x => PREF[x].type === "boolean" && !OFF_LIST.has(x) && !KIDS[x] && DIRECT_PARENT[x] === k)) return "";
+  const w = lastWord(ks[0]); return w.length > 2 && ks.every(x => lastWord(x) === w) ? w : "";
+}
+const dropWord = (t, w) => t.replace(new RegExp(`\\s+${w}s?$`, "i"), "").replace(/'([^']+)'$/, "$1"); // 'Live chat' button: Live chat
+const withWord = (t, w) => new RegExp(`\\b${w}s?$`, "i").test(t) ? t : `${t} ${w}s`;
+// Cards grouped by where their part sits (Max, Nov 25: "a split based on location", Player → Controls had
+// 19 "button" cards). On a tab in AREAS, the plain on/off cards of each area share one box under the area's
+// name, two to a line, title then toggle, without the repeated word ("Cast" for "Cast button") and without
+// their descriptions. A card of that area with sub-settings (or any other control) follows right after the
+// box, before the next area's box. The tables list Morphe's keys in the order the parts appear; a key the
+// installed Morphe doesn't have is skipped, a key Morphe adds keeps its own card after the areas, and an area
+// with one plain card still gets its box (the card then spans the box), so the areas read top to bottom. Fullscreen keeps its captions (LAYOUT).
+const AREAS = {
+  player: [
+    ["Top area", ["hide_collapse_button", "hide_autoplay_button", "hide_captions_button", "hide_cast_button", "hide_settings_button"]],
+    ["Middle area", ["hide_player_previous_next_buttons"]],
+    // Morphe's own buttons sit in the bottom row, left of the Fullscreen button (scenes.js)
+    ["Bottom area", ["hide_fullscreen_button", "loop_video_button", "mute_video_button", "pip_button_overlay", "reload_video_button", "playlist_panel_button", "video_delay_button_overlay", "external_downloader_overlay_button",
+      "copy_video_link_button", "playback_speed_dialog_button", "video_quality_dialog_button", "save_to_watch_later_button", "play_all_button", "fullscreen_video_scale_button"]],
+    // the shading behind all three areas comes right after their boxes, before the Bottom area's cards (Max,
+    // Nov 25, asked twice: at the end of the list it read as not done); a card of its own (it has sub-settings)
+    ["Behind the controls", ["hide_player_control_buttons_background"], { early: true }],
+  ],
+  shorts: [
+    ["Top area", ["hide_shorts_auto_dubbed_label"]],
+    ["Middle area", ["hide_shorts_gesture_hints", "hide_shorts_paused_overlay_buttons"]],
+    ["Right side", ["hide_shorts_like_button", "hide_shorts_comments_button", "hide_shorts_share_button", "hide_shorts_save_button", "hide_shorts_remix_button", "hide_shorts_sound_button"]],
+    // the pills above the channel name, the channel bar, the title and what is under it, the navigation bar
+    // 'New posts' is one of the suggested actions (ShortsFilter suggestedAction: box pencil icon), the pills above the channel
+    ["Bottom area", ["hide_shorts_upcoming_button", "hide_shorts_save_sound_button", "hide_shorts_new_posts_button", "hide_shorts_use_sound_button", "hide_shorts_use_template_button", "hide_shorts_effect_button", "hide_shorts_green_screen_button",
+      "hide_shorts_tagged_products", "hide_shorts_shop_button", "hide_shorts_super_thanks_button", "hide_shorts_location_label", "hide_shorts_hashtag_button", "hide_shorts_info_panel",
+      "hide_shorts_channel_bar", "hide_shorts_subscribe_button", "hide_shorts_join_button", "hide_shorts_video_title", "hide_shorts_preview_comment",
+      "hide_shorts_sound_metadata_label", "hide_shorts_ai_button", "hide_shorts_full_video_link_label", "hide_shorts_navigation_bar"]],
+    // no part on the Shorts player: the entries of its menu, and the places Shorts can be taken out of
+    // in the order the sheet in the preview lists them (Morphe's items first, then YouTube's), read left to
+    // right, top to bottom (Max, 14:35)
+    ["Shorts menu", ["shorts_playback_speed_flyout_button", "shorts_download_flyout_button", "hide_shorts_flyout_captions", "hide_shorts_flyout_audio_track"]],
+    ["Shorts in other places", ["hide_shorts_search", "hide_shorts_search_suggestions", "hide_shorts_subscriptions", "hide_shorts_channel", "hide_shorts_history", "hide_shorts_notifications", "hide_shorts_video_description", "hide_shorts_live_preview"]],
+  ],
+  // the comments sheet scrolls, so its areas are its parts, top to bottom
+  comments: [
+    ["Top of the sheet", ["hide_comments_top_fans_button", "hide_comments_info_button", "hide_comments_filter_bar_options", "hide_timed_reactions", "hide_comments_ai_chat_summary",
+      "hide_comments_community_guidelines", "hide_comments_channel_guidelines", "hide_subscribers_community_guidelines", "hide_comments_by_members_header"]],
+    ["Comment box", ["hide_comments_emoji_button", "hide_comments_timestamp_button", "hide_comments_gif_button", "hide_comments_thanks_button", "hide_comments_create_a_short_button"]],
+    ["On each comment", ["hide_comments_contexts", "hide_comments_menu_button", "hide_comments_translate_button", "hide_comments_dislike_button", "hide_comments_gift_button", "hide_comments_gifs_and_images", "hide_comments_gift_animation_and_cards"]],
+    ["Live chat", ["hide_comments_live_chat_donators_bar", "hide_comments_live_chat_scroll_to_bottom_button", "hide_comments_live_chat_tooltips"]],
+  ],
+  // the player menu is one list: the top and bottom of it mean nothing there (Max, Nov 25), so it is split by
+  // who adds the entry, Morphe's first (they sit at the top of the menu), then YouTube's in the menu's order,
+  // two to a line like every other box (Max, 14:35); Quality, Captions and Audio track keep their cards
+  // (they have sub-settings) right after the box
+  flyout: [
+    ["Added by Morphe", ["pip_button_flyout", "save_to_watch_later_flyout_button", "video_delay_button_flyout"]],
+    ["YouTube's entries", ["hide_player_flyout_quality", "hide_player_flyout_captions", "hide_player_flyout_speed", "hide_player_flyout_sleep_timer", "hide_player_flyout_loop_video", "hide_player_flyout_ambient_mode",
+      "hide_player_flyout_lock_screen", "hide_player_flyout_stable_volume", "hide_player_flyout_audio_track", "hide_player_flyout_listen_with_youtube_music", "hide_player_flyout_watch_in_vr",
+      "hide_player_flyout_on_the_go", "hide_player_flyout_additional_settings", "hide_player_flyout_help"]],
+  ],
+  description: [
+    ["Top area", ["hide_video_details_section", "hide_ai_generated_video_summary_section", "hide_ask_section", "hide_hype_points", "hide_key_concepts_section"]],
+    ["Middle area", ["hide_chapters_section", "hide_search_inside_this_video_section", "hide_transcript_section", "hide_how_this_was_made_section", "hide_corrections_section", "hide_attributes_section"]],
+    ["Bottom area", ["hide_hashtag_section", "hide_info_cards_section", "hide_explore_section", "hide_course_progress_section", "hide_quizzes_section"]],
+  ],
+  channel: [
+    ["Top area", ["hide_links_preview", "hide_subscribe_button_in_channel_page", "hide_join_button", "hide_store_button", "hide_community_button"]],
+    ["Under the header", ["hide_filter_bar_in_channel_page", "hide_members_shelf", "hide_members_only_chip", "hide_posts_shelf"]],
+  ],
+  // the seekbar's parts on the player, then the two families with no part of their own
+  seekbar: [
+    ["On the player", ["hide_player_gesture_hints", "seekbar_thumbnail_preview", "hide_tap_and_hold_gradient", "hide_timestamp", "hide_chapters_timeline_button", "hide_seekbar", "seekbar_custom_color", "custom_seekbar_thumb"]],
+    ["Seeking gestures", ["tap_to_seek", "slide_to_seek", "disable_precise_seeking_gesture", "disable_chapter_skip_double_tap"]],
+    ["Haptics", ["disable_haptic_feedback_chapters", "disable_haptic_feedback_precise_seeking", "disable_haptic_feedback_seek_undo", "disable_haptic_feedback_tap_and_hold", "disable_haptic_feedback_zoom"]],
+  ],
+};
+// What a box's titles say once, dropped from each: the word they share ("Cast button": Cast; "Previous & Next
+// buttons": Previous & Next, but "Paused overlay buttons" keeps it, it would not say what it is; "menu",
+// "section", "haptics"), where the menu is ("... in the Shorts menu"), a lead-in "In" ("In search results"
+// under "Shorts in other places"), and the box's own name ("Live chat tooltips" under "Live chat").
+const AREA_WORDS = /(?:\s+button)?\s+in (?:the )?(?:Shorts menu|player settings flyout)$|\s+(?:button|menu|section|haptics)$|(?<=&.*)\s+buttons$/i;
+function areaTitle(t, box) {
+  const cap = x => x.charAt(0).toUpperCase() + x.slice(1);
+  let d = t.replace(AREA_WORDS, "").replace(/^'([^']+)'$/, "$1").replace(/^In\s+/, "");
+  if (box && d.toLowerCase().startsWith(box.toLowerCase() + " ")) d = d.slice(box.length + 1);
+  return cap(d.trim() || t);
+}
+let FAMILY = {}, AREA_BOX = [], AREA_OVER = {}; // setting -> its area box's name; the boxes on the screen drawn last; titles taken from a sub-screen
+const boxable = k => PREF[k]?.type === "boolean" && !KIDS[k] && !OFF_LIST.has(k) && !cleanBroken(k);
+function gatherAreas(list, rest) {
+  FAMILY = {}; AREA_BOX = []; AREA_OVER = {}; const spec = AREAS[section]; if (!spec) return;
+  const pool = new Set([...list, ...rest]), taken = new Set(), out = [];
+  for (const [name, ks0, opt] of spec) {
+    const ks = ks0.map(x => "morphe_" + x).filter(k => pool.has(k) && !taken.has(k) && !PARENT_OF[k]);
+    ks.forEach(k => taken.add(k));
+    const box = ks.filter(boxable), after = ks.filter(k => !boxable(k));
+    // early: cards that go straight after the boxes above, ahead of the last box's own cards
+    if (!box.length && opt && opt.early) { const at = out.findLastIndex(x => String(x).startsWith("@area:")); out.splice(at + 1, 0, ...ks); continue; }
+    if (!box.length) { out.push(...ks); continue; }
+    box.forEach(k => { FAMILY[k] = name; });
+    // a card that is one of a Morphe sub-screen's "Hide in ..." rows, alone in its box, goes by that
+    // sub-screen's title ("In channel page" of Filter bar, in the Channel tab: Filter bar)
+    box.forEach(k => { const o = overOf(k); if (o && !box.some(x => x !== k && overOf(x) === o)) AREA_OVER[k] = o; });
+    out.push("@area:" + (AREA_BOX.push({ name, keys: box }) - 1), ...after);
+  }
+  list.splice(0, list.length, ...out, ...list.filter(k => !taken.has(k)));
+  for (let i = rest.length - 1; i >= 0; i--) if (taken.has(rest[i])) rest.splice(i, 1);
+}
+function areaCard(i, live) {
+  const a = AREA_BOX[i]; if (!a) return "";
+  return `<div class="shared fam2" data-share="${esc(a.name)}" data-area="${esc(a.name)}"><div class="shead">${esc(a.name)}</div><div class="kin duo2">${a.keys.map(k => rowHTML(k, live(k))).join("")}</div></div>`;
+}
+// One-line titles beside toggles (two-column cells, a list's name toggles): one that doesn't fit is marked
+// (.ovf: it fades out with an ellipsis), and a press slides it right to left to show the rest, then back.
+const FIT_LINE = ":is(.kids, .shared) > .kin.duo2 .ttl, .lchn";
+// An area box whose titles mostly don't fit two to a line (Comments: "Community Guidelines") lists them one
+// to a line instead (.one), measured again at every width, so a wide screen gets its two columns back.
+const overflows = e => e.scrollWidth > e.clientWidth + 1;
+function fitLines(root) {
+  root.querySelectorAll(".shared[data-area] > .kin.duo2").forEach(b => {
+    b.classList.remove("one");
+    const t = [...b.querySelectorAll(":scope > .row .ttl")];
+    if (t.filter(overflows).length * 3 > t.length) b.classList.add("one");
+  });
+  root.querySelectorAll(FIT_LINE).forEach(e => e.classList.toggle("ovf", overflows(e)));
+}
+function slideLine(e) {
+  const over = e.scrollWidth - e.clientWidth; if (over < 2 || e.classList.contains("mq")) return;
+  e.classList.add("mq");
+  const a = e.animate([{ textIndent: "0px" }, { textIndent: -(over + 6) + "px", offset: .42 }, { textIndent: -(over + 6) + "px", offset: .62 }, { textIndent: "0px" }], { duration: 1400 + over * 22, easing: "cubic-bezier(.45,0,.25,1)" });
+  a.onfinish = a.oncancel = () => e.classList.remove("mq");
+}
+// the title a row shows in the list: shortened in a two-column family, the family's word added to its parent
+function rowTitle(k) {
+  if (FAMILY[k]) return AREA_OVER[k] || areaTitle(shownTitle(k), FAMILY[k]);
+  const pw = DIRECT_PARENT[k] && compactWord(DIRECT_PARENT[k]); if (pw) return dropWord(shownTitle(k), pw);
+  const w = compactWord(k); return w ? withWord(shownTitle(k), w) : shownTitle(k);
+}
 function rowHTML(k, live) {
   const p = PREF[k]; const a = A[k];
   const dis = !parentsOk(k);
@@ -773,7 +1051,7 @@ function rowHTML(k, live) {
   const over = overOf(k) ? `<div class="over">${esc(overOf(k))}</div>` : "";
   const segCol = sbColor(k); if (segCol) cls.push("segcol");
   return `<div class="${cls.join(" ")}" data-row="${k}" data-k="${k}" tabindex="0"${segCol ? ` style="--seg-col:${segCol};--seg-ink:${inkOn(segCol)}"` : ""}>
-    <div class="txt">${over}${lreset ? '<div class="ttlrow">' : ""}<div class="ttl">${ttlHTML(shownTitle(k), (dis ? I("lock", "lk") : "") + tags + kidbtn)}</div>${lreset ? lreset + "</div>" : ""}
+    <div class="txt">${over}${lreset ? '<div class="ttlrow">' : ""}<div class="ttl">${ttlHTML(rowTitle(k), (dis ? I("lock", "lk") : "") + tags + kidbtn)}</div>${lreset ? lreset + "</div>" : ""}
       ${sum ? `<div class="sum">${esc(sum)}</div>` : ""}${ctl}</div>${right || goto || need ? `<div class="side">${right}${need}${goto}</div>` : ""}</div>`;
 }
 // "Hide in comments" alone does not say what is hidden: the row carries its Morphe sub-screen's title
@@ -910,6 +1188,8 @@ function placeDependents(lists, movable) {
   }
   return rest;
 }
+// a switch's identity across a redraw: its setting, or its list and name for a list's own toggles (listChoices)
+const swKey = x => x.dataset.sw ?? `${x.closest("[data-lst]")?.dataset.lst}|${x.dataset.lch}`;
 let lastVis = { sec: null, keys: new Set() };
 const pickedFiles = {}; // images chosen with a file picker, kept for this visit only
 const foldingKids = new Map(); // sub-option groups still folding away: their old rows, and until when
@@ -924,6 +1204,7 @@ function renderList() {
   const isLive = k => m.live.includes(k);
   const wantOpen = new Set();
   const withKids = k => {
+    if (k.startsWith("@area:")) return areaCard(+k.slice(6), isLive);
     let out = rowHTML(k, isLive(k));
     const ks = KIDS[k];
     if (ks) {
@@ -936,7 +1217,7 @@ function renderList() {
       const flat = byPosition(ks).filter(x => !deep(x)), order = [];
       const put = x => { order.push(x); byPosition(ks.filter(y => deep(y) && DIRECT_PARENT[y] === x)).forEach(put); };
       flat.forEach(put); ks.forEach(x => { if (!order.includes(x)) order.push(x); });
-      out = `<div class="unit">${out}<div class="kids ${lastOpen.has(k) ? "open" : ""}" data-kids-of="${k}"><div class="kin">${order.map(x => { const h = rowHTML(x, isLive(x)); return deep(x) ? h.replace('class="row ', 'class="row deep ') : h; }).join("")}</div></div></div>`;
+      out = `<div class="unit">${out}<div class="kids ${lastOpen.has(k) ? "open" : ""}" data-kids-of="${k}"><div class="kin${compactWord(k) ? " duo2" : ""}">${order.map(x => { const h = rowHTML(x, isLive(x)); return deep(x) ? h.replace('class="row ', 'class="row deep ') : h; }).join("")}</div></div></div>`;
     }
     return out;
   };
@@ -946,6 +1227,7 @@ function renderList() {
     const ordered0 = byPosition(top), ordered = [...ordered0.filter(k => !cleanBroken(k)), ...ordered0.filter(cleanBroken)];
     const rest = m.misc.filter(k => !PARENT_OF[k]);
     relate(ordered, rest);
+    gatherAreas(ordered, rest);
     let live = [];
     const lay = LAYOUT[section];
     if (lay) {
@@ -983,7 +1265,7 @@ function renderList() {
   foldingKids.forEach((v, grp) => { if (v.until > now0 && !wantOpen.has(grp)) closingOld.set(grp, v.old); else foldingKids.delete(grp); });
   if (lastVis.sec === section) list.querySelectorAll(".kids.open").forEach(b => { if (!wantOpen.has(b.dataset.kidsOf)) { const old = b.querySelector(".kin").innerHTML, btn = list.querySelector(`[data-row="${b.dataset.kidsOf}"] .kidbtn`)?.outerHTML; closingOld.set(b.dataset.kidsOf, old); foldingKids.set(b.dataset.kidsOf, { old, btn, until: now0 + 320 }); } });
   // switches keep their old position for a frame so the change slides instead of snapping
-  const swWas = new Map(); list.querySelectorAll("[data-sw]").forEach(x => swWas.set(x.dataset.sw, [x.getAttribute("aria-checked"), x.dataset.at, x.dataset.tone]));
+  const swWas = new Map(); list.querySelectorAll("[data-sw], [data-lch]").forEach(x => swWas.set(swKey(x), [x.getAttribute("aria-checked"), x.dataset.at, x.dataset.tone]));
   // groups caught mid-fold by this render: their new box carries on from the height it had
   const midFold = new Map(); list.querySelectorAll(".kids:not(.open)").forEach(b => { const h = b.getBoundingClientRect().height; if (h > .5 && foldingKids.has(b.dataset.kidsOf)) midFold.set(b.dataset.kidsOf, h); });
   // descriptions that were unfolded stay unfolded through the redraw, without playing the unfold again
@@ -999,14 +1281,14 @@ function renderList() {
   const textsWere = list.dataset.view === section ? rowTexts(list) : null;
   const fresh = paintList(list, parts, mergeZonePreview); list.dataset.view = section;
   if (textsWere) requestAnimationFrame(() => { if (list.dataset.view === section) swapRowTexts(list, textsWere); });
-  const goneNow = listQuiet(() => { fitOpts(fresh); return hideLocked(list); });
+  const goneNow = listQuiet(() => { fitOpts(fresh); fitLines(list); return hideLocked(list); });
   midFold.forEach((h, grp) => {
     const box = list.querySelector(`[data-kids-of="${grp}"]`), left = (foldingKids.get(grp)?.until ?? 0) - performance.now(); if (!box || left < 30) return;
     box.classList.remove("open");
     box.animate([{ height: h + "px", gridTemplateRows: "1fr" }, { height: "0px", gridTemplateRows: "1fr" }], { duration: left, easing: "cubic-bezier(.2,0,0,1)" });
   });
-  list.querySelectorAll("[data-sw]").forEach(x => {
-    const was = swWas.get(x.dataset.sw), now = [x.getAttribute("aria-checked"), x.dataset.at, x.dataset.tone];
+  list.querySelectorAll("[data-sw], [data-lch]").forEach(x => {
+    const was = swWas.get(swKey(x)), now = [x.getAttribute("aria-checked"), x.dataset.at, x.dataset.tone];
     if (!was || was[0] === now[0]) return;
     const put = v => { x.setAttribute("aria-checked", v[0]); if (v[1]) x.dataset.at = v[1]; else delete x.dataset.at; if (v[2]) x.dataset.tone = v[2]; else delete x.dataset.tone; };
     toggleGlide(x, was, now, put); // a switch or the two-way toggle: the thumb glides like every other choice
@@ -1096,7 +1378,7 @@ function syncLocked(k) {
     const want = row.dataset.row === k || !row.classList.contains("dis"), out = isOut(box);
     if (want && out) {
       box.getAnimations().forEach(a => a.cancel()); box.classList.remove("gone", "going"); lastGone.keys.delete(row.dataset.row); changed = true;
-      syncGroups(list); fitOpts(box); sizeAnim(box, true);
+      syncGroups(list); fitOpts(box); listQuiet(() => fitLines(box)); sizeAnim(box, true);
     } else if (!want && !out) {
       lastGone.keys.add(row.dataset.row); changed = true;
       foldAway(box, () => syncGroups(list));
@@ -1422,7 +1704,8 @@ function optGlide() {
 }
 const OPT_PAD = 6; // the least room beside a pill's text
 const LCHIP_CHROME = 8 + 2 + 22 + 2; // left padding, gap, remove button, right padding (4 speeds a row in a ~300px card)
-addEventListener("resize", () => { clearTimeout(fitOpts._t); fitOpts._t = setTimeout(() => fitOpts(), 120); });
+addEventListener("resize", () => { clearTimeout(fitOpts._t); fitOpts._t = setTimeout(() => { fitOpts(); fitLines($("list")); }, 120); });
+if (document.fonts) document.fonts.ready.then(() => fitLines($("list")));
 function hideLocked(list) {
   const gone = new Set();
   list.querySelectorAll(".row.dis[data-row]").forEach(r => {
@@ -1448,7 +1731,7 @@ function headBody(h) {
 }
 function syncHeads(list, before) {
   // a shared card goes once every row in it is gone
-  list.querySelectorAll(".shared").forEach(c => c.classList.toggle("gone", ![...c.children].some(n => n.matches(".row") && !isOut(n))));
+  list.querySelectorAll(".shared").forEach(c => c.classList.toggle("gone", ![...c.querySelectorAll(":scope > .row, :scope > .kin > .row")].some(n => !isOut(n)))); // a family card's rows sit in its grid
   list.querySelectorAll(HEADS).forEach(h => {
     const items = headBody(h).filter(n => !isOut(n)), show = items.length > 0, going = h.classList.contains("going");
     const gn = h.querySelector(".gn"); if (gn && show) gn.textContent = items.length;
@@ -1612,7 +1895,7 @@ function renderSearch() {
   $("list").dataset.view = "search";
   const q = query.trim().toLowerCase();
   // settings this device leaves out of the lists (offDevice) are still found, locked, with the reason
-  const all = CAT.preferences.filter(p => inYtVersion(p.key) && !(p.type === "screen" && offDevice(p.key)));
+  const all = CAT.preferences.filter(p => inYtVersion(p.key) && p.locationConfidence !== "root" && !(p.type === "screen" && offDevice(p.key)));
   if (!q) { paint($("list"), `<div class="shint">Type to search all ${all.length} settings.</div>`); return; }
   const words = q.split(/\s+/).filter(Boolean);
   // a search reads words the way a person types them (Max, Nov 24: "Pull up to fullscreen" found nothing):
@@ -1732,8 +2015,13 @@ document.addEventListener("pointerdown", e => {
   // the row when the row was; a part too small or too wide to read as a source falls back to its row
   const row = el && el.closest(".row"), r = el && el.getBoundingClientRect();
   const own = el && (el.matches("button, .c, .pick") && r.width >= 16 && r.height >= 12 && r.width < 300 || !row);
-  cardTap = el && !el.closest("#dlg") ? { el: own ? el : row, key: el.closest("[data-row]")?.dataset.row, cls: own && el !== row ? el.classList[0] : null, t: performance.now() } : null;
+  // (a menu card's place and corners are kept too: the menu may be drawn again before its screen grows from it)
+  const card = el && el.closest("#picker .pick");
+  cardTap = el && !el.closest("#dlg") ? { el: own ? el : row, key: el.closest("[data-row]")?.dataset.row, cls: own && el !== row ? el.classList[0] : null, t: performance.now(), card: card ? { rect: card.getBoundingClientRect(), radius: getComputedStyle(card).borderRadius } : null } : null;
 }, true);
+// a press the system took over (a Back swipe from the screen's edge starts as a press on whatever is
+// under the finger) is no tap: nothing grows from that button later
+document.addEventListener("pointercancel", () => { cardTap = null; }, true);
 const cssVar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 function cardRect(o) {
   if (!o) return null;
@@ -1786,6 +2074,23 @@ function closeDialog() {
   if (!f) return;
   dlg.classList.add("closing"); // stays visible while it shrinks back (taps already go through)
   cardPlay([{ ...f[1], opacity: 1 }, { offset: .55, opacity: .85 }, { ...f[0], opacity: 0 }], { duration: DLG_CLOSE_MS, easing: "cubic-bezier(.4, 0, .2, 1)" }, () => dlg.classList.remove("closing"));
+}
+// The same grow-from-the-button motion for every other popup (Max, Nov 25: the Reset dialog's popup is
+// perfect, give it to every popup menu): the screen menu from the button that opened it, the preview's
+// tray of buttons that are off from its pill. open: it grows out of src; closing: it shrinks back into src.
+// Transform and opacity only, the dialogs' timing and spring; the popup's own CSS transition is held.
+function popFrom(el, src, open, done, spring = "--spring") {
+  const r = !GLIDE_REDUCED.matches && el && el.isConnected && src && src.isConnected && src.getBoundingClientRect();
+  if (!r || r.width < 4 || r.height < 4) { if (done) done(); return null; }
+  if (el._pop) el._pop.cancel();
+  el.style.transition = "none"; el.style.transformOrigin = "50% 50%"; // cardFrames scales about the middle
+  const [from, to] = cardFrames(el, r);
+  const a = el._pop = el.animate(open ? [{ ...from, opacity: 0 }, { offset: .25, opacity: 1 }, { ...to, opacity: 1 }] : [{ ...to, opacity: 1 }, { offset: .55, opacity: .85 }, { ...from, opacity: 0 }],
+    { duration: open ? DLG_OPEN_MS : DLG_CLOSE_MS, easing: open ? cssVar(spring) || cssVar("--spring") || "ease-out" : "cubic-bezier(.4, 0, .2, 1)" });
+  const reset = () => { el._pop = null; el.style.transition = el.style.transformOrigin = ""; };
+  a.onfinish = () => { if (el._pop !== a) return; reset(); if (done) done(); };
+  a.oncancel = () => { if (el._pop === a) reset(); };
+  return a;
 }
 // Changes that only apply after YouTube restarts (Max, Nov 20). Values are saved as soon as they are
 // changed; leaving asks what to do with these: restart now, keep them for later, or reset them to the
@@ -1953,7 +2258,7 @@ window.addEventListener("resize", () => { if (barStays()) $("app").classList.rem
   // at every scroll (before anything is ignored), when a scroll or fling ends, when a finger lifts and
   // when the list changes size.
   const barCheck = () => {
-    const sc = $("scroller"), app = $("app"); if (!app.classList.contains("barhidden")) return;
+    const sc = $("scroller"), app = $("app"); if (!app.classList.contains("barhidden") || window.vEditing) return; // typing a value keeps it hidden
     const bar = document.querySelector(".appbar"), abh = bar ? bar.offsetHeight : 56;
     if (sc.scrollTop < 8 || sc.scrollHeight - sc.clientHeight <= abh + 24) { app.classList.remove("barhidden"); acc = 0; barMoveUntil = performance.now() + 320; }
   };
@@ -1961,8 +2266,24 @@ window.addEventListener("resize", () => { if (barStays()) $("app").classList.rem
   $("scroller").addEventListener("scrollend", barCheck, { passive: true });
   ["pointerup", "pointercancel", "touchend", "touchcancel"].forEach(t => document.addEventListener(t, () => { barCheck(); setTimeout(barCheck, 360); }, { passive: true, capture: true }));
   if (window.ResizeObserver) new ResizeObserver(() => requestAnimationFrame(barCheck)).observe($("content"));
+  // A text field's caret is drawn by the phone above everything: a focused field scrolled up under the
+  // pinned preview showed its blinking caret over the preview (Max, Nov 25). Its caret is hidden while
+  // the field is under the preview (or the top bar), and comes back when it scrolls out again.
+  const caretCheck = () => {
+    const f = document.activeElement;
+    if (!f || !f.matches || !f.matches("#list input, #list textarea")) return;
+    const r = f.getBoundingClientRect(), sr = $("stick")?.getBoundingClientRect();
+    // the preview covers the field only where they share columns (beside the list in landscape, it doesn't)
+    const over = sr && sr.left < r.right && sr.right > r.left ? sr.bottom : 0, cover = Math.max(over, $("scroller").getBoundingClientRect().top);
+    f.classList.toggle("caretoff", r.top < cover - 2 || r.bottom > innerHeight);
+  };
+  window.caretCheck = caretCheck;
+  document.addEventListener("focusin", caretCheck);
+  document.addEventListener("focusout", e => e.target.classList && e.target.classList.remove("caretoff"));
   $("scroller").addEventListener("scroll", () => {
+    caretCheck();
     const sc = $("scroller"), y = sc.scrollTop, app = $("app"), d = y - lastY; lastY = y;
+    if (window.vEditing) return;
     barCheck();
     if (app.classList.contains("searching") || pickerOpen || barStays()) { app.classList.remove("barhidden"); acc = 0; return; }
     // only your own scrolling moves the bar: jumps to a setting (and holds) leave it where it is
@@ -1972,13 +2293,19 @@ window.addEventListener("resize", () => { if (barStays()) $("app").classList.rem
     // preview then bounced up and down on its own. Scrolls during the bar's own move are ignored,
     // and the bar only hides when the list has room to scroll past it.
     if (performance.now() < barMoveUntil) { acc = 0; return; }
+    // On a touch screen the list moves under the finger (and its fling) through rubberBand, which marks those
+    // scrolls. Any other scroll is the page adjusting itself: a card above growing or shrinking (scroll
+    // anchoring), the end of the list coming closer as the bar resizes the list. Those read as scrolling
+    // the other way and flipped the bar (Max, Nov 25, Miscellaneous: it showed and hid again on every swipe).
+    if (sc.__touchOwn && !(performance.now() < (sc.__userScroll || 0))) { acc = 0; return; }
     acc = Math.sign(d) === Math.sign(acc) ? acc + d : d;
     const bar = document.querySelector(".appbar"), hid = app.classList.contains("barhidden");
     if (bar && !hid) app.style.setProperty("--abh", bar.offsetHeight + "px");
     const room = sc.scrollHeight - sc.clientHeight - y, abh = bar ? bar.offsetHeight : 56;
     let want = hid;
     if (y < 8) want = false;
-    else if (acc > 24 && room > abh + 24) want = true;
+    // hidden, the list grows by the bar's height: it must still scroll past the bar then, or barCheck brings it back
+    else if (acc > 24 && room > abh + 24 && sc.scrollHeight - sc.clientHeight - abh > abh + 24) want = true;
     else if (acc < -24) want = false;
     if (want !== hid) { app.classList.toggle("barhidden", want); acc = 0; barMoveUntil = performance.now() + 320; }
   }, { passive: true });

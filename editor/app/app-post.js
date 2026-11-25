@@ -72,24 +72,60 @@ if (INAPP) {
   // Reset order (list.js, shown while the menu is open) sits between the title and search
   menuTitle.after($("barOrd"));
   $("secPill").onclick = null; $("secPill").removeAttribute("aria-haspopup"); $("secPill").tabIndex = -1;
-  function setMenu(on) {
+  // src (opening): the button the menu grows from, null when it is already in place (after a Back swipe)
+  function setMenu(on, src) {
     if (!on && window.__drawBehind) window.__drawBehind(); // the screen behind the menu, not drawn yet at start (boot.js)
+    // the card just tapped, before the menu goes: its screen grows out of it (cardGrow)
+    const tap = !on && menuPage && cardTap && performance.now() - cardTap.t < 1500 && cardTap.card;
     menuPage = on;
     document.documentElement.classList.toggle("menupage", on);
     if (on) { $("scroller").scrollTop = 0; $("app").classList.remove("barhidden"); }
-    pickerToggle(on);
+    // opening: from the Back arrow when it was tapped, else no growth (Back key, swipe: the menu is the page
+    // underneath). Closing: the menu doesn't shrink into a button, the screen grows from its card instead.
+    pickerToggle(on, on ? (src === undefined ? null : src) : null);
     $("app").style.setProperty("--abh", document.querySelector(".appbar").offsetHeight + "px");
+    if (tap) cardGrow(tap.rect, tap.radius);
+  }
+  // A card opens its screen the way a popup opens from its button (Max, Nov 25: "cards on the main menu also
+  // have a pop-in animation with the appropriate morph effect"): the screen starts as the card, in its
+  // place and with its round corners, and grows to the whole page with the soft spring while the menu stays
+  // still underneath. Going back stays the Back swipe (or the arrow).
+  function cardGrow(r, radius) {
+    const ed = document.querySelector(".editor"), root = document.documentElement;
+    if (GLIDE_REDUCED.matches || !r || r.width < 8) return;
+    if (ed._grow) ed._grow.cancel();
+    root.classList.add("cardgrow");
+    const [from, to] = cardFrames(ed, r), rad = parseFloat(radius) || 20;
+    // the card's corners at the card's size: in the growing screen's own px they are rad / scale
+    const s0 = parseFloat(/scale\(([\d.]+)\)/.exec(from.transform)?.[1]) || .3;
+    ed.style.transformOrigin = "50% 50%";
+    const a = ed._grow = ed.animate([{ ...from, borderRadius: (rad / s0).toFixed(1) + "px", opacity: 0 }, { offset: .22, opacity: 1 }, { ...to, borderRadius: "0px", opacity: 1 }],
+      { duration: DLG_OPEN_MS + 30, easing: cssVar("--spring-soft") || "ease-out" });
+    const end = () => { if (ed._grow !== a) return; ed._grow = null; ed.style.transformOrigin = ""; root.classList.remove("cardgrow"); };
+    a.onfinish = end; a.oncancel = end;
   }
   // Every caller that closed the dropdown (a card, search, the scrim) now leaves the menu page.
-  setPicker = open => setMenu(open);
+  setPicker = (open, src) => setMenu(open, src);
   const searchOpen = openResult;
   openResult = k => { const s = menuPage && sectionOf(k); if (s && s !== section) quickSection(s); setMenu(false); searchOpen(k); };
 
-  const leave = () => {
-    if (pendingRestart().length) return restartDialog();
-    try { MorpheApp.close(); } catch (e) { /* ignore */ }
+  // Leaving the editor (Max, Nov 25: "too abrupt", the window went white and then animated): the editor
+  // shrinks a little and fades into the dark background first, and the app then closes Morphe's settings
+  // over a dark screen (WebEditorDialog.leaveSettings). A Back swipe on the menu page (leavePeek below)
+  // follows the finger the same way before it lets go.
+  const phone = $("app"); // (#phone and #devwrap are pinned with transform: none !important in app.css)
+  const leaveOut = done => {
+    if (GLIDE_REDUCED.matches) return done();
+    const cur = getComputedStyle(phone).transform, from = cur && cur !== "none" ? cur : "scale(1)";
+    phone.style.transformOrigin = "50% 50%";
+    const a = phone.animate([{ transform: from, opacity: 1, borderRadius: getComputedStyle(phone).borderRadius }, { transform: "scale(.9)", opacity: 0, borderRadius: "28px" }], { duration: 200, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" });
+    a.onfinish = done;
   };
-  $("btnBack").onclick = () => (menuPage ? leave() : setMenu(true));
+  const leave = () => {
+    if (pendingRestart().length) { leaveBack(); return restartDialog(); }
+    leaveOut(() => { try { MorpheApp.close(); } catch (e) { /* ignore */ } });
+  };
+  $("btnBack").onclick = () => (menuPage ? leave() : setMenu(true, $("btnBack")));
   $("btnBack").setAttribute("aria-label", "Back");
   // The phone's Back key: close what is open first, then go back like the arrow.
   window.morpheBack = () => {
@@ -101,6 +137,11 @@ if (INAPP) {
   // Action rows (import / export, export logs, links...): a tap runs Morphe's own row, so its
   // dialog or screen opens exactly as in the regular settings. Search results lead to them too.
   const runAction = k => { try { MorpheApp.action(k); actionRan = true; } catch (e) { snack("Update the visual editor patch to use this"); } };
+  window.__morpheAction = runAction;
+  // Import / Export opens as one of the editor's dialogs, in the editor's design and motion (Max, Nov 25:
+  // Morphe's own dialog was plain white). Its text is Morphe's export of the current values and Save
+  // applies through the same Setting API as every change here; the file buttons open Morphe's own row.
+  const OWN_DIALOG = new Set(["morphe_pref_import_export"]);
   // Morphe's own rows can change settings behind the editor: Import / Export applies the pasted or
   // imported text on Save (AbstractPreferenceFragment.importSettingsText, Setting.importFromJSON),
   // and Morphe may add more such rows. When the editor gets the screen back after one (its dialog or a
@@ -127,7 +168,7 @@ if (INAPP) {
   document.addEventListener("visibilitychange", backFromAction);
   document.addEventListener("click", e => {
     const row = e.target.closest("#list [data-row]");
-    if (!row || !__liveActions.has(row.dataset.row)) return;
+    if (!row || !__liveActions.has(row.dataset.row) || OWN_DIALOG.has(row.dataset.row)) return;
     e.stopPropagation(); select(row.dataset.row, "list"); runAction(row.dataset.row);
   }, true);
   // Back swipe, iOS-like (Max, Nov 24, every design): while the Back gesture is held on a screen, the
@@ -174,7 +215,28 @@ if (INAPP) {
     ed.style.transition = `transform ${t}, box-shadow ${t}`; pk.style.transition = `transform ${t}, opacity ${t}`;
     peekDraw(f); peek.timer = setTimeout(done, ms + 20);
   };
+  // The menu page under a Back swipe: the whole editor shrinks toward the finger with round corners (as
+  // Android shows the screen it goes back to), and letting go leaves (leaveOut). Not while a restart waits:
+  // then Back asks first.
+  let lp = null;
+  const canLeavePeek = () => menuPage && !$("dlg").classList.contains("open") && !($("tut") && $("tut").classList.contains("on")) && !searching && !pendingRestart().length;
+  const lpDraw = f => {
+    lp.f = f; const s = lp.edge === 1 ? -1 : 1;
+    phone.style.transformOrigin = "50% 50%";
+    phone.style.transform = `translateX(${(s * f * 24).toFixed(1)}px) scale(${(1 - .1 * f).toFixed(4)})`;
+    phone.style.borderRadius = (28 * f).toFixed(1) + "px"; phone.style.overflow = "hidden";
+  };
+  // the editor back in place (a cancelled swipe, or a restart prompt instead of leaving)
+  function leaveBack() {
+    if (!lp && !phone.style.transform) return;
+    lp = null; phone.getAnimations().forEach(a => a.cancel());
+    phone.style.transition = "transform 280ms cubic-bezier(.2, .8, .3, 1), border-radius 280ms";
+    phone.style.transform = ""; phone.style.borderRadius = "";
+    setTimeout(() => { if (!lp) phone.style.transition = phone.style.overflow = phone.style.transformOrigin = ""; }, 300);
+  }
+  const leaveAt = (p, x) => typeof x === "number" && isFinite(x) ? Math.min(1, Math.max(0, (lp.edge === 1 ? lp.x - x : x - lp.x) / peekW())) : Math.min(1, Math.max(0, p));
   window.morpheBackStart = (edge, x) => {
+    if (canLeavePeek()) { lp = { edge: edge === 1 ? 1 : 0, x: typeof x === "number" && isFinite(x) ? x : (edge === 1 ? peekW() : 0), f: 0 }; phone.style.transition = "none"; lpDraw(0); return; }
     if (!canPeek()) return;
     if (peek) { clearTimeout(peek.timer); peekEnd(true); }
     peek = { edge: edge === 1 ? 1 : 0, x: typeof x === "number" && isFinite(x) ? x : (edge === 1 ? peekW() : 0), f: 0 };
@@ -182,19 +244,21 @@ if (INAPP) {
     document.documentElement.classList.add("peekback");
     ed.style.transition = pk.style.transition = "none"; peekDraw(0);
   };
-  window.morpheBackProgress = (p, x) => { if (peek && !peek.timer) peekDraw(peekAt(p, x)); };
+  window.morpheBackProgress = (p, x) => { if (lp) lpDraw(leaveAt(p, x)); else if (peek && !peek.timer) peekDraw(peekAt(p, x)); };
   window.morpheBackCancel = () => {
+    if (lp) return leaveBack();
     if (!peek || peek.timer) return;
     // no overshoot: a spring past the start showed a strip of the menu at the other edge for a moment
     peekTo(0, 320, "cubic-bezier(.2, .8, .3, 1)", () => { if (!peek) return; peekEnd(true); });
   };
   const keyBack = window.morpheBack;
   window.morpheBack = () => {
+    if (lp) { lp = null; return leave(); }
     if (!peek) return keyBack();
     if (peek.timer) return;
     // the gesture was let go: the screen slides the rest of the way, then the menu page takes over
     const left = 1 - peek.f;
-    peekTo(1, Math.round(140 + 160 * left), "cubic-bezier(.2, .8, .3, 1)", () => { peekEnd(); setMenu(true); });
+    peekTo(1, Math.round(140 + 160 * left), "cubic-bezier(.2, .8, .3, 1)", () => { peekEnd(); setMenu(true, null); });
   };
   // the page's own edge swipe (where the system doesn't take the edge)
   (() => {
@@ -202,7 +266,7 @@ if (INAPP) {
     document.addEventListener("touchstart", e => {
       sw = null;
       const t = e.touches[0];
-      if (e.touches.length !== 1 || t.clientX > 20 || !canPeek() || peek) return;
+      if (e.touches.length !== 1 || t.clientX > 20 || !(canPeek() || canLeavePeek()) || peek || lp) return;
       sw = { x: t.clientX, y: t.clientY, on: false, lx: t.clientX, lt: performance.now(), v: 0 };
     }, { capture: true, passive: true });
     document.addEventListener("touchmove", e => {
@@ -212,7 +276,7 @@ if (INAPP) {
         if (Math.abs(dy) > 10 && Math.abs(dy) > dx) { sw = null; return; }
         if (dx < 10) return;
         sw.on = true; window.morpheBackStart(0, t.clientX);
-        if (!peek) { sw = null; return; }
+        if (!peek && !lp) { sw = null; return; }
       }
       if (e.cancelable) e.preventDefault();
       const now = performance.now(); if (now > sw.lt) sw.v = (t.clientX - sw.lx) / (now - sw.lt) * 1000;
@@ -221,8 +285,9 @@ if (INAPP) {
     }, { capture: true, passive: false });
     const end = () => {
       const s = sw; sw = null;
-      if (!s || !s.on || !peek) return;
-      if (peek.f > .33 || s.v > 500) window.morpheBack(); else window.morpheBackCancel();
+      const g = peek || lp;
+      if (!s || !s.on || !g) return;
+      if (g.f > .33 || s.v > 500) window.morpheBack(); else window.morpheBackCancel();
     };
     document.addEventListener("touchend", end, true); document.addEventListener("touchcancel", end, true);
   })();

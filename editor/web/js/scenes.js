@@ -250,7 +250,10 @@ function navBar(plain) {
   const narrow = !!V("morphe_narrow_navigation_buttons");
   const style = V("morphe_navigation_bar_style");
   const bg = plain ? "rgba(15,15,15,.96)" : style === "TRANSLUCENT" ? "rgba(15,15,15,.7)" : style === "TRANSPARENT" ? "transparent" : style === "OPAQUE" ? "#000" : "#0f0f0f";
-  const lab = t => C("hide_navigation_button_labels", `<span style="font-size:10px;display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span>`, { tag: "span", style: "max-width:100%;min-width:0;overflow:hidden" });
+  // YouTube's A/B layout without labels ("icon only" buttons); Morphe gives them their labels back unless
+  // Disable navigation buttons without labels is switched off (ClassicSubscriptionsLayoutPatch)
+  const iconOnly = !V("morphe_disable_icon_only_navigation_buttons");
+  const lab = t => iconOnly ? "" : C("hide_navigation_button_labels", `<span style="font-size:10px;display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span>`, { tag: "span", style: "max-width:100%;min-width:0;overflow:hidden" });
   const tab = (k, icon, t, extra = "") => C(k, `<div style="display:grid;justify-items:center;gap:2px;position:relative;min-width:0">${icon}${lab(t)}${extra}</div>`, { cls: "ntab" });
   const dot = C("hide_navigation_new_content_dot", `<span style="position:absolute;left:calc(50% + 7px);top:-1px;width:7px;height:7px;border-radius:50%;background:#ff0033;display:block"></span>`, { tag: "span", style: "position:absolute;inset:0;pointer-events:auto" });
   const center = swap
@@ -269,6 +272,10 @@ SCENES.nav = () => {
   const logoTxt = logo === "PREMIUM" ? "Premium" : logo === "MORPHE" ? "Morphe" : "YouTube";
   const swap = !!V("morphe_swap_create_with_notifications_button");
   const tb = (k, icon) => C(k, `<div class="pbtn">${icon}</div>`);
+  const meta = i => `<div style="display:flex;gap:10px;padding:10px 12px">${av(i, 34)}<div><div class="t1">${esc(VIDEOS[i].t)}</div><div class="t2">${VIDEOS[i].c} · ${VIDEOS[i].v}</div></div></div>`;
+  // the feed scrolls behind a glass bar: it is drawn one video further on, so a thumbnail (not a line of
+  // text cut at the frame) shows through the capsule and the room under it
+  const glassBar = !!V("morphe_navigation_bar_glass") && !V("morphe_hide_navigation_bar");
   return `<div style="background:#0f0f0f;height:330px;position:relative;overflow:hidden">
     <div style="display:flex;align-items:center;padding:6px 6px 6px 12px;gap:2px">
       ${C("header_logo", `<div style="display:flex;align-items:center;gap:4px"><div style="width:28px;height:20px;border-radius:6px;background:${logo === "MORPHE" ? "#1e5aa8" : "#ff0033"};display:grid;place-items:center">${I("play", "ico", 'style="width:14px;height:14px"')}</div><b style="font-size:17px;letter-spacing:-.4px">${logoTxt}</b></div>`)}
@@ -278,9 +285,9 @@ SCENES.nav = () => {
       ${tb("hide_toolbar_search_button", I("search"))}${tb("show_toolbar_settings_button", I("gear"))}
     </div>
     <div style="display:flex;gap:8px;padding:4px 12px 10px">${["All", "New to you", "Music"].map((t, i) => `<span class="chip" style="${i === 0 ? "background:#f1f1f1;color:#0f0f0f" : ""}">${t}</span>`).join("")}</div>
-    ${thumb(2, "border-radius:0")}
-    <div style="display:flex;gap:10px;padding:10px 12px">${av(2, 34)}<div><div class="t1">${esc(VIDEOS[2].t)}</div><div class="t2">${VIDEOS[2].c} · ${VIDEOS[2].v}</div></div></div>
-    ${C("hide_navigation_bar", navBar(false), { style: "position:absolute;left:0;right:0;bottom:0" })}
+    ${glassBar ? meta(1) : ""}${thumb(2, "border-radius:0")}
+    ${glassBar ? "" : meta(2)}
+    ${C("hide_navigation_bar", navBar(false), { also: "disable_icon_only_navigation_buttons", style: "position:absolute;left:0;right:0;bottom:0" })}
   </div>`;
 };
 

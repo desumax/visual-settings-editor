@@ -28,9 +28,14 @@
 .tab7 > .ol > .tx { position: relative; }
 /* while the fill moves, the chosen tab looks like the others (its own pill, under the fill), as option
    pills do; the fill lands on it and its own white takes over in the same place (Max, Nov 24) */
-.tabs7.gliding > .tab7[aria-selected="true"] { background: var(--m-c-high, #272727) !important; color: var(--m-on, #f1f1f1) !important; transition-property: transform !important; } /* it changes look at once (a fade from white showed as a grey pill) */
+.tabs7.gliding > .tab7[aria-selected="true"] { background: var(--m-c-high, #272727) !important; color: var(--m-on, #f1f1f1) !important; transition-property: none !important; } /* it changes look at once (a fade from white showed as a grey pill) */
 .theme-yt .tabs7.gliding > .tab7[aria-selected="true"] { background: #272727 !important; color: #f1f1f1 !important; }
 .theme-glass .tabs7.gliding > .tab7[aria-selected="true"] { background: var(--g-ctl) !important; box-shadow: var(--g-ctl-edge) !important; }
+/* Max, Nov 25 (phone only): the tapped tab's grey was drawn over the moving white, which popped to the front
+   when it landed. A tab still springing back from its press (:active scale, glass brightness) has a transform
+   or filter, and such a part paints after the fill layer. While the fill moves no tab carries either, so the
+   fill always passes over them; the press spring is cut short (the fill's motion takes over at the tap). */
+.tabs7.gliding > .tab7 { transform: none !important; filter: none !important; transition-property: background, color !important; }
 /* labels change colour smoothly (Max, Nov 24: the labels popped at the end, blended text looked bold and every
    other label brightened when the blend went off): the old tab's label lightens as its fill drains, the new
    tab's darkens as the fill lands on it, the rest never change */

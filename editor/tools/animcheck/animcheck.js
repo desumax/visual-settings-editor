@@ -99,7 +99,7 @@ async function runJob(P, job, info, sheetDir) {
       const f = path.join(sheetDir, `f${shots.length}.png`); fs.writeFileSync(f, png); shots.push([f, t, at[0]]);
     }
   }
-  const fin = await ev("finish", job); res.v.push(...fin.v); res.samples = fin.n; res.ask = fin.ask;
+  const fin = await ev("finish", job); res.v.push(...fin.v); res.samples = fin.n; res.ask = fin.ask; res.finger = fin.finger;
   // driven by a call instead of a tap: the checker did not go the way a user does, so say so
   if (/\(\)/.test(res.how)) res.v.push({ rule: "not-tapped", t: 0, detail: `could not be driven through the list (${res.how})${await ev("locked", job) ? ": the setting is locked" : ""}`, level: "warn" });
   res.trace = await ev("trace");

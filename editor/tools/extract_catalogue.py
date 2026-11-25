@@ -488,15 +488,21 @@ def load_prefs():
                 if not var:
                     gm = re.search(r'(\w+)\s*(?:\+=|\.add)\s*\(?\s*$', text[max(0, o - 200):o].rsplit(base, 1)[0])
                     if gm: var = gm.group(1)
+                # the settings' own top-level list (SettingsPatch: `private val preferences = mutableSetOf<BasePreference>()`,
+                # handed to the root screen): "About" sits above every screen, in none of them. The name matched
+                # a Shorts parameter of the same name further down, which filed About under Shorts (Max, Nov 25)
+                if var and re.search(r'^private val %s\s*=\s*mutableSetOf<BasePreference>\(\)' % re.escape(var), text, re.M):
+                    confidence = "root"; var = None
                 if var:
                     r = resolve_var(var, f, texts, calls_cache, GROUPS)
                     if r:
                         screen, vs = r; sub = sub or vs; confidence = "variable"
-            if not screen and f in FACTORY_SCREEN:
+            if confidence == "root": pass
+            elif not screen and f in FACTORY_SCREEN:
                 screen = FACTORY_SCREEN[f]; confidence = "factory"
-            if not screen and file_helpers:
+            if not screen and confidence != "root" and file_helpers:
                 screen, hs = SCREEN_HELPERS[file_helpers[0]]; sub = sub or hs; confidence = "file-helper"
-            if not screen and len(file_screens) == 1:
+            if not screen and confidence != "root" and len(file_screens) == 1:
                 screen = file_screens[0]; confidence = "file-screen"
             pname = pdesc = None
             for pos, nm, ds in patch_names:
@@ -527,7 +533,7 @@ SCREEN_TITLES = {
 }
 
 def best_occ(occs):
-    order = {"exact": 0, "variable": 1, "factory": 1, "file-helper": 2, "file-screen": 3, "unresolved": 4}
+    order = {"exact": 0, "root": 0, "variable": 1, "factory": 1, "file-helper": 2, "file-screen": 3, "unresolved": 4}
     return sorted(occs, key=lambda o: order[o["confidence"]])[0]
 
 catalogue = []

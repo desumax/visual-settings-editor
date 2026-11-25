@@ -94,6 +94,14 @@
       s.extra = q(".sm7, .dyn", stage).length;
       s.sig = hash(stage.innerHTML); // the preview's markup, inline styles included: everything a demo changes step by step
     }
+    // fingers: the hand's drawn width against the short side of the phone it is in (a scenario phone, or the
+    // live preview), so a hand drawn too big for its phone is caught (Max, Nov 25: several hands too big)
+    s.fingers = [];
+    for (const f of q(".finger.show", shown ? canvas : stage)) {
+      const svg = f.querySelector("svg"); if (!svg || opacityOf(f, stick) < .3) continue;
+      const ph = f.closest(".dev") || stage.firstElementChild || stage; const pr = ph.getBoundingClientRect(), pw = Math.min(pr.width, pr.height), fw = svg.getBoundingClientRect().width;
+      if (pw > 20 && fw > 1) s.fingers.push(fw / pw);
+    }
     // everything inside is measured from the preview box: when the box itself slides (the top bar hides
     // as a card is selected) nothing in it has moved
     const sh = r => { if (r) { r.l -= s.box.l; r.r -= s.box.l; r.t -= s.box.t; r.b -= s.box.t; } };
@@ -190,6 +198,7 @@
   function end() { S.on = false; cancelAnimationFrame(S.raf); }
 
   // ---- rules -----------------------------------------------------------------------------------
+  const FINGER_MAX = .31; // a story phone's hand is 30% of its short side (FINGER_K, scenarios.js); a fixed 40px hand was 43%
   const inter = (a, b) => Math.max(0, Math.min(a.r, b.r) - Math.max(a.l, b.l)) * Math.max(0, Math.min(a.b, b.b) - Math.max(a.t, b.t));
   const mid = r => [(r.l + r.r) / 2, (r.t + r.b) / 2];
   function judge(job) {
@@ -300,6 +309,7 @@
       const pr = cmp.filter(s => s.prog).map(s => s.prog.r.w);
       if (!job.ask && (!pr.length || Math.max(...pr) < 8)) add("no-progress", 0, "the progress line never grows");
     }
+    { const fr = ss.flatMap(s => s.fingers || []); if (fr.length) { const m = Math.max(...fr); job.finger = m; if (m > FINGER_MAX) add("finger-big", ss.find(s => (s.fingers || []).includes(m)).t, `the hand is ${(m * 100).toFixed(1)}% of its phone's short side (at most ${FINGER_MAX * 100}%)`); } }
     if (job.kind === "demo") { if (ss.reduce((n, s) => n + s.muts, 0) < 2) add("nothing-happens", 0, "the preview never changes", "warn"); }
     return out;
   }
@@ -342,7 +352,7 @@
     startSampling(job) { begin(job.step || 50, job.fineUntil || 2500); },
     // 4: the story is over: judge it, leave it, and compare the preview with how it looked at rest
     locked(job) { return !parentsOk(job.key); },
-    finish(job) { end(); const v = judge(job); return { v, n: S.samples.length, ask: S.samples.some(s => s.ask) }; },
+    finish(job) { end(); const v = judge(job); return { v, n: S.samples.length, ask: S.samples.some(s => s.ask), finger: job.finger }; },
     leave(job) { rest0(job.key); commit(); const n = neutralKey(job.key); if (n) tapCard(n); else { selected = null; stopDemo(); stopScenario(); renderStage(); } },
     leftovers() {
       const out = [], stage = document.getElementById("stage"), canvas = document.getElementById("canvas");

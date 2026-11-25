@@ -7,6 +7,9 @@
 // a progress line, then fade back (220 ms). Body length is SC_HOLD.
 const SC_FADE = 220, SC_HOLD = 3000;
 const SCN_HOLD = {}; // per-scenario body length when a story needs longer than SC_HOLD
+// Settings whose story acts away from their parent's part in the preview (a feed thumbnail, an alert), so
+// selecting them doesn't flash that part (Max, Nov 25: Feed thumbnail like count flashed the dislike count)
+const AWAY = new Set();
 const SCN = {};
 const scen = (section, keys, fn) => keys.split(/\s+/).forEach(k => { A["morphe_" + k] = { section, kind: "scenario" }; SCN["morphe_" + k] = fn; });
 // Device illustration. Content that depends on orientation goes in .dv-video (the player area)
@@ -50,7 +53,7 @@ const CROP7 = {};
   + "fullscreen_video_scale_button_fullscreen_only disable_rolling_number_animations "
   + "search_comments copy_select_text copy_video_title remove_viewer_discretion_dialog").split(" ").forEach(k => CROP7["morphe_" + k] = "top");
 ("queue_type hide_ask_gemini_button hide_sync_button download_force_4k auto_translate_additional_languages "
-  + "advanced_video_quality_menu hide_premium_video_quality shorts_download_flyout_button live_chat_translate "
+  + "advanced_video_quality_menu hide_premium_video_quality live_chat_translate "
   + "live_chat_translate_bold live_chat_translate_use_color live_chat_translate_copy_button hide_comments_live_chat_donators_bar "
   + "hide_comments_live_chat_scroll_to_bottom_button hide_comments_live_chat_tooltips hide_shorts_video_description "
   + "hide_shorts_search_suggestions narrow_navigation_buttons navigation_bar_animations miniplayer_disable_horizontal_drag "
@@ -63,12 +66,16 @@ function devBand(dev) {
   const H = dev.clientHeight, c = dev.classList.contains("port") ? cropOf(dev) : "";
   return c === "top" ? [0, H - CROP_CUT - CROP_FADE] : c === "bot" ? [CROP_CUT + CROP_FADE, H] : [0, H];
 }
+// A story phone's hand is sized from the phone (30% of its short side, at most the live preview's 40px):
+// a fixed 40px hand covered almost half of a portrait phone (Max, Nov 25: Rolling number animations,
+// Open system share sheet, Select text, Drag and drop and others too big).
+const FINGER_K = .3, fingerSize = (w, h) => Math.min(40, Math.min(w, h) * FINGER_K).toFixed(1) + "px";
 function device(orient, inner, extra = "", crop = scKey && CROP7[scKey]) {
   const [w, h] = DEV_SIZE[orient], c = crop === true ? "top" : crop || "";
-  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;${extra}"><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
+  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;--fz7:${fingerSize(w, h)};${extra}"><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
 }
 const playerArea = (i, overlay = "") => `<div class="dv-video" style="background:${ART[i]}">${overlay}</div><div class="dv-below"><i></i><i></i><i></i></div>`;
-function setOrient(dev, orient) { const [w, h] = DEV_SIZE[orient]; dev.classList.remove("port", "land"); dev.classList.add(orient); dev.style.width = w + "px"; dev.style.height = h + "px"; }
+function setOrient(dev, orient) { const [w, h] = DEV_SIZE[orient]; dev.classList.remove("port", "land"); dev.classList.add(orient); dev.style.width = w + "px"; dev.style.height = h + "px"; dev.style.setProperty("--fz7", fingerSize(w, h)); }
 // in a pair, a phone changing shape re-lays out the pair, and everything glides there (see fitDev)
 function rotate(dev, orient) { const g = dev.closest(".duo7.gen"); if (g) { g._turn = true; g._was = g._was || pairSnap(g); } setOrient(dev, orient); fitDevSoon(orient); }
 // Performance (Max, Nov 22): a phone turning and its caption changing in the same step, or both phones
@@ -135,6 +142,7 @@ function inPair(gen, el) {
 // The one motion curve of a comparison: phones turning, the pair resizing and captions moving all
 // use .5 s on --ease (cubic-bezier(.4, 0, .2, 1)), started on the same frame, so they move as one.
 const MOVE_MS = 500;
+let pairMs = MOVE_MS; // a quicker turn (turn(..., ms)) moves the rest of its pair on the same clock
 const moveEase = (() => { // cubic-bezier(.4, 0, .2, 1), the CSS --ease
   const x1 = .4, y1 = 0, x2 = .2, y2 = 1, B = (t, a, b) => 3 * a * t * (1 - t) ** 2 + 3 * b * t * t * (1 - t) + t ** 3;
   return x => { if (x <= 0) return 0; if (x >= 1) return 1; let lo = 0, hi = 1, t = x; for (let n = 0; n < 24; n++) { t = (lo + hi) / 2; if (B(t, x1, x2) < x) lo = t; else hi = t; } return B(t, y1, y2); };
@@ -164,7 +172,7 @@ function glideCap(gen, cap, from, to) {
     // clearing it here showed the real caption under the new copy (two lines drawn over each other)
     if (cap._gliding !== g) { g.remove(); return; }
     if (!g.isConnected || !cap.isConnected) { g.remove(); cap.style.opacity = ""; cap._gliding = null; return; }
-    const t = Math.min(1, (now - t0) / MOVE_MS), e = moveEase(t), to = g._to;
+    const t = Math.min(1, (now - t0) / pairMs), e = moveEase(t), to = g._to;
     g.textContent = cap.textContent;
     // measured from the pair's centre, which the pair's own resize keeps in place
     g.style.left = `calc(50% + ${lerp(from.x, to.x, e)}px)`; g.style.top = lerp(from.y, to.y, e) + "px";
@@ -207,7 +215,7 @@ function pairGlide(gen, was) {
     if (run.length && el._at && Math.abs(el._at[0] - n[0]) < .5 && Math.abs(el._at[1] - n[1]) < .5) return;
     run.forEach(a => a.cancel()); el._at = n;
     const dx = x - n[0], dy = y - n[1]; if (Math.abs(dx) < .5 && Math.abs(dy) < .5) return;
-    el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0px 0px" }], { id: "pairglide", duration: MOVE_MS, easing: "cubic-bezier(.4,0,.2,1)" });
+    el.animate([{ translate: `${dx}px ${dy}px` }, { translate: "0px 0px" }], { id: "pairglide", duration: pairMs, easing: "cubic-bezier(.4,0,.2,1)" });
   });
 }
 function fitDev(orient) {
@@ -404,6 +412,9 @@ function fingerShow(f, x, y, ms = 0) {
 function fingerTo(f, x, y, ms = 0) { fingerShow(f, x, y, ms); }
 function tapF(f) { f.classList.remove("tap"); void f.offsetWidth; f.classList.add("tap"); }
 const miniSeek = (pct = 30, marks = []) => `<div class="msk" style="position:absolute;left:8%;right:8%;bottom:16%;height:3px;background:rgba(255,255,255,.3)"><div class="mp" style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:#ff0033;transition:width .9s linear"></div>${marks.map(m => `<i style="position:absolute;left:${m}%;top:-1px;width:2px;height:5px;background:#000"></i>`).join("")}</div>`;
+// the time over the mini seekbar, as YouTube puts it: just above the bar's left end, never on it (Max, Nov 25:
+// "Copy timestamp by default" drew it across the seekbar); one helper for every story with a time
+const miniTime = (txt, cls = "") => `<div class="mtm7${cls ? " " + cls : ""}" style="position:absolute;left:8%;bottom:calc(16% + 6px);font-size:8px;line-height:1;color:#ddd;white-space:nowrap">${txt}</div>`;
 const miniVideo = (i = 0, h = "100%") => `<div style="position:absolute;left:0;right:0;top:0;height:${h};background:${ART[i]}"></div>`;
 function haptic(eventLabel, script) {
   return (box, disabled) => {
@@ -508,28 +519,26 @@ scen("player", "fullscreen_video_scale_button_fullscreen_only", (box, on) => {
   return "";
 });
 scen("player", "copy_video_link_with_timestamp_button", (box, on) => {
-  // The "Copy video link" button: a tap and a tap-and-hold copy two different links. This option
-  // swaps which one is which. Each side shows the button, the gesture, and the link that was copied.
+  // The "Copy video link" button: a tap copies the plain link, or with this option the link with the
+  // time it was paused at. Each side shows the button, the tap, and the link that was copied.
   const [fx, fy] = anchor("morphe_copy_video_link_button", .8, .2);
-  box.innerHTML = device("land", `${miniVideo(0)}<div class="cpb" style="${at_(fx, fy, 22)};display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.45);transition:transform .2s,background .2s">${I("link", "ico", 'style="width:14px;height:14px"')}</div>${miniSeek(17)}<div style="position:absolute;left:6px;bottom:12px;font-size:8px;color:#ddd">3:12 / 18:42</div>`);
+  box.innerHTML = device("land", `${miniVideo(0)}<div class="cpb" style="${at_(fx, fy, 22)};display:grid;place-items:center;border-radius:50%;background:rgba(0,0,0,.45);transition:transform .2s,background .2s">${I("link", "ico", 'style="width:14px;height:14px"')}</div>${miniSeek(17)}${miniTime("3:12 / 18:42")}`);
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), btn = dev.querySelector(".cpb"); const W = dev.clientWidth, H = dev.clientHeight;
   const plain = "youtu.be/cAb1n", timed = "youtu.be/cAb1n?t=192";
-  const toast = link => { dev.querySelectorAll(".toastin").forEach(e => e.remove()); dev.insertAdjacentHTML("beforeend", `<div class="toastin" style="top:42%">Link copied<br><b style="font-weight:500;color:#9cd1ff">${link}</b><br><span style="color:#bbb">${link === timed ? "opens at 3:12" : "opens at the start"}</span></div>`); };
+  // two lines (Max, Nov 25: three reached down over the time and the seekbar), placed above them
+  const toast = link => { dev.querySelectorAll(".toastin").forEach(e => e.remove()); dev.insertAdjacentHTML("beforeend", `<div class="toastin" style="top:34%">Link copied<br><b style="font-weight:500;color:#9cd1ff">${link}</b></div>`); keepPillIn(dev.lastElementChild); };
   const press = on => { btn.style.transform = on ? "scale(.88)" : ""; btn.style.background = on ? "rgba(62,166,255,.55)" : "rgba(0,0,0,.45)"; };
   const fade = () => dev.querySelectorAll(".toastin").forEach(e => { e.style.transition = "opacity .3s"; e.style.opacity = 0; });
-  situation("Tap the Copy link button"); // no blue line (Max, Nov 20)
   at(150, () => fingerTo(f, W * fx, H * fy, 350));
   at(800, () => { tapF(f); press(true); }); at(1000, () => { press(false); toast(on ? timed : plain); });
-  at(2900, fade);
-  at(3300, () => situation("Tap and hold it"));
-  at(3500, () => { f.classList.add("hold"); press(true); });
-  at(4500, () => { f.classList.remove("hold"); press(false); toast(on ? plain : timed); });
-  at(6600, fade);
-  return on ? "Tap copies the link at 3:12; hold copies it from the start" : "Tap copies the link from the start; hold copies it at 3:12";
+  // only the tap (Max, Nov 25: with the hold shown too, each side's pill took the other side's link in
+  // turn, so the link with the time jumped left and right as the story looped): each side keeps its link
+  at(3600, fade);
+  return "";
 });
-SCN_HOLD.morphe_copy_video_link_with_timestamp_button = 7000;
+SCN_HOLD.morphe_copy_video_link_with_timestamp_button = 4200;
 scen("player", "loop_video", (box, on) => {
-  box.innerHTML = device("land", `${miniVideo(2)}<div class="lv7" style="position:absolute;left:8px;bottom:22%;font-size:8px;color:#ddd">0:00 / 0:42</div>${miniSeek(55)}`);
+  box.innerHTML = device("land", `${miniVideo(2)}${miniTime("0:00 / 0:42", "lv7")}${miniSeek(55)}`);
   const dev = box.querySelector(".dev"); const mp = dev.querySelector(".mp"), t = dev.querySelector(".lv7");
   const runClock = (from, to, ms) => { const t0 = performance.now(); const tick = () => { const p = Math.min(1, (performance.now() - t0) / (ms * scStretch)); const s = Math.round(from + (to - from) * p); const tx = `0:${String(s).padStart(2, "0")} / 0:42`; if (t.isConnected && t.textContent !== tx) t.textContent = tx; /* only when the second changes */ if (p < 1 && t.isConnected) requestAnimationFrame(tick); }; tick(); };
   situation("The video reaches its end");
@@ -1014,8 +1023,10 @@ function flash7(el) {
 // icon, or a part only one phone has, flashes. When more than 8 parts differ the whole drawing differs
 // (a waveform, a different screen): nothing flashes then. One rule for every comparison, no marks needed.
 const DIFF_MAX = 8;
+// .ctx7 marks a stock part a picture leaves out on one side only because the change takes its place (the
+// views badge where the like row continues it): it never flashes on the other side
 function smallPart(e, dev, da) {
-  if (e.closest(".toastin")) return false;
+  if (e.closest(".toastin, .ctx7")) return false;
   const r = e.getBoundingClientRect();
   return r.width > 0 && r.width * r.height <= da * .2;
 }
@@ -1038,7 +1049,11 @@ function diffFlash(box) {
   };
   const [a, b] = devs.map(parts), hits = [[], []];
   new Set([...a.keys(), ...b.keys()]).forEach(k => {
-    const x = a.get(k) || [], y = b.get(k) || [];
+    // parts the same on both phones pair up first, wherever they sit in the order, so one part that only
+    // one phone has does not shift every part after it out of step (Max, Nov 25: Feed thumbnail like
+    // position flashed the duration, the title and the views badge when only the like badge moved)
+    let x = a.get(k) || [], y = b.get(k) || [];
+    const ys = y.slice(); x = x.filter(p => { const i = ys.findIndex(q => q.sig === p.sig); if (i < 0) return true; ys.splice(i, 1); return false; }); y = ys;
     for (let i = 0; i < Math.max(x.length, y.length); i++) {
       if (!x[i] || !y[i]) hits[x[i] ? 0 : 1].push((x[i] || y[i]).e);
       else if (x[i].sig !== y[i].sig) { hits[0].push(x[i].e); hits[1].push(y[i].e); }
@@ -1107,14 +1122,14 @@ function turnTo(dev, orient, html) {
   turn(dev, orient); later(() => devContent(dev, html), 180);
 }
 // the phone turns visibly (its screen rotates with it), then the app lays out for the new orientation
-function turn(dev, orient, then) {
+function turn(dev, orient, then, ms = MOVE_MS) {
   const cur = dev.classList.contains("land") ? "land" : "port";
   if (cur === orient) { if (then) then(); return; }
-  const gen = dev.closest(".duo7.gen"); if (gen) return turnInPair(gen, dev, cur, orient, then);
+  const gen = dev.closest(".duo7.gen"); if (gen) return turnInPair(gen, dev, cur, orient, then, ms);
   // while it turns, the phone is scaled so its rotated outline still fits the preview
   const [w, h] = DEV_SIZE[cur];
   dev.querySelectorAll(".finger").forEach(f => f.classList.remove("show"));
-  dev.style.transition = "transform .5s var(--ease), scale .5s var(--ease)"; dev.style.transform = `rotate(${orient === "land" ? -90 : 90}deg)`;
+  dev.style.transition = `transform ${ms}ms var(--ease), scale ${ms}ms var(--ease)`; dev.style.transform = `rotate(${orient === "land" ? -90 : 90}deg)`;
   const inPair = !!dev.closest(".duo7.gen"); // in a pair the turning phone shrinks to stay inside its own slot
   dev.style.scale = (inPair ? Math.min(w, h) / Math.max(w, h) : Math.min(parseFloat(dev.style.scale) || 1, fitScale(h, w))).toFixed(3);
   later(() => {
@@ -1128,31 +1143,31 @@ function turn(dev, orient, then) {
       void dev.offsetWidth; dev.style.transition = "transform .28s var(--ease)"; dev.style.transform = "";
     }
     if (then) then();
-  }, 520);
+  }, ms + 20);
 }
 // In a pair everything moves as one, on the same .5 s curve, started on the same frame: the phone turns
 // with its screen while its slot takes the new shape at once, so the pair re-lays out and rescales, and
 // the other phone, the labels and the captions glide to their new places (fitDev) as it turns. It ends
 // exactly in the box of the new orientation, where it is re-laid out for it and nothing jumps.
-function turnInPair(gen, dev, cur, orient, then) {
+function turnInPair(gen, dev, cur, orient, then, ms = MOVE_MS) {
   const slot = dev.parentElement, [w0, h0] = DEV_SIZE[cur], [w1, h1] = DEV_SIZE[orient];
   dev.querySelectorAll(".finger").forEach(f => f.classList.remove("show"));
   gen.querySelectorAll(":scope > .dl7 > .sf7").forEach(c => { if (!c._gliding) c._pos = inPair(gen, c); });
-  gen._was = pairSnap(gen); gen._turn = true;
+  gen._was = pairSnap(gen); gen._turn = true; pairMs = ms;
   dev.getAnimations().filter(a => a.id === "turn").forEach(a => a.cancel());
   slot.style.width = w1 + "px"; slot.style.height = h1 + "px";
   Object.assign(dev.style, { position: "absolute", left: "50%", top: "50%", translate: "-50% -50%", scale: "", transform: "" });
   fitDev(orient);
   // turned a quarter, the old phone's width becomes the new height and its height the new width
   const R = orient === "land" ? -90 : 90, a = h1 / w0, b = w1 / h0;
-  dev.animate([{ transform: "none" }, { transform: `rotate(${R}deg) scale(${a.toFixed(4)}, ${b.toFixed(4)})` }], { id: "turn", duration: MOVE_MS, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
+  dev.animate([{ transform: "none" }, { transform: `rotate(${R}deg) scale(${a.toFixed(4)}, ${b.toFixed(4)})` }], { id: "turn", duration: ms, easing: "cubic-bezier(.4,0,.2,1)", fill: "forwards" });
   later(() => {
     dev.style.transition = "none";
     dev.getAnimations().filter(x => x.id === "turn").forEach(x => x.cancel());
     Object.assign(dev.style, { position: "", left: "", top: "", translate: "" }); slot.style.width = slot.style.height = "";
-    setOrient(dev, orient); void dev.offsetWidth; dev.style.transition = "";
+    setOrient(dev, orient); void dev.offsetWidth; dev.style.transition = ""; pairMs = MOVE_MS;
     if (then) then();
-  }, MOVE_MS);
+  }, ms);
 }
 const r1 = dev => turnTo(dev, "port", playerArea(6)); r1.text = "leaves fullscreen";
 gestureScen("disable_fullscreen_dragged_down_gesture", "land", [.5, .25], [.5, .85], "Swipe down in fullscreen", r1);
@@ -1242,21 +1257,33 @@ SCENES.shorts = (base => () => {
   html = html.replace(/(<div style="display:flex;flex-wrap:wrap;gap:6px">)/, `$1${sugg}`);
   return html.replace('<div id="heart"', paused + top + hint + '<div id="heart"');
 })(SCENES.shorts);
-// Shorts "more" menu: picking one of its settings opens the sheet, as on the phone
-const SHORTS_SHEET = new Set(["morphe_hide_shorts_flyout_audio_track", "morphe_hide_shorts_flyout_captions", "morphe_shorts_playback_speed_flyout_button"]);
+// Shorts "more" menu: picking one of its settings opens the sheet, as on the phone. Drawn from FlyoutUtils
+// (addShortsPlayerFlyoutButtons): Morphe adds its items at the top of the menu, Playback speed then Download,
+// then a divider, above the app's own items. Download used to be a separate comparison with another menu
+// drawing (Max, Nov 25: "animated differently"); it is the same menu, so it opens the same sheet.
+// The sheet slides up only when it opens: moving between its settings, or any redraw while it is open,
+// keeps it in place (it restarted the opening animation on every pick).
+const SHORTS_SHEET = new Set(["morphe_hide_shorts_flyout_audio_track", "morphe_hide_shorts_flyout_captions", "morphe_shorts_playback_speed_flyout_button", "morphe_shorts_download_flyout_button"]);
 SCENES.shorts = (base => () => {
-  let html = base().replace('id="shortsStage"', `id="shortsStage" data-icons="${esc(V("morphe_shorts_icon_style") || "AUTO")}"`);
+  // "Shorts icon style" (Max, Nov 25: it did nothing): the buttons on the right draw the real icons of the
+  // chosen set, from the patch's own drawables (shortsicons, iconstyles.js SHORTS_ICON_STYLES)
+  const sty = V("morphe_shorts_icon_style") || "AUTO", set = typeof SHORTS_ICON_STYLES !== "undefined" && SHORTS_ICON_STYLES[sty];
+  let html = base().replace('id="shortsStage"', `id="shortsStage" data-icons="${esc(sty)}"`);
+  if (set) for (const [n, [vb, svg]] of Object.entries(set)) if (P[n]) html = html.split(`<svg class="ico" viewBox="0 0 24 24" ><path d="${P[n]}"/></svg>`).join(`<svg class="ico sty" viewBox="${vb}">${svg}</svg>`);
   if (!SHORTS_SHEET.has(selected)) return html;
+  const open = !!document.querySelector("#stage #shortsStage .shsheet");
   const row = (k, icon, t) => { const r = `<div style="display:flex;align-items:center;gap:16px;padding:11px 18px">${I(icon)}<span style="font-size:14px">${t}</span></div>`; return k ? C(k, r, { blk: 1 }) : r; };
-  const sheet = `<div style="position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:25"></div>
-    <div style="position:absolute;left:0;right:0;bottom:0;z-index:26;background:#212121;border-radius:14px 14px 0 0;padding:6px 0 10px;animation:sheetup .28s var(--ease)">
+  const sheet = `<div class="shscrim" style="position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:25${open ? "" : ";animation:ghostin .25s var(--ease)"}"></div>
+    <div class="shsheet" style="position:absolute;left:0;right:0;bottom:0;z-index:26;background:#212121;border-radius:14px 14px 0 0;padding:6px 0 10px${open ? "" : ";animation:sheetup .28s var(--ease)"}">
       <div style="width:36px;height:4px;border-radius:2px;background:#555;margin:2px auto 6px"></div>
-      ${row(null, "tune", "Quality")}${row("hide_shorts_flyout_captions", "cc", "Captions")}${row("shorts_playback_speed_flyout_button", "speed", "Playback speed")}
-      ${row("hide_shorts_flyout_audio_track", "music", "Audio track")}${row(null, "info", "Description")}${row(null, "flag", "Report")}${row(null, "help", "Send feedback")}
+      ${row("shorts_playback_speed_flyout_button", "speed", "Playback speed")}${row("shorts_download_flyout_button", "dl", "Download")}
+      <div style="height:1px;background:#3a3a3a;margin:4px 0"></div>
+      ${row(null, "tune", "Quality")}${row("hide_shorts_flyout_captions", "cc", "Captions")}${row("hide_shorts_flyout_audio_track", "music", "Audio track")}
+      ${row(null, "info", "Description")}${row(null, "flag", "Report")}${row(null, "help", "Send feedback")}
     </div>`;
   return html.replace('<div class="finger" id="finger"></div>', sheet + '<div class="finger" id="finger"></div>');
 })(SCENES.shorts);
-def("shorts", "vis", "hide_shorts_flyout_audio_track hide_shorts_flyout_captions shorts_playback_speed_flyout_button");
+def("shorts", "vis", "hide_shorts_flyout_audio_track hide_shorts_flyout_captions shorts_playback_speed_flyout_button shorts_download_flyout_button");
 def("shorts", "style", "shorts_icon_style");
 def("shorts", "vis", "hide_shorts_paused_overlay_buttons hide_shorts_save_sound_button hide_shorts_new_posts_button hide_shorts_upcoming_button hide_shorts_auto_dubbed_label hide_shorts_gesture_hints");
 
@@ -1271,17 +1298,37 @@ def("shorts", "vis", "hide_shorts_paused_overlay_buttons hide_shorts_save_sound_
 // (The match used to look for an older opening tag of the bar, so glass changed nothing in the preview.)
 {
   const base = navBar;
+  let measure = null;
+  const textW = t => { measure = measure || document.createElement("canvas").getContext("2d"); measure.font = "10px Roboto, sans-serif"; return measure.measureText(t).width; };
   navBar = function (plain) {
     const html = base(plain);
     if (!V("morphe_navigation_bar_glass") || V("morphe_hide_navigation_bar")) return html;
     const num = (k, d) => { const v = V("morphe_navigation_bar_glass_" + k), n = Number(v); return v === "" || v == null || !isFinite(n) ? d : n; };
+    const tpl = document.createElement("template"); tpl.innerHTML = html.trim();
+    const bar = tpl.content.firstElementChild; if (!bar) return html;
+    // the buttons drawn (a hidden one is drawn collapsed: "off") and the content of the widest: icon and label
+    // (GlassNavigationBarLayout.measureButtons)
+    const tabs = [...bar.children].filter(e => e.classList.contains("ntab") && !e.classList.contains("off"));
+    const labelOf = e => { const l = e.querySelector('[data-k="morphe_hide_navigation_button_labels"]'); return l && !l.classList.contains("off") ? l.textContent.trim() : ""; };
+    const labels = tabs.map(labelOf), anyLabel = labels.some(Boolean);
+    const content = Math.ceil(Math.max(24, ...labels.map(t => t ? textW(t) : 0))), contentH = anyLabel ? 38 : 24;
+    // getButtonsLayout: the most width is the screen less 12 dp each side, times Maximum width; a button is its
+    // content plus Button spacing (at least 48 dp, content + 8 dp to fit); buttons that don't fit are hidden from the end
+    const W = ($("stage") && $("stage").clientWidth) || 360, maxW = Math.max(0, (W - 24) * num("width", 100) / 100);
+    const minBtn = Math.max(48, content + 8), shown = Math.max(1, Math.min(tabs.length || 1, Math.floor(maxW / minBtn)));
+    const bw = Math.floor(Math.min(Math.max(48, content + num("button_spacing", 48)), maxW / shown));
+    tabs.slice(shown).forEach(e => e.classList.add("gcut"));
+    if (tabs[0]) tabs[0].classList.add("gsel"); // the selected button (Home) has the indicator
+    // getCapsuleHeight: Glass navigation bar size % of the bar's 52 dp, never less than the content + 4 dp each side
+    const minH = contentH + 8, h = Math.max(minH, Math.round(Math.max(52, minH) * num("height", 100) / 100));
+    const r = (V("morphe_navigation_bar_glass_round") ? .5 : .3) * h;
+    // GlassCapsuleDrawable, dark style: fill = the app background lifted 14% toward white at 0.5 x opacity/50, a soft
+    // white sheen at the top, a rim lit from outside (top 30%, ends 50%, bottom 6%) with a dark line inside it,
+    // a faint shadow; the app's own blurred background shows through (translucent bar, Android 14+)
     const alpha = Math.min(1, .5 * num("opacity", 20) / 50);
-    const h = Math.max(44, Math.round(52 * num("height", 100) / 100)), r = (V("morphe_navigation_bar_glass_round") ? .5 : .3) * h;
-    // buttons shown (a hidden one is drawn collapsed: "off"), each its content (about 36 px) plus the spacing
-    const shown = (html.match(/class="[^"]*\bntab\b[^"]*"/g) || []).filter(c => !/\boff\b/.test(c)).length || 5;
-    const bw = Math.max(48, 36 + num("button_spacing", 48));
-    const style = `--gw:${num("width", 100)};--gr:${r}px;width:min(calc((100% - 24px) * var(--gw) / 100), ${shown * bw}px);height:${h}px;border-radius:${r}px;background:rgba(49,49,49,${alpha.toFixed(3)});backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1px solid rgba(255,255,255,.06);border-top-color:rgba(255,255,255,.3);box-shadow:inset 0 1px 0 rgba(255,255,255,.1),0 4px 14px rgba(0,0,0,.25)`;
-    return html.replace(/^(\s*)<div class="navbar([^"]*)" style="[^"]*">/, (m, sp, c) => `${sp}<div class="navbar glassnav${c}" style="${style}">`);
+    bar.classList.add("glassnav");
+    bar.setAttribute("style", `--gr:${r}px;--gbw:${bw}px;width:${shown * bw}px;height:${h}px;border-radius:${r}px;background:linear-gradient(rgba(255,255,255,.10), rgba(255,255,255,0) 55%) rgba(49,49,49,${alpha.toFixed(3)});backdrop-filter:blur(14px) saturate(1.4);-webkit-backdrop-filter:blur(14px) saturate(1.4);border:1.5px solid rgba(255,255,255,.12);border-top-color:rgba(255,255,255,.3);border-bottom-color:rgba(255,255,255,.06);box-shadow:inset 0 0 0 .5px rgba(0,0,0,.35),inset 1px 0 0 rgba(255,255,255,.2),inset -1px 0 0 rgba(255,255,255,.2),0 2px 10px rgba(0,0,0,.1)`);
+    return bar.outerHTML;
   };
 }
 def("nav", "style", "navigation_bar_glass navigation_bar_glass_opacity navigation_bar_glass_height navigation_bar_glass_round navigation_bar_glass_width navigation_bar_glass_button_spacing");
@@ -1513,6 +1560,26 @@ function duoValues(k, prev) {
   const other = ents.length ? ents.find(e => !sameVal(e.value, d))?.value : typeof d === "number" ? Math.round(d * 150) / 100 : undefined;
   const r = !sameVal(cur, d) ? cur : prev !== undefined && !sameVal(prev, d) ? prev : (other ?? cur);
   return [[d, lab(d)], [r, lab(r)]];
+}
+// A slider whose setting has a comparison redraws it while it moves (Max, Nov 25: Quick actions top margin
+// didn't follow the slider; neither did any other slider with a comparison, not even on release). One redraw a
+// frame; scLive tells a story it is being redrawn for a slider step, so it can skip its opening motion.
+let scLive = false, liveRaf = 0;
+// A slider's picture that follows the finger: where its moving part is drawn at this moment, so the next
+// value glides on from there (not from the last value it was heading to) and a fast drag reads as one
+// smooth movement (Max, Nov 25: dragging Quick actions top margin cut from the 24 dp example, then glided
+// in steps). Returns [from, to] while the slider moves, undefined otherwise.
+const liveGlides = {}, LIVE_GLIDE_MS = 260, liveEase = t => 1 - (1 - t) ** 3; // matches LIVE_GLIDE_EASE
+const LIVE_GLIDE_EASE = "cubic-bezier(.33,1,.68,1)";
+function liveGlide(k, v) {
+  const id = k + "|" + (scSide ? scSide.i : 0), g = liveGlides[id], now = performance.now();
+  const at = g ? g.from + (g.to - g.from) * liveEase(Math.min(1, (now - g.t0) / LIVE_GLIDE_MS)) : v;
+  liveGlides[id] = { from: scLive ? at : v, to: v, t0: now };
+  return scLive && g ? [at, v] : undefined;
+}
+function liveScenario(k, before) {
+  cancelAnimationFrame(liveRaf);
+  liveRaf = requestAnimationFrame(() => { liveRaf = 0; if (selected !== k || !SCN[k]) return; scLive = true; try { playScenario(k, before === undefined || sameVal(before, V(k)) ? undefined : before); } finally { scLive = false; } });
 }
 function playScenario(k, prevValue) {
   const fn = SCN[k]; if (!fn) return;

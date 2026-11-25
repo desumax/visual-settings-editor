@@ -19,6 +19,14 @@ const PROXY_K = { morphe_seekbar_custom_color: "morphe_hide_seekbar" };
 // options) scrolls the preview there first (Max, Nov 24: scrolled down on the video page, "Video action bar
 // layout" and "Like and Subscribe glow" left the action bar out of view). Its proxy part when it has one.
 const FOCUS_K = { morphe_video_action_bar_layout: '[data-k="morphe_hide_action_bar"]', morphe_disable_like_subscribe_glow: '[data-k="morphe_hide_action_bar"]' };
+// ...and the ones whose screen goes all the way back to its top instead, so the part is seen with the video,
+// title and channel above it, as when the page opens (Max, Nov 25: centring the action bar was not enough)
+const FOCUS_TOP = new Set(["morphe_video_action_bar_layout", "morphe_disable_like_subscribe_glow"]);
+function scrollStageTop() {
+  let moved = false;
+  document.querySelectorAll("#stage *").forEach(b => { if (b.scrollTop > 0 && /auto|scroll/.test(getComputedStyle(b).overflowY)) { b.scrollTo({ top: 0, behavior: "smooth" }); moved = true; } });
+  return moved;
+}
 function focusEls(k) {
   const pr = proxyEls(k); if (pr.length) return pr;
   return FOCUS_K[k] ? [...document.querySelectorAll(`#stage ${FOCUS_K[k]}`)].filter(e => e.getClientRects().length) : [];
@@ -26,7 +34,7 @@ function focusEls(k) {
 const coversStage = e => { const s = $("stage").getBoundingClientRect(), r = e.getBoundingClientRect(); return r.width * r.height > s.width * Math.min(s.height, 420) * .8; };
 function proxyEls(k) {
   const q = x => [...document.querySelectorAll(`#stage [data-k="${x}"], #stage [data-also~="${x}"]`)].filter(e => e.getClientRects().length && (!e.classList.contains("off") || e.classList.contains("ghost")));
-  if (q(k).length) return [];
+  if (q(k).length || AWAY.has(k)) return [];
   // data-proxy="<key>": a part that flashes for a setting without being its selectable part, so the
   // setting and the ones under it all flash it the same way (the seekbar thumb's ring: Max, round 141,
   // "Custom seekbar thumb" must flash as "Thumb image" does)
@@ -78,7 +86,7 @@ function highlight(k, flash = true, reveal = false) {
   // wait until a growing (ghost-revealed or restored) element has its full size, then scroll to it
   const liveEls = () => [...document.querySelectorAll(`#stage [data-k="${k}"], #stage [data-also~="${k}"]`)];
   // a setting with no part of its own still scrolls to where it acts (focusEls), without an outline of its own
-  const go = () => { if (selected !== k) return; const live = liveEls(); els.splice(0, els.length, ...live); fT(finishAll, revealInStage(live.length ? live : focusEls(k)) ? 340 : 0); };
+  const go = () => { if (selected !== k) return; const live = liveEls(); els.splice(0, els.length, ...live); fT(finishAll, (!live.length && FOCUS_TOP.has(k) ? scrollStageTop() : revealInStage(live.length ? live : focusEls(k))) ? 340 : 0); };
   fT(() => {
     if (selected !== k) return;
     const growing = liveEls().flatMap(e => e.getAnimations()).filter(a => a.playState === "running" && isFinite(a.effect?.getComputedTiming().endTime) && a.effect?.getComputedTiming().fill !== "forwards");
@@ -95,8 +103,9 @@ function flashStage(e, times = 1) {
   const big = e.offsetWidth > $("stage").clientWidth * .5 || e.offsetHeight > 80; // big components only glow
   clearTimeout(e._flashT); e.classList.remove("flash", "flat", "twice"); void e.offsetWidth;
   if (!big) popOrigin(e);
+  e._flashN = (e._flashN || 0) + 1;
   e.classList.add("flash"); e.classList.toggle("flat", big); e.classList.toggle("twice", times > 1); wakeRings();
-  e._flashT = setTimeout(() => e.classList.remove("flash", "flat", "twice"), FLASH_MS * times + 40);
+  e._flashT = setTimeout(() => { e.classList.remove("flash", "flat", "twice"); wakeRings(); }, FLASH_MS * times + 40);
 }
 function flashRow(el) { clearTimeout(el._attnT); el.classList.remove("attn"); void el.offsetWidth; el.classList.add("attn"); el._attnT = setTimeout(() => el.classList.remove("attn"), FLASH_MS * 2 + 40); }
 // The setting and its element(s) flash together: used when arriving at a setting (search, "Take me there").
@@ -265,7 +274,9 @@ function ringGeom(el, F, frameR) {
   const bx = { l: r.left + v("--fl"), t: r.top + v("--ft"), r: r.right - v("--fr"), b: r.bottom - v("--fb") };
   // only a ring that would reach what clips the part (now, or while the pop scales it) moves here
   const mx = Math.max(RING_ROOM, r.width * .06), my = Math.max(RING_ROOM, r.height * .06);
-  if (bx.l - d - mx >= A.l && bx.t - d - my >= A.t && bx.r + d + mx <= A.r && bx.b + d + my <= A.b) return null;
+  // a flashing part that clips itself (it is growing or shrinking: .sizing) would cut its own glow anywhere
+  const selfClip = el.classList.contains("flash") && getComputedStyle(el).overflowX !== "visible";
+  if (!selfClip && bx.l - d - mx >= A.l && bx.t - d - my >= A.t && bx.r + d + mx <= A.r && bx.b + d + my <= A.b) return null;
   const R = { l: bx.l - d, t: bx.t - d, r: bx.r + d, b: bx.b + d }, cut = { l: -1e9, t: -1e9, r: 1e9, b: 1e9 };
   // the frame's own edge: the ring runs past it, unless the part itself is cut off there
   // a scroller's edge inside the frame: the ring is drawn just inside it, or cut where the part is scrolled past it
@@ -291,7 +302,10 @@ function syncRings() {
   // (asking whether the preview is shown is itself a layout, so it comes second; Max, Nov 22: performance)
   // (nor while a comparison covers the preview: a setting that has both a part in the preview and a
   // comparison, such as Bypass Ambient mode restrictions, drew its part's ring across the two phones)
-  const sel = [...st.querySelectorAll(".c.sel")], live = sel.length && st.offsetParent && !$("canvas").classList.contains("show") ? sel : [];
+  // a flashing part (a switch just changed it, or it is the parent of one) is placed here too: its glow
+  // was cut off by the box around it just like a ring (Max, Nov 25: Navigation bar buttons began their
+  // hide and show with a glow clipped at the top and bottom), so the layer draws it, ring or not
+  const sel = [...new Set([...st.querySelectorAll(".c.sel, .c.flash")])], live = sel.length && st.offsetParent && !$("canvas").classList.contains("show") ? sel : [];
   if (!live.length) { if (layer.firstChild) layer.replaceChildren(); ringQuick = ""; const k = ""; const ch = k !== ringKey; ringKey = k; return ch; }
   const L = layer.getBoundingClientRect(), F = st.getBoundingClientRect();
   // nothing moved since the last frame (the same parts, at the same places, the frame and the layer
@@ -321,12 +335,18 @@ function syncRings() {
     }
     el.classList.toggle("selx", !!g);
     if (!g) { const q = el.getBoundingClientRect(); key += `|${q.left | 0},${q.top | 0},${q.width | 0},${q.height | 0}`; continue; }
-    const f = n => Math.round(n * 10) / 10;
-    out.push({ ghost: g.ghost, css: g.hidden ? "display:none" : `left:${f(g.R.l - L.left)}px;top:${f(g.R.t - L.top)}px;width:${f(g.R.r - g.R.l)}px;height:${f(g.R.b - g.R.t)}px;border-width:${f(g.w)}px;border-radius:${g.rad.map(x => x + "px").join(" ")};clip-path:inset(${g.ins.map(x => f(x) + "px").join(" ")})` });
+    const f = n => Math.round(n * 10) / 10, fl = el.classList.contains("flash") && !el.classList.contains("flat");
+    out.push({ ghost: g.ghost, ring: el.classList.contains("sel"), flash: fl ? el._flashN || 1 : 0, red: el.classList.contains("off") || el.classList.contains("ghost"), twice: el.classList.contains("twice"), css: g.hidden ? "display:none" : `left:${f(g.R.l - L.left)}px;top:${f(g.R.t - L.top)}px;width:${f(g.R.r - g.R.l)}px;height:${f(g.R.b - g.R.t)}px;border-width:${f(g.w)}px;border-radius:${g.rad.map(x => x + "px").join(" ")};clip-path:inset(${g.ins.map(x => f(x) + "px").join(" ")})` });
   }
   while (layer.children.length > out.length) layer.lastChild.remove();
   while (layer.children.length < out.length) layer.appendChild(document.createElement("i"));
-  out.forEach((o, i) => { const ring = layer.children[i]; if (ring._css !== o.css) { ring.style.cssText = o.css; ring._css = o.css; } ring.classList.toggle("ghost", o.ghost); key += "|" + o.css; });
+  out.forEach((o, i) => {
+    const ring = layer.children[i]; if (ring._css !== o.css) { ring.style.cssText = o.css; ring._css = o.css; }
+    ring.classList.toggle("ghost", o.ghost); ring.classList.toggle("bare", !o.ring); ring.classList.toggle("red", o.red); ring.classList.toggle("twice", o.twice);
+    // a new flash starts the glow again (the part's own flash restarted)
+    if (o.flash !== ring._fl) { ring.classList.remove("flash"); if (o.flash) { void ring.offsetWidth; ring.classList.add("flash"); } ring._fl = o.flash; }
+    key += "|" + o.css + o.ring + o.flash;
+  });
   const changed = key !== ringKey; ringKey = key;
   return changed;
 }
@@ -420,7 +440,8 @@ function rubberBand(sc, topEl, botEl) {
   const put = (el, y) => { el.style.translate = y ? `0 ${y}px` : ""; };
   const stopBounce = () => { if (bounce) { bounce.cancel(); bounce = null; } };
   const stopFling = () => { if (flingRaf) { cancelAnimationFrame(flingRaf); flingRaf = 0; } };
-  const scrollTo = y => { selfUntil = performance.now() + 120; sc.scrollTop = y; };
+  // (marked as the finger's own scroll: the top bar follows only these on a touch screen, list.js)
+  const scrollTo = y => { selfUntil = performance.now() + 120; sc.__userScroll = selfUntil; sc.scrollTop = y; };
   // back to rest on a critically damped spring from offset y (px) with velocity v (px/s)
   const settle = (el, y, v = 0) => {
     stopBounce(); put(el, 0);
@@ -450,9 +471,10 @@ function rubberBand(sc, topEl, botEl) {
   // a box inside the list that scrolls up and down itself keeps the finger
   const innerY = t => { for (let e = t; e && e !== sc && e.nodeType === 1; e = e.parentElement) if (e.scrollHeight > e.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(e).overflowY)) return true; return false; };
   sc.addEventListener("touchstart", e => {
+    sc.__touchOwn = true;
     const caught = !!flingRaf;
     eatEnd(); stopFling(); stopBounce(); put(topEl, 0); put(botEl, 0);
-    if (e.touches.length !== 1 || innerY(e.target)) { pull = null; return; }
+    if (e.touches.length !== 1 || innerY(e.target) || (e.target.closest && e.target.closest(".wheel:not(.off)"))) { pull = null; return; } // a value wheel turns under the finger instead
     const t = e.touches[0];
     pull = { x: t.clientX, y: t.clientY, s0: sc.scrollTop, on: false, pts: [], caught, over: 0 };
   }, { passive: true });

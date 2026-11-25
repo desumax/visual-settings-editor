@@ -105,9 +105,27 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .ctl select, .ctl input[type=text], .ctl input[type=number], .ctl textarea {
   background: var(--m-c-highest); color: var(--m-on); border: 1px solid var(--m-outline-var); border-radius: var(--r-s); padding: 7px 10px; font: inherit; font-size: 13px; width: 100%; max-width: 100%;
 }
+/* a long list's button (choiceDialog), drawn like the boxes above, its choices in one of the editor's dialogs */
+.selbtn { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; background: var(--m-c-highest); color: var(--m-on); border: 1px solid var(--m-outline-var); border-radius: var(--r-s); padding: 7px 10px; font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
+.selbtn > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.selbtn svg { width: 18px; height: 18px; fill: currentColor; flex: none; opacity: .8; }
+.selbtn:disabled { opacity: .5; cursor: default; }
+.chlist { max-height: min(52vh, 420px); overflow-y: auto; margin: 4px -8px 12px; overscroll-behavior: contain; }
+.chopt { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 48px; padding: 0 12px; border: 0; border-radius: 14px; background: transparent; color: var(--m-on); font: inherit; font-size: 15px; text-align: left; cursor: pointer; }
+.chopt .rad { flex: none; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--m-on-var); box-sizing: border-box; position: relative; transition: border-color .15s; }
+.chopt[aria-selected="true"] .rad { border-color: var(--m-primary); }
+.chopt[aria-selected="true"] .rad::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--m-primary); animation: pop .22s var(--spring, ease-out); }
+.chopt:active { background: rgba(255,255,255,.06); }
+.theme-yt .chopt[aria-selected="true"] .rad { border-color: #3ea6ff; } .theme-yt .chopt[aria-selected="true"] .rad::after { background: #3ea6ff; }
+.theme-glass .chopt[aria-selected="true"] .rad { border-color: #fff; } .theme-glass .chopt[aria-selected="true"] .rad::after { background: #fff; }
 .ctl textarea { min-height: 54px; resize: vertical; font-family: var(--mono); font-size: 12px; }
 .fallback .ctl { flex-wrap: nowrap; }
 /* the shared list editor (speeds, filter words, whitelists): chips plus an add field */
+/* a list's names as toggles (listChoices in list.js), two to a line like a family of switches */
+.ctl.lch2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; margin-top: 8px; }
+.lchc { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; min-height: 34px; }
+.lchn { flex: 1; min-width: 0; font-size: 14px; color: var(--m-on); }
+.lch2 .lt7 { height: 30px; font-size: 11px; } .lch2 .lt7 > span { min-width: 30px; padding: 0 5px; }
 .ctl.lst, .fallback .ctl.lst { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; align-items: center; }
 /* every chip is as wide as the widest one (fitPills sets the columns); text centred, remove button at the end */
 .lchip { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px; min-width: 0; height: 30px; padding: 0 2px 0 8px; border-radius: 15px; background: var(--m-c-highest); color: var(--m-on); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; overflow: hidden; }
@@ -308,3 +326,53 @@ html:not(.touchwait) .actpill:active { filter: brightness(1.25); }
 .theme-m3 .group > :is(.row, .unit, .zgrid, .shared) { background-color: var(--m-c); border-radius: 22px; margin-bottom: 2px; overflow: hidden; }
 .theme-m3 .group > .row, .theme-m3 .group > .shared, .theme-m3 .group > .unit > .row:first-child, .theme-m3 .group > .zgrid, .theme-m3 .group > * + .zgrid, .theme-m3 .zgrid + * { border-top: 0; }
 .theme-m3 .group > .row.sel::before, .theme-m3 .group > .unit > .row.sel:first-child::before { top: 14px; bottom: 14px; }
+
+/* a focused field scrolled under the pinned preview hides its caret (list.js caretCheck) */
+#list .caretoff { caret-color: transparent !important; }
+
+/* ---------- value wheel (press.js wheelHTML): a drum of values turning about its level axis, upright at the
+   right side of the card and nearly as tall as it (it reaches into the card's padding), so the card keeps
+   the height its title and description give it ---------- */
+.ctl.whl { position: relative; }
+.row .ctl.side.whl { align-self: stretch; margin: -9px 0; }
+.ctl.whl .wsrc { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }
+.ctl.whl .val { display: none; }
+.wheel { position: relative; width: 58px; height: 100%; min-height: 50px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; outline: none; border-radius: 14px;
+  background: var(--m-c-highest); -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
+.wheel.turning { cursor: grabbing; }
+.wheel.off { opacity: .45; cursor: default; }
+.wheel:focus-visible { box-shadow: 0 0 0 2px var(--m-primary); }
+.wheel .wlens { position: absolute; left: 4px; right: 4px; top: 50%; height: 22px; translate: 0 -50%; border-radius: 8px; background: var(--m-secondary-c); }
+.wheel .wtrack { position: absolute; inset: 0; }
+.wheel .wi { position: absolute; left: 0; right: 0; top: 50%; margin-top: -9px; height: 18px; line-height: 18px; text-align: center; font-size: 14px; font-variant-numeric: tabular-nums; white-space: nowrap;
+  color: color-mix(in srgb, var(--m-on) calc(var(--wn, 0) * 100%), var(--m-on-var)); font-weight: calc(400 + var(--wn, 0) * 200); will-change: transform, opacity; }
+.wheel .wi.gone { display: none; }
+.theme-yt .wheel { background: #272727; }
+.theme-yt .wheel .wlens { background: #3f3f3f; }
+.theme-yt .wheel .wi { color: color-mix(in srgb, #f1f1f1 calc(var(--wn, 0) * 100%), #aaa); }
+/* glass: the drum is a clear capsule, its middle a lens, the values blur as they turn away */
+.theme-glass .wheel { background: var(--g-ctl, rgba(255,255,255,.08)); box-shadow: var(--g-ctl-edge, none); }
+.theme-glass .wheel .wlens { background: var(--g-knob-paint-top), var(--g-knob-tint); box-shadow: var(--g-thumb-edge); }
+.theme-glass .wheel .wi { filter: blur(var(--wb, 0px)); }
+/* the edit pill above the keyboard */
+.vpill { position: absolute; left: 12px; right: 12px; bottom: 10px; z-index: 80; display: flex; align-items: center; gap: 10px; padding: 8px 8px 8px 16px; border-radius: 28px;
+  background: var(--m-c-highest); color: var(--m-on); box-shadow: 0 6px 24px rgba(0,0,0,.45); }
+.vpill .vpt { flex: 1; min-width: 0; display: grid; }
+.vpill .vpt b { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vpill .vpt span { font-size: 11px; color: var(--m-on-var); }
+.vpill .vpin { width: 92px; height: 40px; box-sizing: border-box; border-radius: 20px; border: 1.5px solid var(--m-primary); background: transparent; color: inherit; font: inherit; font-size: 17px; text-align: center; font-variant-numeric: tabular-nums; outline: none; }
+.vpill.bad .vpin { border-color: var(--m-error); color: var(--m-error); }
+.vpill .vpok { width: 40px; height: 40px; border-radius: 50%; border: 0; background: var(--m-primary); display: grid; place-items: center; cursor: pointer; }
+.vpill .vpok svg { width: 22px; height: 22px; fill: var(--m-on-primary); }
+.theme-yt .vpill { background: #282828; }
+.theme-yt .vpill .vpin { border-color: #3ea6ff; }
+.theme-yt .vpill .vpok { background: #3ea6ff; }
+.theme-yt .vpill .vpok svg { fill: #0f0f0f; }
+.theme-glass .vpill { background: var(--gx-dlg, var(--g-dlg)); -webkit-backdrop-filter: var(--gx-dlg-fx, blur(24px)); backdrop-filter: var(--gx-dlg-fx, blur(24px)); box-shadow: var(--g-dlg-edge), 0 8px 28px rgba(0,0,0,.4); }
+.theme-glass .vpill .vpin { border-color: var(--g-fill); }
+.theme-glass .vpill .vpok { background: var(--g-fill); }
+body:has(#app.vediting) :is(#devTourBtn, #devTour) { visibility: hidden; }
+/* a dialog never runs past the screen (Max, Nov 25: popups were cut off at the top and bottom in landscape):
+   it is at most as tall as the space inside the scrim, and its contents scroll */
+.dlgscrim > .dlg { max-height: 100%; box-sizing: border-box; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+@media (orientation: landscape) and (max-height: 520px) { .dlgscrim { padding: 12px 24px; } }

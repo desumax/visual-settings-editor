@@ -224,32 +224,48 @@ youMenuScen("hide_account_menu_filter_strings", v => {
   return { sit: `Lines like ${ex.join(" and ")} remove those items`, gone: nameHit(ex) };
 });
 youMenuScen("hide_account_menu_downloads", on => ({ sit: "The You tab's menu", gone: t => !!on && t === "Downloads" }));
-// The comments carousel under a video (CommentsFilter.onCommentsLoaded: video_metadata_carousel). Its pages
-// have titles such as Comments, Ask, Community, Hype, Listen; with "Enable comments carousel filter" on,
-// every page whose title contains a line of "Comments carousel filter" is taken out (title.contains, case as
-// typed), and taking out every page hides the whole comments section. One picture for both settings, the
-// carousel's pages laid out two by two so all of them fit the small phone.
+// The comments carousel under a video (CommentsFilter.onCommentsLoaded: video_metadata_carousel): the comments
+// box is a row of pages you swipe sideways, titled Comments, Ask, Community, Hype, Listen. With "Enable comments
+// carousel filter" on, every page whose title contains a line of "Comments carousel filter" is taken out
+// (title.contains, case as typed); comments themselves are never filtered, and taking out every page hides
+// the whole comments section. Max (Nov 25): drawn as the swipeable row it is, the pages that go are marked
+// and removed, then a swipe runs through the pages that are left; no blue line.
 const CAROUSEL = [["comment", "Comments", "1.2K · Lovely build!"], ["spark", "Ask", "Ask about this video"], ["fire", "Hype", "Hype this video"], ["plist", "Community", "Fjord & Timber posted"]];
 function carouselScen(key, plan) {
   scen("comments", key, (box, v) => {
-    const { sit, gone } = plan(v);
-    situation(sit, true);
-    const cards = CAROUSEL.map(([i, t, sub]) => { const h = `<div style="min-width:0;padding:3px 4px;border-radius:4px;background:#272727;display:grid;gap:1px"><b style="display:flex;gap:1.5px;align-items:center;font-size:5.6px;white-space:nowrap">${ico7(i, 6)}${t}</b><span style="font-size:5px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</span></div>`; return gone(t) ? `<div class="tgt7" style="min-width:0">${h}</div>` : h; }).join("");
-    box.innerHTML = device("port", pageRows(player7(3) + `<b style="font-size:7px">Building a tiny cabin</b><div style="display:grid;grid-template-columns:1fr 1fr;gap:3px">${cards}</div>` + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats")));
-    markGone(box.querySelectorAll(".dev .tgt7"), true);
-    return "";
+    const { gone, cap } = plan(v);
+    const pages = CAROUSEL.map(([i, t, sub]) => `<div class="cpg7${gone(t) ? " tgt7 w7" : ""}" style="flex:none;width:72%;overflow:hidden"><div style="margin-right:4px;padding:4px 5px;border-radius:5px;background:#272727;display:grid;gap:2px"><b style="display:flex;gap:2px;align-items:center;font-size:6.5px;white-space:nowrap">${ico7(i, 7)}${t}</b><span style="font-size:5.5px;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</span></div></div>`).join("");
+    const left = CAROUSEL.filter(c => !gone(c[1])).length;
+    box.innerHTML = device("port", pageRows(player7(3) + `<b style="font-size:7px">Building a tiny cabin</b><div class="crs7" style="overflow:hidden"><div class="crt7" style="display:flex;transition:transform .45s var(--ease)">${pages}</div></div><div class="cdt7" style="display:flex;gap:2px;justify-content:center">${CAROUSEL.map((_, i) => `<i style="width:3px;height:3px;border-radius:50%;background:${i ? "#555" : "#f1f1f1"};transition:background .2s,width .3s,opacity .3s"></i>`).join("")}</div>` + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats")));
+    const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), W = dev.clientWidth;
+    markGone(dev.querySelectorAll(".tgt7"), true);
+    // the dots follow: one per page that is left
+    at(MARK_T.gone, () => dev.querySelectorAll(".cdt7 i").forEach((d, i) => { if (i >= left) { d.style.width = "0"; d.style.opacity = "0"; d.style.marginLeft = "-2px"; } }));
+    // a swipe through the pages that are left, one page at a time
+    const yOf = () => { const r = dev.querySelector(".crs7").getBoundingClientRect(), d = dev.getBoundingClientRect(); return (r.top - d.top + r.height / 2) / (d.width / W); };
+    const swipe = (n, t0) => {
+      at(t0, () => fingerTo(f, W * .8, yOf()));
+      at(t0 + 120, () => {
+        fingerTo(f, W * .3, yOf(), 380);
+        const p = [...dev.querySelectorAll(".cpg7")].filter(e => !e.classList.contains("gone7"))[n]; if (p) dev.querySelector(".crt7").style.transform = `translateX(${-p.offsetLeft}px)`;
+        dev.querySelectorAll(".cdt7 i").forEach((d, i) => d.style.background = i === n ? "#f1f1f1" : "#555");
+      });
+      at(t0 + 560, () => f.classList.remove("show"));
+    };
+    for (let n = 1; n < Math.min(left, 3); n++) swipe(n, 900 + (n - 1) * 750);
+    return ""; // no sentences under a redrawn animation (Max, Nov 25, permanent)
   });
 }
 const carouselNames = v => youFilter(v);
 carouselScen("hide_comments_carousel", on => {
   const own = carouselNames(V("morphe_hide_comments_carousel_filter_strings")), names = own.length ? own : ["Ask", "Hype"];
-  if (!on) return { sit: "The comments carousel under a video", gone: () => false };
-  return { sit: `${own.length ? "Filter" : "Filter, for example"}: ${names.join(", ")}`, gone: t => names.some(n => t.includes(n)) };
+  if (!on) return { cap: "Every page of the carousel stays", gone: () => false };
+  return { cap: `${names.join(" and ")} ${names.length > 1 ? "pages leave" : "page leaves"} the carousel`, gone: t => names.some(n => t.includes(n)) };
 });
 carouselScen("hide_comments_carousel_filter_strings", v => {
   const names = carouselNames(v);
-  if (names.length) return { sit: `Filter: ${names.join(", ")}`, gone: t => names.some(n => t.includes(n)) };
-  return { sit: "Lines like Ask and Hype take those pages out", gone: t => t === "Ask" || t === "Hype" };
+  if (names.length) return { cap: `Pages titled ${names.join(", ")} leave the carousel`, gone: t => names.some(n => t.includes(n)) };
+  return { cap: "Lines like Ask and Hype take those pages out", gone: t => t === "Ask" || t === "Hype" };
 });
 hidePage("feed", "hide_album_cards", "Searching for an artist", search7("midnight tapes", tgt7(`<div style="display:flex;gap:4px;align-items:center;padding:3px;border-radius:3px;background:#1b1b1b"><div style="width:22px;height:22px;background:${ART[6]};border-radius:2px"></div><div style="font-size:6.5px">Neon Fjord<div style="font-size:5.5px;color:#aaa">Album · 2025</div></div></div>`) + row7(2, "Midnight Tapes live") + row7(3, "Lo-fi to study to")));
 hidePage("feed", "hide_artist_cards", "Searching for an artist", search7("midnight tapes", tgt7(`<div style="display:flex;gap:5px;align-items:center;padding:3px;border-radius:3px;background:#1b1b1b"><span style="width:22px;height:22px;border-radius:50%;background:${AV[4]}"></span><div style="font-size:6.5px">Midnight Tapes<div style="font-size:5.5px;color:#aaa">Artist · 1.1M subscribers</div></div></div>`) + row7(2, "Midnight Tapes live") + row7(3, "Lo-fi to study to")));
@@ -419,19 +435,37 @@ scen("look", "fix_status_bar_layout", (box, on) => {
 // Morphe: "Morphe messages, such as the confirmation of a player button, are shown in the YouTube snackbar
 // instead of a popup". Off is the popup (an Android toast), On is YouTube's own snackbar. The two sides
 // used to be the other way round, and showed a YouTube message instead of a Morphe one (audit, Nov 24).
+// Drawn from NativeSnackbarPatch: On runs the command a server response uses (AddToToastAction), so the
+// message is YouTube's own snackbar: a bar the width of the screen less its margins, sliding up from the
+// bottom and resting right on the navigation bar (Morphe removes the extra room YouTube left under it),
+// shown for YouTube's fixed time, one message at a time. Off is Android's toast: a small pill with the app
+// icon, floating well above the bottom, fading in and out. No lines (Max, Nov 25): the phones tell it.
+// Show messages in YouTube snackbar (NativeSnackbarPatch): On, YouTube's own snackbar (AddToToastAction) rests
+// right on the navigation bar; Off, Android's toast with the app's icon. Copying the link three times in a
+// row (Max, Nov 25 14:35: loop it 3x, 10% faster). Each message comes in and goes with its own animation
+// (WAAPI: the On side's transition used to start late and leave the bar half under the navigation bar).
+const SNACK_LOOP = 2900, SNACK_N = 3; // one copy and its message, 10% quicker than the 3.2 s it was
 scen("look", "native_snackbar", (box, on) => {
-  situation("Tapping Morphe's Copy link button in the player");
   box.innerHTML = device("port", watch7(`<span class="cl7" style="position:absolute;right:4px;top:4px;display:grid;place-items:center;width:11px;height:11px;border-radius:50%;background:rgba(0,0,0,.55)">${ico7("link", 7)}</span>`) + nav7());
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger");
-  at(250, () => fingerOn(dev, f, dev.querySelector(".cl7"))); at(600, () => tapF(f));
-  at(850, () => {
-    f.classList.remove("show");
-    dev.insertAdjacentHTML("beforeend", on
-      ? `<div class="chg7" data-stay style="position:absolute;left:4px;right:4px;bottom:20px;padding:4px 6px;border-radius:5px;background:#f1f1f1;color:#0f0f0f;font-size:6.5px;line-height:1.2;animation:sheetup .25s">Link copied to clipboard</div>`
-      : `<div class="chg7" data-stay style="position:absolute;left:50%;bottom:26px;translate:-50% 0;width:max-content;max-width:86%;padding:3px 8px;border-radius:9px;background:#3a3a3a;color:#fff;font-size:6px;line-height:1.2;display:flex;gap:3px;align-items:center;animation:ghostin .25s"><span style="width:7px;height:7px;border-radius:2px;background:#1E5AA8;flex:none"></span>Link copied to clipboard</div>`);
-  });
-  return on ? "The message uses YouTube's snackbar bar" : "The message is a popup over the app (stock)";
+  const msg = on
+    ? `<div class="msg7" style="position:absolute;left:4px;right:4px;bottom:17px;z-index:3;padding:5px 6px;border-radius:4px;background:#f1f1f1;color:#0f0f0f;font-size:6.5px;line-height:1.2;box-shadow:0 2px 6px rgba(0,0,0,.4);opacity:0">Link copied to clipboard</div>`
+    : `<div class="msg7" style="position:absolute;left:50%;bottom:34px;translate:-50% 0;z-index:3;width:max-content;max-width:86%;padding:3px 8px 3px 4px;border-radius:9px;background:#3a3a3a;color:#fff;font-size:6px;line-height:1.2;display:flex;gap:4px;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.4);opacity:0"><span style="width:8px;height:8px;border-radius:50%;background:#ff0033;flex:none;display:grid;place-items:center">${ico7("play", 5)}</span>Link copied to clipboard</div>`;
+  const shown = on ? [{ transform: "translateY(6px)", opacity: 0 }, { transform: "none", opacity: 1 }] : [{ opacity: 0 }, { opacity: 1 }];
+  for (let r = 0; r < SNACK_N; r++) {
+    const t = r * SNACK_LOOP;
+    at(t + 220, () => fingerOn(dev, f, dev.querySelector(".cl7"))); at(t + 540, () => tapF(f));
+    at(t + 765, () => {
+      f.classList.remove("show"); dev.querySelector(".msg7")?.remove();
+      dev.insertAdjacentHTML("beforeend", msg);
+      dev.querySelector(".msg7").animate(shown, { duration: on ? 250 : 220, easing: "cubic-bezier(.2, .8, .3, 1)", fill: "forwards" });
+    });
+    // YouTube's snackbar and the toast both go after a short while: the bar slides back down, the toast fades
+    at(t + 2500, () => { const m = dev.querySelector(".msg7"); if (m) m.animate([...shown].reverse(), { duration: 200, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" }); });
+  }
+  return "";
 });
+SCN_HOLD.morphe_native_snackbar = SNACK_LOOP * SNACK_N + 200; // all three messages, each with its going
 hidePage("look", "override_youtube_music_buttons", "Tapping a YouTube Music link", feed7(big7(6, "Midnight Tapes · Neon Fjord")) + tgt7(`<div style="padding:3px;border-radius:4px;background:#1b1b1b;font-size:6px;display:flex;gap:3px;align-items:center">${ico7("music", 7, "#ff0033")}Opens your preferred music app</div>`), { invert: true, shown: "Music buttons open your preferred music app", hidden: "Music buttons open the stock YouTube Music (stock)" });
 hidePage("look", "settings_search_history", "Searching in settings", search7("speed", `<div style="display:grid;gap:3px">${tgt7(item7("clock", "seekbar"))}${tgt7(item7("clock", "captions"))}${item7("gear", "Playback speed")}</div>`), { invert: true, shown: "Your recent settings searches are listed", hidden: "No search history (stock)" });
 // Show Morphe setting icons: the icons beside the sections of Morphe's own settings screen (not YouTube's
@@ -449,17 +483,15 @@ scen("look", "show_menu_icons", (box, on) => {
   return on ? "Each Morphe settings section has its icon" : "Morphe settings sections are text only";
 });
 scen("look", "spoof_app_version", (box, on) => {
-  situation("Pretending to be an older YouTube"); // no blue line (Max, Nov 20)
   // the version YouTube really is (the preview's version), and the older one it is told; what comes back
   // is said in Morphe's own words for that choice ("21.11.48 - Restore old captions behavior")
   const ents = entriesFor("morphe_spoof_app_version_target"), cur = V("morphe_spoof_app_version_target");
   const ent = ents.find(e => sameVal(e.value, cur)) || ents[0] || { value: "19.01.34", label: "" };
-  const what = String(ent.label).split(" - ")[1] || "Old layout comes back";
   box.innerHTML = device("port", pageRows(top7("Settings", ["search"]) + `<div style="display:grid;gap:3px;font-size:6.5px"><div>About</div><div style="color:#aaa">App version YouTube sees</div><b class="v7 chg7" style="font-size:8px;transition:opacity .25s">${ytVersion}</b></div>` + feed7(big7(3, ""))));
   const dev = box.querySelector(".dev"), v = dev.querySelector(".v7");
   at(300, () => { if (!on) return; v.style.opacity = 0; later(() => { v.textContent = ent.value; v.style.opacity = 1; }, 260); });
-  at(900, () => { if (on) toast7(dev, what, "82%"); });
-  return on ? "YouTube serves the layout of the chosen version" : "YouTube sees the real version (stock)";
+  // (no message pill naming what the version brings back, Max, Nov 25: the version shown is the story)
+  return "";
 });
 // Morphe: "Use the theme color for text and icons". Stock keeps text and icons white; on, they take the theme colour.
 scen("look", "theme_color_change_foreground", (box, on) => {
@@ -598,11 +630,10 @@ scen("comments", "sanitize_comments_highlighted_search_links", (box, on) => {
   return on ? "Words in comments are plain text, not search links" : "YouTube turns some words into search links (stock)";
 });
 scen("shorts", "disable_shorts_resuming_on_startup", (box, on) => {
-  situation("Opening the app after watching Shorts", true);
   box.innerHTML = device("port", `<div style="position:absolute;inset:0;display:grid;place-items:center;background:#000"><div style="width:24px;height:17px;border-radius:5px;background:#ff0033;display:grid;place-items:center">${ico7("play", 10)}</div></div>`);
   const dev = box.querySelector(".dev");
   at(700, () => { dev.innerHTML = on ? pageRows(feed7(big7(3, "Building a tiny cabin") + row7(4, "Night train to Bodø"))) + nav7() : `<div style="position:absolute;inset:0;background:${ART[5]}"></div><div style="position:absolute;right:4px;bottom:20px;display:grid;gap:4px">${ico7("like", 10)}${ico7("comment", 10)}${ico7("share", 10)}</div>` + nav7(); });
-  return on ? "The app opens on Home" : "The app reopens straight into Shorts (stock)";
+  return ""; // no lines (Max, Nov 25): the phones show where the app opens
 });
 for (const [k, where, page] of [
   ["hide_shorts_channel", "A channel page", top7("Fjord & Timber", ["search", "more"]) + `<div style="display:flex;gap:6px;font-size:6px"><span>Videos</span><span>Live</span></div>`],
@@ -653,20 +684,40 @@ scen("shorts", "skip_live_shorts", (box, on) => {
   return on ? "Live streams in the Shorts feed are skipped" : "Live streams show up between Shorts (stock)";
 });
 // Morphe (QuickActionsMarginPatch): the quick actions container under the fullscreen seekbar gets a top
-// margin of this many dp. The row stays at the bottom of the screen, so the space opens above it: the
-// seekbar and time go up. Drawn larger than true size (a 92 px phone), with the gap measured.
+// margin of this many dp (Math.round(dp * density) px; 0 leaves YouTube's own). The row stays at the bottom
+// of the screen, so the space opens above it: the seekbar and time go up. True to scale: the drawn phone is
+// a landscape phone 412 dp tall (Realme GT 8 Pro), so a dp is its height / 412 px (Max, Nov 25: match the
+// scale). The dp label sits on the row's line, right of the buttons, so it never crosses the seekbar.
 scen("watch", "quick_actions_top_margin", (box, v) => {
-  situation("Fullscreen: the seekbar over the quick actions", true);
-  const m = Number(v) || 0, px = dp => Math.round(dp * .45);
+  // no blue or white lines (Max, Nov 25): the drawing and the dp labels say it
+  const m = Number(v) || 0, live = scLive;
   const qa = ["like", "dislike", "comment", "save", "share", "plist"].map(n => `<span style="flex:none;display:grid;place-items:center;width:15px;height:10px;border-radius:5px;background:rgba(255,255,255,.16)">${ico7(n, 6, "#fff")}</span>`).join("");
   box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div><div style="position:absolute;inset:0;background:linear-gradient(transparent 45%,rgba(0,0,0,.55))"></div>
-    <div class="up7" style="position:absolute;left:8px;right:8px;bottom:19px;transition:translate .5s var(--ease)"><b style="display:block;font-size:5.5px;margin-bottom:2px">21:40 / 41:05</b><div style="height:2px;border-radius:1px;background:rgba(255,255,255,.35)"><div style="width:52%;height:100%;background:#f00;border-radius:1px"></div></div></div>
-    <div class="gap7" style="position:absolute;right:4px;bottom:19px;width:2px;height:0;border:solid #ffd21f;border-width:1px 0;background:linear-gradient(#ffd21f,#ffd21f) center/1px 100% no-repeat;transition:height .5s var(--ease);opacity:${m ? 1 : 0}"></div>
+    <div class="up7" style="position:absolute;left:8px;right:8px;bottom:19px"><b style="display:block;font-size:5.5px;margin-bottom:2px">21:40 / 41:05</b><div style="height:2px;border-radius:1px;background:rgba(255,255,255,.35)"><div style="width:52%;height:100%;background:#f00;border-radius:1px"></div></div></div>
+    <div class="gap7" style="position:absolute;right:4px;bottom:19px;width:2px;height:0;border:solid #ffd21f;border-width:1px 0;background:linear-gradient(#ffd21f,#ffd21f) center/1px 100% no-repeat;box-sizing:border-box;opacity:0"></div>
     <div style="position:absolute;left:8px;right:8px;bottom:4px;display:flex;gap:3px">${qa}</div>`);
   const dev = box.querySelector(".dev"), up = dev.querySelector(".up7"), gap = dev.querySelector(".gap7");
-  // the margin opens on its side as you watch; the default side has none
-  if (m) at(350, () => { up.style.translate = `0 -${px(m)}px`; gap.style.height = px(m) + "px"; dev.insertAdjacentHTML("beforeend", `<b class="new7" style="position:absolute;right:9px;bottom:${19 + px(m) / 2}px;translate:0 50%;font-size:5.5px;color:#ffd21f">${m} dp</b>`); });
-  return m ? `${m} dp of space above the quick actions` : "The seekbar sits right on the quick actions (stock)";
+  const k = dev.clientHeight / 412, px = dp => dp * k;
+  // the space at a size in dp, with the yellow measure beside it (only while there is a space)
+  const set = dp => { up.style.translate = `0 -${px(dp)}px`; gap.style.height = px(dp) + "px"; gap.style.opacity = dp > .5 ? 1 : 0; };
+  const label = () => { if (m) dev.insertAdjacentHTML("beforeend", `<b class="new7" style="position:absolute;right:4px;bottom:5px;font-size:5px;line-height:8px;color:#ffd21f">${m} dp</b>`); };
+  // while the slider moves the space follows the finger, gliding on from where it is drawn right now (the
+  // 24 dp example when the drag starts at the default); otherwise it opens on its side as you watch
+  const g = liveGlide("morphe_quick_actions_top_margin", m);
+  if (live) {
+    set(m); label();
+    if (g && Math.abs(g[0] - m) > .05) {
+      const o = { duration: LIVE_GLIDE_MS, easing: LIVE_GLIDE_EASE };
+      up.animate([{ translate: `0 -${px(g[0])}px` }, { translate: `0 -${px(m)}px` }], o);
+      gap.animate([{ height: px(g[0]) + "px", opacity: g[0] > .5 ? 1 : 0 }, { height: px(m) + "px", opacity: m ? 1 : 0 }], o);
+    }
+  } else if (m) at(350, () => {
+    const o = { duration: 520, easing: "cubic-bezier(.2,.8,.2,1)" };
+    set(m); label();
+    up.animate([{ translate: "0 0" }, { translate: `0 -${px(m)}px` }], o);
+    gap.animate([{ height: "0px", opacity: 0 }, { height: px(m) + "px", opacity: 1 }], o);
+  });
+  return "";
 });
 scen("fullscreen", "swipe_ignore_when_locked", (box, on) => {
   situation("Swiping while the screen is locked"); // no blue line (Max, Nov 20)
@@ -887,10 +938,10 @@ scen("playback", "on_the_go", (box, on) => {
   return "Morphe's panel";
 });
 // Sanitize video subtitle: no animation (Max, 2026-11-19)
-// Morphe's download items in the ⋮ menu of a video in the feed, and in the Shorts menu (on a Short)
+// Morphe's download item in the ⋮ menu of a video in the feed
 const dlMenu7 = (icon, text) => `<div style="background:#212121;border-radius:6px 6px 0 0;padding:4px;display:grid;gap:1px">${item7("plist", "Save to playlist")}${tgt7(item7(icon, text))}${item7("share", "Share")}</div>`;
 hidePage("feed", "feed_download_flyout_button", "", feed7(big7(3, "Building a tiny cabin")) + `<div style="margin:0 -6px -6px">${dlMenu7("dl", "Download with your app")}</div>`, { invert: true });
-hidePage("shorts", "shorts_download_flyout_button", "", short7(5) + `<div style="position:absolute;left:0;right:0;bottom:0;z-index:2;font-size:7px">${dlMenu7("dl", "Download this Short")}</div>`, { invert: true, raw: true });
+// Download in Shorts menu: the live Shorts menu sheet shows it (scenarios.js SHORTS_SHEET), as on the phone
 scen("miniplayer", "seek_notification_media_prev_next", (box, on) => {
   box.innerHTML = device("port", `<div style="position:absolute;inset:0;background:#1b1b1b"></div><div style="position:absolute;left:4px;right:4px;top:10px;padding:4px;border-radius:6px;background:#2a2a2a;font-size:6px;display:grid;gap:3px"><b>Building a tiny cabin</b><div style="display:flex;justify-content:space-around" class="nb7"></div></div>`);
   const dev = box.querySelector(".dev");
@@ -1245,6 +1296,9 @@ function buildMembers() {
   for (const k in A) if (PREF[k] && MEMBERS[A[k].section] && inVersion(k)) { MEMBERS[A[k].section].live.push(k); assigned.add(k); }
   for (const p of CAT.preferences) {
     if (assigned.has(p.key) || !inVersion(p.key) || p.type === "screen") continue; // sub-screen links are navigation, not settings
+    // the settings' own top row (Morphe's "About": version and links, above every screen) is no setting of
+    // any tab; the catalogue had filed it under Shorts, where it did nothing (Max, Nov 25)
+    if (p.locationConfidence === "root") continue;
     const s = SECTIONS.find(s => s.id === MISC_HOME[p.key]) || SECTIONS.find(s => s.scopes && inScope(p, s.scopes));
     (s ? MEMBERS[s.id].misc : MEMBERS.misc.misc).push(p.key);
   }
@@ -1347,56 +1401,69 @@ function placeLabel(id) {
 // Read from NiconicoCommentsController / YouTubeChatSource / NiconicoCommentsOverlayView (Max, Nov 24: each of
 // these gets its own animation; the others under it, such as Max refresh rate, can't be drawn and don't flash).
 const NICO7 = ["8888888", "the stove!!", "cosy", "wow", "need this cabin", "lol", "草"];
-// one comment flies right to left across the area (.na7), in a lane, at its own pace
+// The size, pace, area and opacity every flying-comment story draws with, read from the settings (Max, Nov 25:
+// the stories ignored the Display area slider). NiconicoCommentsController: in portrait, with "Separate
+// settings for portrait" on, the portrait font size, travel duration and display area are used instead.
+// 20 sp is 6 px in a story phone and a 7 s flight is 2.4 s, the pace the stories were drawn at.
+function nicoCfg(portrait, over = {}, force) {
+  const P = force || portrait && V("morphe_niconico_comments_portrait") && V("morphe_niconico_comments_separate_portrait");
+  const g = (k, d) => { const v = Number(over[k] ?? V("morphe_niconico_comments_" + (P ? "portrait_" : "") + k)); return Number.isFinite(v) && v > 0 ? v : d; };
+  return { fs: 6 * g("font_size", 20) / 20, ms: Math.round(2400 * g("travel_duration", 7) / 7), area: Math.min(100, g("display_area", 100)), op: Math.min(1, (Number(V("morphe_niconico_comments_opacity")) || 100) / 100) };
+}
+// the layer comments fly in: the top part of the video the display area allows (dashed when it is not all of it)
+const naLayer = (c = nicoCfg(false), css = "") => `<div class="na7" data-fs="${c.fs}" data-ms="${c.ms}" style="position:absolute;left:0;right:0;top:0;height:${c.area}%;overflow:hidden;opacity:${c.op};${c.area < 100 ? "outline:1px dashed rgba(255,255,255,.3);outline-offset:-1px;" : ""}${css}"></div>`;
+// after a turn, the layer takes the other orientation's values
+function naApply(dev, c) { const a = dev.querySelector(".na7"); if (!a) return; a.dataset.fs = c.fs; a.dataset.ms = c.ms; a.style.height = c.area + "%"; a.style.outline = c.area < 100 ? "1px dashed rgba(255,255,255,.3)" : ""; }
+// how many lanes of comments fit the layer
+const naLanes = (area, fs) => Math.max(1, Math.floor((area.clientHeight - 2) / (fs * 1.25)));
+// one comment flies right to left across the area (.na7), in a lane (taken modulo the lanes that fit), at the
+// layer's size and pace unless the story gives its own (o.k scales them, for a small window)
 function nico7(area, text, lane, o = {}) {
   if (!area || !area.isConnected) return null;
-  const fs = o.fs || 6, e = document.createElement("span");
+  const k = o.k || 1, fs = o.fs || (Number(area.dataset.fs) || 6) * k, e = document.createElement("span");
   e.className = "nc7"; e.textContent = text;
-  e.style.cssText = `position:absolute;left:100%;top:${2 + lane * fs * 1.25}px;white-space:nowrap;font-size:${fs}px;font-weight:700;color:${o.color || "#fff"};text-shadow:0 0 2px #000,0 0 2px #000;${o.css || ""}`;
+  e.style.cssText = `position:absolute;left:100%;top:${2 + (lane % naLanes(area, fs)) * fs * 1.25}px;white-space:nowrap;font-size:${fs}px;font-weight:700;color:${o.color || "#fff"};text-shadow:0 0 2px #000,0 0 2px #000;${o.css || ""}`;
   area.appendChild(e);
   const w = area.clientWidth + e.offsetWidth + 4;
-  const a = e.animate([{ transform: "translateX(0)" }, { transform: `translateX(-${w}px)` }], { duration: o.ms || 2400, easing: "linear" });
+  const a = e.animate([{ transform: "translateX(0)" }, { transform: `translateX(-${w}px)` }], { duration: o.ms || (Number(area.dataset.ms) || 2400) * (o.k ? .8 : 1), easing: "linear" });
   a.onfinish = () => e.remove();
   return e;
 }
 // a stream of comments, one every `gap` ms from `from`, lanes taken in turn
-function nicoRun(dev, list, { from = 250, gap = 330, lanes = 3, fs, ms, area = ".na7" } = {}) {
-  list.forEach((t, i) => at(from + i * gap, () => nico7(dev.querySelector(area), t, i % lanes, { fs, ms })));
+function nicoRun(dev, list, { from = 250, gap = 330, lanes = 3, fs, ms, k, area = ".na7" } = {}) {
+  list.forEach((t, i) => at(from + i * gap, () => nico7(dev.querySelector(area), t, i % lanes, { fs, ms, k })));
 }
-const naLayer = (css = "") => `<div class="na7" style="position:absolute;left:0;right:0;top:0;bottom:0;overflow:hidden;${css}"></div>`;
 const badge7n = (t, bg) => `<span style="position:absolute;left:5px;top:5px;z-index:2;padding:1px 4px;border-radius:3px;background:${bg};font-size:5.5px;font-weight:700">${t}</span>`;
 // YouTubeChatSource: a video's kind decides whether its chat flies (live stream, Premiere playing, ended Premiere)
-for (const [key, sit, badge, bg, on1, off1] of [
-  ["niconico_comments_live_streams", "A live stream", "● LIVE", "#cc0000", "The live chat flies across the video", "No flying comments on live streams"],
-  ["niconico_comments_live_premieres", "A Premiere that is playing now", "PREMIERE", "#3a3a3a", "The Premiere's chat flies across the video", "No flying comments while a Premiere plays"],
-  ["niconico_comments_ended_premieres", "A Premiere that has ended, with its chat replay", "Premiered 2 days ago", "rgba(0,0,0,.6)", "Its chat replay flies across the video", "No flying comments on ended Premieres"]]) {
+for (const [key, badge, bg, on1, off1] of [
+  ["niconico_comments_live_streams", "● LIVE", "#cc0000", "The live chat flies across the video", "No flying comments on live streams"],
+  ["niconico_comments_live_premieres", "PREMIERE", "#3a3a3a", "The Premiere's chat flies across the video", "No flying comments while a Premiere plays"],
+  ["niconico_comments_ended_premieres", "Premiered 2 days ago", "rgba(0,0,0,.6)", "Its chat replay flies across the video", "No flying comments on ended Premieres"]]) {
   scen("danmaku", key, (box, on) => {
-    situation(sit, true);
     box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div>${badge7n(badge, bg)}${naLayer()}`);
     const dev = box.querySelector(".dev");
-    if (on) nicoRun(dev, NICO7); else at(300, () => toast7(dev, "No flying comments", "50%"));
+    if (on) nicoRun(dev, NICO7); else at(300, () => toast7(dev, "No flying comments", "80%"));
     return on ? on1 : off1;
   });
 }
 // NiconicoCommentsOverlayView.setHideCrowdedComments: when every lane of the display area is taken, a new
 // comment is dropped instead of being drawn over the others
 scen("danmaku", "niconico_comments_hide_crowded", (box, on) => {
-  situation("A busy chat, the display area set small", true);
-  box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div>${naLayer("bottom:auto;height:34%;outline:1px dashed rgba(255,255,255,.3)")}`);
-  const dev = box.querySelector(".dev"), area = () => dev.querySelector(".na7");
-  // eight comments in a burst, two lanes: the first two take the lanes, the rest arrive while they are full
-  const burst = ["8888888", "the stove!!", "cosy", "wow", "need this cabin", "lol", "草", "nice"];
-  burst.forEach((t, i) => at(250 + i * 140, () => {
-    if (!on || i < 2) return void nico7(area(), t, i % 2, { ms: 2600 });
-    if (i < 4) { const e = nico7(area(), t, i % 2, { ms: 2600, css: "opacity:.25" }); if (e) e.animate([{ opacity: .9 }, { opacity: 0 }], { duration: 420, fill: "forwards" }); } // dropped: a ghost that fades at the edge
+  box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div>${naLayer()}`);
+  const dev = box.querySelector(".dev"), area = () => dev.querySelector(".na7"), n = naLanes(area(), Number(area().dataset.fs) || 6);
+  // a burst: the first comments take every lane, the rest arrive while they are full
+  const pool = ["8888888", "the stove!!", "cosy", "wow", "need this cabin", "lol", "草", "nice", "so calm", "cabin goals", "88888", "the snow!"];
+  const burst = Array.from({ length: n + Math.min(6, n + 2) }, (_, i) => pool[i % pool.length]), drop = burst.length - n;
+  burst.forEach((t, i) => at(250 + i * Math.max(60, 140 * 2 / n), () => {
+    if (!on || i < n) return void nico7(area(), t, i % n, { ms: 2600 });
+    if (i < n + 2) { const e = nico7(area(), t, i % n, { ms: 2600, css: "opacity:.25" }); if (e) e.animate([{ opacity: .9 }, { opacity: 0 }], { duration: 420, fill: "forwards" }); } // dropped: a ghost that fades at the edge
   }));
-  at(1700, () => toast7(dev, on ? "Full: 6 dropped, none overlap" : "Comments pile on each other", "72%"));
+  at(1700, () => toast7(dev, on ? `Full: ${drop} dropped, none overlap` : "Comments pile on each other", "72%"));
   return on ? "When the area is full, new comments are dropped" : "New comments are drawn over the others (stock)";
 });
 // NiconicoCommentsController: a comment longer than the limit is never shown (100 is "no limit")
 scen("danmaku", "niconico_comments_max_length", (box, v) => {
   const max = Number(v) || 100, none = max >= 100;
-  situation("A long comment in the chat", true);
   box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div>${naLayer()}`);
   const dev = box.querySelector(".dev"), long = "the most relaxing cabin build I have seen in my whole life";
   ["cosy", long, "wow", "8888888"].forEach((t, i) => at(250 + i * 380, () => {
@@ -1408,59 +1475,121 @@ scen("danmaku", "niconico_comments_max_length", (box, v) => {
 });
 // NiconicoCommentsController: in picture-in-picture the comments are drawn scaled down to fit the window
 scen("danmaku", "niconico_comments_pip", (box, on) => {
-  situation("Picture-in-picture over the home screen", true);
   box.innerHTML = device("port", pageRows(feed7(row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats") + row7(5, "Aurora timelapse"))) + `<div style="position:absolute;right:4px;bottom:22px;width:52px;height:30px;border-radius:3px;overflow:hidden;background:${ART[3]};box-shadow:0 2px 6px rgba(0,0,0,.6);z-index:3">${naLayer()}</div>`);
   const dev = box.querySelector(".dev");
-  if (on) nicoRun(dev, NICO7.slice(0, 5), { fs: 3.6, lanes: 4, ms: 1900 }); else at(400, () => toast7(dev, "No comments in the window", "40%"));
+  if (on) nicoRun(dev, NICO7.slice(0, 5), { k: .6, lanes: 4 }); else at(400, () => toast7(dev, "No comments in the window", "40%"));
   return on ? "The comments shrink to fit the window" : "No comments in picture-in-picture";
 });
 // NiconicoCommentsController.shouldShow: in portrait only with "Show in portrait"; in landscape always
 scen("danmaku", "niconico_comments_portrait", (box, on) => {
-  situation("Turning the phone upright", true);
   box.innerHTML = device("land", playerArea(3, naLayer()));
   const dev = box.querySelector(".dev");
   nicoRun(dev, NICO7.slice(0, 3), { gap: 300 });
-  at(1300, () => turn(dev, "port"));
-  if (on) nicoRun(dev, NICO7.slice(3), { from: 2000, gap: 300, fs: 4.5, ms: 1800 });
+  at(1300, () => turn(dev, "port", () => naApply(dev, nicoCfg(true))));
+  if (on) nicoRun(dev, NICO7.slice(3), { from: 2000, gap: 300, k: .75 });
   else at(2000, () => toast7(dev, "Only in landscape", "60%"));
   return on ? "Comments keep flying in portrait" : "Comments stop when the phone is upright";
 });
 // NiconicoCommentsController.usesPortraitSettings: portrait uses its own font size, travel duration and
-// display area (the "in portrait" settings) instead of the landscape ones
+// display area (the "in portrait" settings) instead of the landscape ones. The turn is 20% quicker than the
+// others (Max, Nov 25).
 scen("danmaku", "niconico_comments_separate_portrait", (box, on) => {
-  situation("Turning the phone upright", true);
   box.innerHTML = device("land", playerArea(3, naLayer()));
-  const dev = box.querySelector(".dev");
-  const fsL = Number(V("morphe_niconico_comments_font_size")) || 20, fsP0 = Number(V("morphe_niconico_comments_portrait_font_size")) || 20;
-  const fsP = on ? (fsP0 === fsL ? Math.round(fsL * .6) : fsP0) : fsL; // the same values: an example of a smaller portrait size
-  const durP = on ? (Number(V("morphe_niconico_comments_portrait_travel_duration")) || 7) : (Number(V("morphe_niconico_comments_travel_duration")) || 7);
-  const areaP = on ? (Number(V("morphe_niconico_comments_portrait_display_area")) || 100) : (Number(V("morphe_niconico_comments_display_area")) || 100);
+  const dev = box.querySelector(".dev"), L = nicoCfg(false), P0 = nicoCfg(true, {}, true);
+  // the same values in portrait: an example of a smaller portrait size, so the two sides differ
+  const P = on ? { ...P0, fs: P0.fs === L.fs ? L.fs * .6 : P0.fs } : L, sp = c => Math.round(c.fs * 20 / 6);
   nicoRun(dev, NICO7.slice(0, 3), { gap: 300 });
-  at(1300, () => turn(dev, "port"));
-  at(1900, () => { const a = dev.querySelector(".na7"); if (a) a.style.bottom = (100 - areaP) + "%"; });
+  at(1300, () => turn(dev, "port", () => naApply(dev, P), MOVE_MS * .8));
   // the landscape size in the small portrait player reads as big; its own size fits it
-  nicoRun(dev, NICO7.slice(3), { from: 2000, gap: 320, fs: 6 * fsP / fsL, ms: 260 * durP, lanes: 2 });
-  at(2300, () => toast7(dev, on ? `Portrait: ${fsP} sp, its own` : `Portrait: ${fsL} sp, as landscape`, "78%"));
+  nicoRun(dev, NICO7.slice(3), { from: 1900, gap: 320, lanes: 2 });
+  at(2200, () => toast7(dev, on ? `Portrait: ${sp(P)} sp, its own` : `Portrait: ${sp(L)} sp, as landscape`, "78%"));
   return on ? "Portrait gets its own size, speed and area" : "Portrait uses the landscape size, speed and area";
 });
 SCN_HOLD.morphe_niconico_comments_portrait = SCN_HOLD.morphe_niconico_comments_separate_portrait = 3800;
+// The three "in portrait" sliders (Max, Nov 25: they did nothing): the upright player with comments flying at
+// the slider's value, the other portrait values as set
+for (const [k, other, unit] of [["portrait_font_size", 12, " sp"], ["portrait_travel_duration", 4, " s"], ["portrait_display_area", 50, "%"]]) {
+  const key = "morphe_niconico_comments_" + k;
+  DUO_OTHER[key] = other; DUO_UNIT[key] = unit;
+  scen("danmaku", "niconico_comments_" + k, (box, v) => {
+    box.innerHTML = device("port", playerArea(3, naLayer(nicoCfg(true, { [k.slice(9)]: v }, true))));
+    nicoRun(box.querySelector(".dev"), NICO7, { gap: 300 });
+    return "";
+  });
+}
 // YouTubeChatSource: on a video without a chat, top comments with a time in them (1:23) fly at that time
 scen("danmaku", "niconico_comments_timed_comments", (box, on) => {
-  situation("A video without a chat, a comment says 1:23", true);
-  box.innerHTML = device("port", playerArea(3, naLayer() + `<b class="tc7" style="position:absolute;left:4px;bottom:3px;font-size:5.5px;text-shadow:0 0 2px #000">1:20</b>`));
+  box.innerHTML = device("port", playerArea(3, naLayer(nicoCfg(true)) + `<b class="tc7" style="position:absolute;left:4px;bottom:3px;font-size:5.5px;text-shadow:0 0 2px #000">1:20</b>`));
   const dev = box.querySelector(".dev"), below = dev.querySelector(".dv-below");
   below.style.cssText = "font-size:6px;gap:4px;padding:5px"; below.innerHTML = `<b style="font-size:6.5px">Comments</b>${cmt7(2, `<span style="color:#3ea6ff">1:23</span> the stove is lit!`)}${cmt7(5, "Lovely build")}`;
   [21, 22, 23].forEach((s, i) => at(450 + i * 450, () => { const t = dev.querySelector(".tc7"); if (t) t.textContent = "1:" + s; }));
-  at(1350, () => { if (on) nico7(dev.querySelector(".na7"), "the stove is lit!", 1, { ms: 2200, fs: 5 }); else toast7(dev, "Nothing flies", "22%"); });
+  at(1350, () => { if (on) nico7(dev.querySelector(".na7"), "the stove is lit!", 1, { k: .85 }); else toast7(dev, "Nothing flies", "22%"); });
   return on ? "At 1:23 that comment flies across" : "Only chat flies; this video has none";
 });
 // YouTubeChatSource: on replays of live streams and Premieres, the timed comments are added to the chat replay
 scen("danmaku", "niconico_comments_timed_comments_with_replay", (box, on) => {
-  situation("A live stream replay with its chat", true);
   box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:${ART[3]}"></div>${badge7n("Chat replay", "rgba(0,0,0,.6)")}${naLayer()}`);
   const dev = box.querySelector(".dev");
   nicoRun(dev, ["8888888", "cosy", "lol", "wow"], { gap: 420 });
-  if (on) at(620, () => nico7(dev.querySelector(".na7"), "1:23 the stove is lit!", 2, { ms: 2400, css: "color:#9fd3ff" }));
+  if (on) at(620, () => nico7(dev.querySelector(".na7"), "1:23 the stove is lit!", 2, { css: "color:#9fd3ff" }));
   at(1400, () => toast7(dev, on ? "Chat replay + timed comments" : "Chat replay only", "72%"));
   return on ? "The chat replay and timed comments fly together" : "Only the chat replay flies (stock)";
 });
+
+// The like and dislike pill under a video in the stories. Its labels get room to spare on both sides of the
+// divider: tiny text in the scaled phone is measured at its small size but drawn larger, and on some phones
+// (other font metrics) it came out wider than measured and ran into the divider (Max, Nov 25: "Hidden by
+// owner" clipped). Nothing in it may shrink, so the pill grows instead of cutting a label.
+const likePill7 = (like, dislike) => `<div class="lkp7" style="display:flex;width:max-content;border-radius:8px;background:#272727;font-size:5.5px;align-items:center;white-space:nowrap"><span style="display:flex;flex:none;gap:2px;align-items:center;padding:2px 3px;border-right:1px solid #444">${ico7("like", 6)}<span style="padding-right:1.5px">${like}</span></span><span style="display:flex;flex:none;gap:2px;align-items:center;padding:2px 4px 2px 3px">${ico7("dislike", 6)}${dislike}</span></div>`;
+
+// ---------- Return YouTube Dislike: the settings that act away from the action bar (Max, Nov 25: they did nothing)
+// ReturnYouTubeDislike.createDislikeSpan: on a video whose creator hid the likes, the like button says "Hidden by
+// owner" unless estimated likes are on, which show the like count Return YouTube Dislike estimates
+scen("watch", "ryd_estimated_like", (box, on) => {
+  // the dislike count is left out: the phone is narrow and "Hidden by owner" is what the story is about
+  const pill = likePill7(`<span class="lkc7">Like</span>`, "");
+  box.innerHTML = device("port", pageRows(player7(3) + `<b style="font-size:7px">Building a tiny cabin</b>` + pill + row7(2, "Night train to Bodø")));
+  const dev = box.querySelector(".dev");
+  // the count arrives from Return YouTube Dislike a moment after the page, as it does in the app
+  at(450, () => { const l = dev.querySelector(".lkc7"), was = l.textContent; l.textContent = on ? "~41K" : "Hidden by owner"; l.classList.add("chg7"); textSwap(l, was); });
+  return ""; // no lines (Max, Nov 25: a permanent rule for every new animation)
+});
+// FeedEngagementCountsPatch: a badge on feed thumbnails with the like icon and count and/or the like ratio
+// (with a like bar under it). Its place: in one row continuing the view count badge at the bottom
+// (NEXT_TO_VIEW_COUNT), stacked at the middle of the right edge under the Watch later button (MIDDLE_RIGHT), or
+// stacked at the top left (TOP_LEFT). One picture for its three settings.
+const FEED_POS = ["NEXT_TO_VIEW_COUNT", "MIDDLE_RIGHT", "TOP_LEFT"];
+function feedLikeBadge({ count, ratio, pos }) {
+  if (!count && !ratio) return "";
+  const bar = ratio ? `<i style="display:block;height:1.5px;margin-top:1px;border-radius:1px;background:linear-gradient(90deg,#f1f1f1 96%,#ff4e45 96%)"></i>` : "";
+  const c = count ? `<span style="display:flex;gap:1.5px;align-items:center">${ico7("like", 5.5, "#fff")}48K</span>` : "", r = ratio ? `<span>96%</span>` : "";
+  const box7 = "background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600;color:#fff;line-height:1.2";
+  if (pos === "NEXT_TO_VIEW_COUNT") return `<div class="fb7" style="position:absolute;left:3px;bottom:3px;${box7};display:grid"><div style="display:flex;gap:3px;align-items:center"><span>1.2M views</span><span style="width:.5px;align-self:stretch;background:#888"></span>${c}${r}</div>${bar}</div>`;
+  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:50%;translate:0 -30%" : "left:3px;top:3px";
+  return `<div class="fb7" style="position:absolute;${at7};${box7};display:grid;justify-items:center;gap:1px">${c}${r}${bar}</div>`;
+}
+function feedLikeScen(key, plan) {
+  AWAY.add("morphe_" + key);
+  scen("watch", key, (box, v) => {
+    // the Watch later button at the top right is stock and drawn in every place (the badge sits under it at
+    // MIDDLE_RIGHT, FeedEngagementCountsPatch's TOP_BUTTON_DP), so comparing two places flashes only the badge
+    const o = plan(v), d = `<span style="position:absolute;right:3px;top:3px;width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center">${ico7("clock", 6, "#fff")}</span>`;
+    // the stock badges: views at the bottom left (or none where the like row takes its place), the duration at the bottom right
+    const base = `${o.pos === "NEXT_TO_VIEW_COUNT" && (o.count || o.ratio) ? "" : `<span class="ctx7" style="position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600">1.2M views</span>`}<span style="position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600">12:04</span>${d}`;
+    box.innerHTML = device("port", pageRows(feed7(big7(3, "Building a tiny cabin", base) + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats"))));
+    const dev = box.querySelector(".dev"), th = dev.querySelector("div[style*='height:38px']"); // big7's thumbnail
+    // the badge comes in once the counts are fetched, as in the app
+    const badge = feedLikeBadge(o);
+    if (badge && th) at(400, () => { th.insertAdjacentHTML("beforeend", badge); const b = th.querySelector(".fb7"); b.classList.add("chg7"); b.animate([{ opacity: 0, scale: .8 }, { opacity: 1, scale: 1 }], { duration: 260, easing: "ease-out" }); if (o.pos === "NEXT_TO_VIEW_COUNT") th.querySelectorAll(":scope > span").forEach(s => { if (/views/.test(s.textContent)) s.remove(); }); });
+    return "";
+  });
+}
+const feedNow = () => ({ count: !!V("morphe_ryd_feed_like_count"), ratio: !!V("morphe_ryd_feed_like_ratio"), pos: String(V("morphe_ryd_feed_counts_position") || "NEXT_TO_VIEW_COUNT") });
+feedLikeScen("ryd_feed_like_count", on => ({ ...feedNow(), count: !!on }));
+feedLikeScen("ryd_feed_like_ratio", on => ({ ...feedNow(), ratio: !!on }));
+// the place only shows with something in it: with neither switched on, the picture shows both
+feedLikeScen("ryd_feed_counts_position", v => { const n = feedNow(), any = n.count || n.ratio; return { count: any ? n.count : true, ratio: any ? n.ratio : true, pos: String(v) }; });
+// The connection error alerts of Return YouTube Dislike and SponsorBlock, drawn as DeArrow's is
+AWAY.add("morphe_ryd_toast_on_connection_error"); AWAY.add("morphe_sb_toast_on_connection_error");
+hidePage("watch", "ryd_toast_on_connection_error", "Return YouTube Dislike can't reach its server", player7(3) + `<b style="font-size:7px">Building a tiny cabin</b>${likePill7("48K", "")}` + row7(2, "Night train to Bodø") + tgt7(`<div style="padding:3px 5px;border-radius:8px;background:#323232;font-size:6px;text-align:center">Dislikes are temporarily not available (API timed out)</div>`), { invert: true });
+hidePage("sponsorblock", "sb_toast_on_connection_error", "SponsorBlock can't reach its server", player7(3, `<div style="position:absolute;left:4px;right:4px;bottom:3px;height:1.5px;background:rgba(255,255,255,.35)"><div style="width:30%;height:100%;background:#f00"></div></div>`) + `<b style="font-size:7px">Building a tiny cabin</b>` + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats") + tgt7(`<div style="padding:3px 5px;border-radius:8px;background:#323232;font-size:6px;text-align:center">SponsorBlock is temporarily not available (API timed out)</div>`), { invert: true });

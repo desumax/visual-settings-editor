@@ -1389,10 +1389,10 @@ const CHECKS = [
           seen.push(Math.round(tip - rr.top));
           if (tip < rr.top - 12 || tip > rr.bottom + 12) bad.push(Math.round(tip - rr.top));
         }
-        return { bad, shown, seen: seen.slice(0, 12) };
+        return { bad, shown, seen: seen.slice(0, 40) };
       });
       ok(r.shown > 5, `the finger hardly shows (${r.shown} samples)`);
-      ok(!r.bad.length, `the finger is off the action bar row by ${r.bad.slice(0, 5).join(", ")} px`);
+      ok(!r.bad.length, `the finger is off the action bar row by ${r.bad.slice(0, 5).join(", ")} px; ${r.seen.join(" ")}`);
       await ctx.close();
     },
   },

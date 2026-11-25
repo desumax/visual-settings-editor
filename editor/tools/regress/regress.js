@@ -1669,6 +1669,31 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "font-picker-takes-fonts",
+    report: "Nov 25 (16:32): Custom font file says Choose image and only lets you pick images",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_custom_font_file";
+        setPicker(false); setPref("morphe_custom_font_type", "CUSTOM"); commit(); goToSetting(k); await wait(900);
+        const l = document.querySelector(`#list label.filepick:has([data-file="${k}"])`), inp = l && l.querySelector("input");
+        const t = document.querySelector(`#list label.filepick:has([data-file="morphe_custom_seekbar_thumb_file"]) input`);
+        return l ? { text: l.textContent.trim(), accept: inp.accept, thumb: t ? t.accept : "image/*" } : "no picker";
+      });
+      ok(typeof r === "object", String(r));
+      ok(/font/i.test(r.text) && !/image/i.test(r.text), `the font picker reads "${r.text}"`);
+      ok(/\.ttf/.test(r.accept) && /\.otf/.test(r.accept) && !/image/.test(r.accept), `the font picker takes "${r.accept}"`);
+      ok(r.thumb === "image/*", `the seekbar thumb picker takes "${r.thumb}"`);
+      const f = p.locator('#list input[data-file="morphe_custom_font_file"]');
+      await f.setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: Buffer.from([137, 80, 78, 71]) }); await sleep(300);
+      const v1 = await p.evaluate(() => state.morphe_custom_font_file);
+      ok(!v1, `a picture was taken as the font (${v1})`);
+      await f.setInputFiles({ name: "Inter.ttf", mimeType: "font/ttf", buffer: Buffer.from([0, 1, 0, 0]) }); await sleep(300);
+      ok(await p.evaluate(() => state.morphe_custom_font_file) === "Inter.ttf", "a .ttf font was not taken");
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

@@ -608,8 +608,8 @@ function controlFor(k) {
     return `<div class="ctl side whl">${wheelHTML(k, Math.min(0, n), Infinity, st, n, dis)}<input class="wsrc" type="number" value="${v}" data-set="${k}" ${dis} tabindex="-1" aria-hidden="true" step="${st}"></div>`;
   }
   if (p.type === "string") {
-    // Morphe opens the system file picker for these; the preview does the same and draws the image
-    if (p.widget === "NonInteractivePreference" && /_file$/.test(k)) return `<div class="ctl side"><label class="opt filepick" ${dis ? 'aria-disabled="true"' : ""}>${I("image")}${v ? "Change image" : "Choose image"}<input type="file" accept="image/*" data-file="${k}" ${dis} hidden></label>${v ? `<span class="val">${esc(v)}</span>` : ""}</div>`;
+    // Morphe opens the system file picker for these; the preview does the same (FILE_PICK: what each one takes)
+    if (p.widget === "NonInteractivePreference" && /_file$/.test(k)) { const fp = FILE_PICK[k] || FILE_PICK.image; return `<div class="ctl side"><label class="opt filepick" ${dis ? 'aria-disabled="true"' : ""}>${I(fp.icon)}${v ? "Change " + fp.word : "Choose " + fp.word}<input type="file" accept="${fp.accept}" data-file="${k}" ${dis} hidden></label>${v ? `<span class="val">${esc(v)}</span>` : ""}</div>`; }
     if (/color/.test(k) && /^#/.test(String(v))) return `<div class="ctl side"><input type="color" value="#${String(v).slice(-6)}" data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}"><span class="val">${esc(v)}</span></div>`;
     if (isListBox(k)) return listBox(k, dis);
     return `<div class="ctl"><input type="text" value="${esc(v)}" data-set="${k}" ${dis} aria-label="${esc(shownTitle(k))}"></div>`;
@@ -980,6 +980,14 @@ function areaCard(i, live) {
 }
 // One-line titles beside toggles (two-column cells, a list's name toggles): one that doesn't fit is marked
 // (.ovf: it fades out with an ellipsis), and a press slides it right to left to show the rest, then back.
+// What a file setting's picker takes, as Morphe's own picker does: the seekbar thumb asks for an image
+// (CustomSeekbarThumbPreference: image/*); the font asks for any file and keeps only a .ttf or .otf, with
+// Morphe's message for anything else (CustomFontFilePreference; Max, Nov 25: it said "Choose image" and took
+// only images).
+const FILE_PICK = {
+  image: { icon: "image", word: "image", accept: "image/*" },
+  morphe_custom_font_file: { icon: "font", word: "font", accept: ".ttf,.otf,font/ttf,font/otf", only: /\.(ttf|otf)$/i, bad: "The picked file is not a TTF or OTF font" },
+};
 const FIT_LINE = ":is(.kids, .shared) > .kin.duo2 .ttl, .lchn";
 // An area box whose titles mostly don't fit two to a line (Comments: "Community Guidelines") lists them one
 // to a line instead (.one), measured again at every width, so a wide screen gets its two columns back.

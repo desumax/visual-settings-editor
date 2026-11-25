@@ -73,6 +73,9 @@
         s.devs.push({ id: idOf(dev), r, raw, side, clip: clipOf(dev, stick), turning: !!m && Math.abs(parseFloat(m[2])) > .02 });
         artOf(dev, r, s.art);
       });
+      // a red "mark" outline drawn outside a part that fills its phone: the phone cuts all but one side,
+      // a stray red line (Max, Nov 25: Tap and hold gradient); such parts draw it inside (.in7)
+      s.markCut = q(".tgt7.mark7:not(.in7)", canvas).some(e => { const d = e.closest(".dev"); if (!d) return false; const r = e.getBoundingClientRect(), o = d.getBoundingClientRect(), k = o.width / (d.offsetWidth || 1), c = d.clientLeft * k, b = { left: o.left + c, right: o.right - c, top: o.top + c, bottom: o.bottom - c }; return [r.left - b.left < 2.5, b.right - r.right < 2.5, r.top - b.top < 2.5, b.bottom - r.bottom < 2.5].filter(Boolean).length >= 2; });
       const pg = canvas.querySelector(".prog"); if (pg) s.prog = { r: rect(pg), op: opacityOf(pg, stick) };
       const sides = q(".duo7.gen > .dl7 > .side", canvas);
       if (sides.length === 2) s.sides = sides.map(x => x.innerHTML.replace(/ id="[^"]*"/g, ""));
@@ -321,6 +324,7 @@
         run[p.id].moving = d > 1.5 && !p.hold ? (r.moving || 0) + (s.t - r.t) : 0;
         if (run[p.id].moving > 300) add("drag-no-hold", s.t, "a finger drags across the phone without its hold ring", job.kind === "scn" ? "fail" : "warn", "drag");
       } }
+    { const m = ss.find(s => s.markCut); if (m) add("mark-outline-cut", m.t, "a red mark outline sits outside a part that fills its phone, so only one side of it shows"); }
     if (job.kind === "demo") { if (ss.reduce((n, s) => n + s.muts, 0) < 2) add("nothing-happens", 0, "the preview never changes", "warn"); }
     return out;
   }

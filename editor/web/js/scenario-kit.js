@@ -56,10 +56,18 @@ function fingerOn(dev, f, el, fx = .5, fy = .5, ms = 0) {
 // Every "mark, then remove" story (a part of the page outlined in red, then folded away) runs on one
 // clock, so all of them change speed together (Max, Nov 24: 30% faster than the 350 / 1050 / 1700 ms
 // they had). The fold itself is .tgt7's transition (motion.css), sped up the same way.
+// A part that fills the phone up to its edges (a scrim, a gradient) has its red outline drawn inside
+// itself: drawn outside, the phone cut off all but one side, which read as a stray red line across the
+// video (Max, Nov 25: Tap and hold gradient).
+function atEdges7(e) {
+  const d = e.closest(".dev"); if (!d) return false;
+  const r = e.getBoundingClientRect(), o = d.getBoundingClientRect(), s = o.width / (d.offsetWidth || 1), c = d.clientLeft * s, k = 2.5 * s;
+  return [r.left - o.left - c < k, o.right - c - r.right < k, r.top - o.top - c < k, o.bottom - c - r.bottom < k].filter(Boolean).length >= 2;
+}
 const MARK_T = { mark: 245, gone: 735, unmark: 1190 };
 function markGone(targets, remove, o = {}) {
   const t = [...targets];
-  at(MARK_T.mark, () => t.forEach(e => { e.classList.remove("instant7"); if (o.reveal) e.classList.remove("gone7"); e.classList.add("mark7"); }));
+  at(MARK_T.mark, () => t.forEach(e => { e.classList.remove("instant7"); if (o.reveal) e.classList.remove("gone7"); e.classList.toggle("in7", atEdges7(e)); e.classList.add("mark7"); }));
   at(MARK_T.gone, () => { if (remove) t.forEach(e => e.classList.add("gone7")); if (o.then) o.then(); });
   at(MARK_T.unmark, () => t.forEach(e => e.classList.remove("mark7")));
 }
@@ -892,7 +900,7 @@ hidePage("description", "hide_ask_gemini_button", "", panel7("Ask about this vid
   ${tgt7(`<div style="display:flex;gap:3px;align-items:center;justify-content:center;padding:2px;border-radius:6px;border:1px solid #444">${ico7("spark", 6)}Ask Gemini</div>`)}`));
 hidePage("captions", "hide_sync_button", "", panel7("Transcript", ["0:12 · Today we start the roof", "0:31 · First the rafters go up", "0:48 · Then the boards, one by one", "1:05 · Time for the shingles"].map((t, n) => `<div style="color:${n === 1 ? "#fff" : "#aaa"}">${t}</div>`).join("") + tgt7(`<div style="justify-self:center;padding:2px 6px;border-radius:8px;background:#f1f1f1;color:#0f0f0f;width:max-content;margin:0 auto">Sync to video time</div>`)));
 hidePage("comments", "hide_subscribers_community_guidelines", "Before posting in a channel's community", top7("Fjord & Timber", ["more"]) + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b;font-size:6px">Please follow the community guidelines · Got it</div>`) + cmt7(2, "Love the roof!"));
-hidePage("seekbar", "hide_tap_and_hold_gradient", "Holding the video for 2× speed", `<div style="position:absolute;inset:0;background:${ART[3]}"></div><div class="tgt7" style="position:absolute;left:0;right:0;top:0;height:40%;background:linear-gradient(rgba(0,0,0,.75),transparent)"></div><div class="toastin" style="top:6px;z-index:2">2× ▶▶</div>`, { dev: "land", raw: true });
+hidePage("seekbar", "hide_tap_and_hold_gradient", "Holding the video for 2× speed", `<div style="position:absolute;inset:0;background:${ART[3]}"></div><div class="tgt7 fade7" style="position:absolute;left:0;right:0;top:0;bottom:60%;background:linear-gradient(rgba(0,0,0,.75),transparent)"></div><div class="toastin" style="top:6px;z-index:2">2× ▶▶</div>`, { dev: "land", raw: true });
 // Morphe (OnTheGoSheet): the player menu's On-the-go opens Morphe's own panel right under the video:
 // a handle, "On-the-go" and ✕, the thumbnail, title and channel, a time bar, big previous / −10 /
 // play-pause / +10 / next buttons, then audio mode (headset) and speed. Audio mode slides the panel up

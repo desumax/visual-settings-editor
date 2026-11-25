@@ -1422,6 +1422,29 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "long-title-slide-shows-the-end",
+    report: "Nov 25 (14:58): Course progress, the scrolling animation for a title that is too long is broken universally (it stopped with the last letters still under the fade)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_hide_course_progress_section";
+        setPicker(false); quickSection(sectionOf(k)); await wait(700);
+        const row = document.querySelector(`#list .kin.duo2 > [data-row="${k}"]`); if (!row) return "no pair cell";
+        row.scrollIntoView({ block: "center" }); await wait(300);
+        const t0 = row.querySelector(".ttl"), over = t0.scrollWidth - t0.clientWidth;
+        row.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        let min = 0, ran = false;
+        for (let i = 0; i < 70; i++) { await wait(40); const t = document.querySelector(`#list .kin.duo2 > [data-row="${k}"] .ttl`); if (!t) continue; if (t.classList.contains("mq")) ran = true; min = Math.min(min, parseFloat(getComputedStyle(t).textIndent) || 0); (window.tr7 ||= []).push(Math.round(parseFloat(getComputedStyle(t).textIndent)) + (t.classList.contains("mq") ? "m" : "") + t.getAnimations().length); }
+        return { over, min, ran, tr: (window.tr7 || []).join(" ") };
+      });
+      ok(typeof r === "object", String(r));
+      ok(r.over > 1, `the title fits (${r.over}px over), nothing to slide`);
+      ok(r.ran, "the press didn't start the slide");
+      ok(-r.min >= r.over + 10, `the slide went ${-r.min}px for ${r.over}px of overflow, so the end stayed under the 10px fade ${r.tr}`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

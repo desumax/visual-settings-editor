@@ -131,7 +131,7 @@ addEventListener("pointerdown", e => {
   const c = e.target.closest && e.target.closest("#list .kin.duo2 > .row, #list .lchc"); if (!c) return;
   const lst = c.matches(".lchc") && c.closest("[data-lst]")?.dataset.lst, lch = lst && c.querySelector("[data-lch]")?.dataset.lch;
   const sel = lst ? `[data-lst="${CSS.escape(lst)}"] .lchc:has([data-lch="${CSS.escape(lch || "")}"]) .lchn` : `.kin.duo2 > [data-row="${CSS.escape(c.dataset.row || "")}"] .ttl`;
-  const go = () => { const t = $("list").querySelector(sel); if (t && t.scrollWidth > t.clientWidth + 1) { t.classList.add("ovf"); slideLine(t); } };
+  const go = () => { const t = $("list").querySelector(sel); if (t && t.scrollWidth > t.clientWidth + 1) { t.classList.add("ovf"); slideLine(t, sel); } };
   setTimeout(go, 60); setTimeout(go, 400); // slideLine ignores a title that is already sliding
 }, true);
 $("list").addEventListener("click", e => {

@@ -133,7 +133,8 @@ pre.json { background: var(--m-c-lowest); border: 1px solid var(--line); border-
    toggle, and a press slides it right to left to show the rest (fitLine in list.js; Max, Nov 25) */
 :is(.kids, .shared) > .kin.duo2 .ttl, .lchn { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; overflow-wrap: normal; }
 :is(.kids, .shared) > .kin.duo2 .ttl.ovf, .lchn.ovf { -webkit-mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(90deg, #000 calc(100% - 22px), transparent); }
-:is(.kids, .shared) > .kin.duo2 .ttl.mq, .lchn.mq { text-overflow: clip; -webkit-mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); mask-image: linear-gradient(90deg, transparent, #000 10px, #000 calc(100% - 10px), transparent); }
+@property --mql { syntax: "<length>"; inherits: false; initial-value: 0px; }
+:is(.kids, .shared) > .kin.duo2 .ttl.mq, .lchn.mq { text-overflow: clip; -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--mql), #000 calc(100% - 10px), transparent); mask-image: linear-gradient(90deg, transparent, #000 var(--mql), #000 calc(100% - 10px), transparent); }
 .ttl .nw { white-space: nowrap; }
 #devTourBtn { position: fixed; left: 10px; bottom: 10px; z-index: 9998; border: 0; border-radius: 14px; padding: 6px 12px; background: #1a73e8; color: #fff; font: 600 12px/1.2 system-ui, sans-serif; cursor: pointer; opacity: .85; }
 #devTour { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 9998; display: flex; align-items: center; gap: 6px; width: min(460px, calc(100vw - 20px)); padding: 6px; border-radius: 16px; background: #1b2a44; box-shadow: 0 4px 18px rgba(0,0,0,.5); color: #fff; font-family: system-ui, sans-serif; }

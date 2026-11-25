@@ -88,6 +88,8 @@
 .tgt7.gone7 { height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
 .tgt7.w7.gone7 { width: 0 !important; height: auto !important; }
 .tgt7.instant7 { transition: none !important; }
+.tgt7.mark7.in7, .tgt7.mark7.in7 > :only-child { outline-offset: -2px; } /* fills the phone: outline inside (atEdges7) */
+.tgt7.fade7.gone7 { height: auto !important; } /* a scrim or gradient fades away instead of folding (its size comes from top/bottom) */
 .pg7 > .tgt7.gone7 { margin-bottom: -5px !important; }
 .tgt7.mark7 { outline: 1.5px dashed #ff0033; outline-offset: 1px; border-radius: 3px; animation: mark7 .9s ease-in-out infinite alternate; }
 /* a target that is one part (a pill centred in its line, a button): the outline hugs that part, not the
@@ -163,3 +165,4 @@
 html:not(.touchwait) .phone:not(.theme-glass) :is(.ctl .opt, .tab7, .seg3 button, .seg button, .kidbtn, .ordreset, .offnew):not(.lift):active { transform: scale(.96); }
 /* a dialog or a text-selection bar in a comparison phone pops in from a little smaller (Select text, Nov 24) */
 @keyframes dlgin7 { from { opacity: 0; scale: .92; } }
+.row .ctl.side:has(> .filepick) .val { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long file name stays under its pill */

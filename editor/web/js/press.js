@@ -131,7 +131,7 @@ addEventListener("pointerdown", e => {
   const c = e.target.closest && e.target.closest("#list .kin.duo2 > .row, #list .lchc"); if (!c) return;
   const lst = c.matches(".lchc") && c.closest("[data-lst]")?.dataset.lst, lch = lst && c.querySelector("[data-lch]")?.dataset.lch;
   const sel = lst ? `[data-lst="${CSS.escape(lst)}"] .lchc:has([data-lch="${CSS.escape(lch || "")}"]) .lchn` : `.kin.duo2 > [data-row="${CSS.escape(c.dataset.row || "")}"] .ttl`;
-  const go = () => { const t = $("list").querySelector(sel); if (t && t.scrollWidth > t.clientWidth + 1) { t.classList.add("ovf"); slideLine(t); } };
+  const go = () => { const t = $("list").querySelector(sel); if (t && t.scrollWidth > t.clientWidth + 1) { t.classList.add("ovf"); slideLine(t, sel); } };
   setTimeout(go, 60); setTimeout(go, 400); // slideLine ignores a title that is already sliding
 }, true);
 $("list").addEventListener("click", e => {
@@ -204,6 +204,10 @@ $("list").addEventListener("input", e => {
     // a slider with a live overlay (swipe overlay look, zone sizes) redraws only that overlay: redrawing
     // the whole preview on every step flashed parts of it
     if (LIVE_HUD[k] && selected === k) LIVE_HUD[k]();
+    // (the preview under a comparison that follows the slider is covered by it, so it catches up when the
+    // comparison closes, as for a selection (select.js): redrawing it at every value made the wheel lag,
+    // Quick actions top margin, Max, Nov 25)
+    else if (SCN[k] && t.type === "range" && selected === k && $("canvas").classList.contains("show")) stageStale = true;
     else { if (selected !== k) stopScenario(); selected = k; renderStage(); highlight(k, false); if (LIVE_HUD[k]) LIVE_HUD[k](); }
     if (SCN[k] && t.type === "range") liveScenario(k, JSON.parse(t.dataset.before)); // its comparison follows the slider
   }

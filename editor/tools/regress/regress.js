@@ -1470,6 +1470,92 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "feed-like-badge-stacked-fits",
+    report: "Nov 25 (14:58): Feed thumbnail like position, the right side black pill: its bottom border is too large (the like bar had no width, and the badge covered the duration)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
+        setPicker(false); setPref("morphe_ryd_enabled", true);
+        for (const v of ["MIDDLE_RIGHT", "TOP_LEFT"]) {
+          setPref("morphe_ryd_feed_counts_position", v); goToSetting("morphe_ryd_feed_counts_position"); await wait(1800);
+          const b = [...document.querySelectorAll("#canvas .fb7")].pop(); if (!b) { out[v] = "no badge"; continue; }
+          const bar = b.querySelector("i"), br = b.getBoundingClientRect(), th = b.parentElement;
+          const others = [...th.querySelectorAll(":scope > span")].map(e => e.getBoundingClientRect());
+          const hit = others.some(o => Math.min(o.right, br.right) - Math.max(o.left, br.left) > 1 && Math.min(o.bottom, br.bottom) - Math.max(o.top, br.top) > 1);
+          out[v] = { bar: bar ? Math.round(bar.getBoundingClientRect().width / br.width * 100) : -1, hit, dbg: JSON.stringify([br, ...others].map(o => [o.left, o.top, o.right, o.bottom].map(Math.round))) };
+        }
+        return out;
+      });
+      for (const [v, x] of Object.entries(r)) {
+        ok(typeof x === "object", `${v}: ${x}`);
+        ok(x.bar > 60, `${v}: the like bar is ${x.bar}% of the badge's width`);
+        ok(!x.hit, `${v}: the badge covers another thumbnail badge ${x.dbg}`);
+      }
+      await ctx.close();
+    },
+  },
+  {
+    name: "long-title-slide-shows-the-end",
+    report: "Nov 25 (14:58): Course progress, the scrolling animation for a title that is too long is broken universally (it stopped with the last letters still under the fade)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_hide_course_progress_section";
+        setPicker(false); quickSection(sectionOf(k)); await wait(700);
+        const row = document.querySelector(`#list .kin.duo2 > [data-row="${k}"]`); if (!row) return "no pair cell";
+        row.scrollIntoView({ block: "center" }); await wait(300);
+        const t0 = row.querySelector(".ttl"), over = t0.scrollWidth - t0.clientWidth;
+        row.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        let min = 0, ran = false;
+        for (let i = 0; i < 70; i++) { await wait(40); const t = document.querySelector(`#list .kin.duo2 > [data-row="${k}"] .ttl`); if (!t) continue; if (t.classList.contains("mq")) ran = true; min = Math.min(min, parseFloat(getComputedStyle(t).textIndent) || 0); (window.tr7 ||= []).push(Math.round(parseFloat(getComputedStyle(t).textIndent)) + (t.classList.contains("mq") ? "m" : "") + t.getAnimations().length); }
+        return { over, min, ran, tr: (window.tr7 || []).join(" ") };
+      });
+      ok(typeof r === "object", String(r));
+      ok(r.over > 1, `the title fits (${r.over}px over), nothing to slide`);
+      ok(r.ran, "the press didn't start the slide");
+      ok(-r.min >= r.over + 10, `the slide went ${-r.min}px for ${r.over}px of overflow, so the end stayed under the 10px fade ${r.tr}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "info-cards-section-holds-its-parts",
+    report: "Nov 25 (14:58): are the sub settings under Info cards section correct? (Morphe's sub-settings sit inside YouTube's infocards section, but the preview drew them outside it, so hiding the section left them all showing)",
+    async run() {
+      const { p, ctx } = await open();
+      const k = "morphe_hide_info_cards_section";
+      await p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 900)); }, k);
+      await p.click(`#list [data-sw="${k}"]`); await sleep(1500);
+      const left = await p.evaluate(() => ["featured_videos_section", "featured_playlists_section", "featured_channels_section", "featured_links_section", "channel_links_section", "subscribe_button"]
+        .filter(x => [...document.querySelectorAll(`[data-k="morphe_hide_${x}"]`)].some(e => !e.closest("#list") && e.getBoundingClientRect().height > 1)));
+      ok(!left.length, `Info cards section hidden, but these still show: ${left.join(", ")}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "wheel-turn-stays-light",
+    report: "Nov 25 (14:58): in web view, the Quick actions top margin wheel is very laggy (every value redrew the covered preview and measured the comparison from scratch)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_quick_actions_top_margin";
+        setPicker(false); goToSetting(k); await wait(1500);
+        const src = document.querySelector(`#list [data-wheel="${k}"]`)?.parentElement.querySelector(".wsrc"); if (!src) return "no wheel";
+        if (!$("canvas").classList.contains("show")) return "no comparison";
+        const r0 = renderCount; let probes = 0;
+        const mo = new MutationObserver(rs => rs.forEach(x => x.addedNodes.forEach(n => { if (n.classList && n.classList.contains("probe7")) probes++; })));
+        mo.observe($("canvas"), { childList: true, subtree: true });
+        for (let i = 1; i <= 10; i++) { src.value = String(i); src.dispatchEvent(new Event("input", { bubbles: true })); await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); }
+        mo.disconnect();
+        return { renders: renderCount - r0, probes };
+      });
+      ok(typeof r === "object", String(r));
+      ok(r.renders === 0, `the covered preview was redrawn ${r.renders} times for 10 values`);
+      ok(r.probes <= 16, `the comparison was measured from scratch ${r.probes / 4} times for 10 values`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

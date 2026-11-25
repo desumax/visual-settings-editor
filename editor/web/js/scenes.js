@@ -409,7 +409,7 @@ const EXTRA_SECTIONS = [
 {
   const watch = SECTIONS.find(s => s.id === "watch");
   watch.scopes = watch.scopes.filter(([, sub]) => sub !== "morphe_hide_description_components_screen");
-  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "watch", "description", "comments", "ambient", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "misc"];
+  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "watch", "description", "ambient", "comments", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "misc"];
   const all = [...SECTIONS, ...EXTRA_SECTIONS];
   SECTIONS.length = 0;
   order.forEach(id => SECTIONS.push(all.find(s => s.id === id)));
@@ -433,13 +433,18 @@ const DESC = [
   ["hide_featured_channels_section", "Featured channels", "Slow Rails · Darkroom Diaries"],
   ["hide_channel_links_section", "Channel links", "Instagram · Patreon"],
   ["hide_hashtag_section", "Hashtags", "#cabin #norway #woodworking"],
-  ["hide_info_cards_section", "Info cards", "Part 1 of the build · Video"],
   ["hide_explore_section", "Explore", "Explore more in Woodworking"],
   ["hide_explore_course_section", "Course", "Timber framing basics · 8 lessons"],
   ["hide_course_progress_section", "Course progress", "Lesson 3 of 8 completed"],
   ["hide_quizzes_section", "Quiz", "Which joint holds the roof beam?"],
   ["hide_explore_podcast_section", "Podcast", "Fjord & Timber Talks"],
+  ["hide_info_cards_section", "Info cards", "Featured items and the channel card"],
 ];
+// Morphe's Info cards section is YouTube's infocards_section (DescriptionComponentsFilter): the featured
+// videos, playlists, channels and links (compact_infocard lockups), the channel card's Subscribe button and
+// its link buttons all sit inside it, which is why Morphe makes them its sub-settings (parentNot). Hiding
+// it takes all of them away; each sub-setting hides only its own part (Max, Nov 25).
+const INFO_PARTS = ["hide_featured_videos_section", "hide_featured_playlists_section", "hide_featured_channels_section", "hide_featured_links_section", "hide_channel_links_section"];
 // The description sheet as YouTube draws it: player on top, sheet with title, stats, text, then each
 // section in its own shape (chapter strip, music row, chips, link rows, channel row at the end).
 SCENES.description = () => {
@@ -465,25 +470,25 @@ SCENES.description = () => {
     hide_featured_videos_section: () => H("Featured videos") + strip([1, 2, 5].map(i => `<div style="width:140px;flex:none">${thumb(i, "border-radius:8px")}<div style="font-size:12px;margin-top:4px">${esc(VIDEOS[i].t.slice(0, 32))}…</div></div>`).join("")),
     hide_featured_playlists_section: () => H("Featured playlists") + `<div style="display:flex;gap:10px;padding:0 14px;align-items:center"><div style="width:120px;position:relative;flex:none">${thumb(4, "border-radius:8px")}<span class="dur">${I("plist", "ico", 'style="width:12px;height:12px;vertical-align:-2px"')} 14</span></div><div><div style="font-size:13px">Cabin build</div><div class="t2">Fjord & Timber · Playlist</div></div></div>`,
     hide_featured_channels_section: () => H("Featured channels") + strip([[1, "Slow Rails"], [3, "Darkroom Diaries"], [5, "Pocket Science"]].map(([i, n]) => `<div style="display:grid;justify-items:center;gap:4px;width:84px;flex:none">${av(i, 52)}<div style="font-size:11.5px;text-align:center">${n}</div></div>`).join("")),
-    hide_channel_links_section: () => H("Channel links") + linkRow("link", "Instagram", "instagram.com/fjordtimber") + linkRow("heart", "Patreon", "patreon.com/fjordtimber"),
+    hide_channel_links_section: () => `<div style="display:flex;gap:8px;padding:6px 14px;overflow-x:auto;scrollbar-width:none">${["Videos", "About", "Instagram", "Patreon"].map(t => `<span class="chip" style="height:32px;flex:none;padding:0 16px;justify-content:center;background:transparent;border:1px solid #555">${t}</span>`).join("")}</div>`,
+    hide_info_cards_section: () => INFO_PARTS.slice(0, 4).map(k => sec(DESC.find(d => d[0] === k))).join("")
+      + `<div style="display:flex;align-items:center;gap:10px;padding:16px 14px 6px;margin-top:10px;border-top:1px solid #333">${av(0, 36)}<div style="flex:1;min-width:0"><div class="t1">${VIDEOS[0].c}</div><div class="t2">412K subscribers</div></div>
+        ${C("hide_subscribe_button", `<span class="chip" style="background:#f1f1f1;color:#0f0f0f;height:30px">Subscribe</span>`)}</div>`
+      + sec(DESC.find(d => d[0] === "hide_channel_links_section")),
     hide_hashtag_section: () => `<div style="padding:10px 14px 0;font-size:13px;color:#3ea6ff">#cabin #norway #woodworking #offgrid</div>`,
-    hide_info_cards_section: () => H("Info cards") + `<div style="display:flex;gap:10px;padding:0 14px;align-items:center">${thumb(2, "width:96px;border-radius:6px;flex:none")}<div style="font-size:12.5px">Part 1 of the build<div class="t2">Video</div></div></div>`,
     hide_explore_section: () => H("Explore more") + `<div style="margin:0 14px;padding:10px 12px;border-radius:12px;background:#2c2c2c;display:flex;gap:10px;align-items:center">${I("tv")}<div style="font-size:13px">Woodworking<div class="t2">Topic</div></div></div>`,
     hide_explore_course_section: () => H("Course") + `<div style="margin:0 14px;padding:10px 12px;border-radius:12px;background:#2c2c2c;display:flex;gap:10px;align-items:center">${thumb(3, "width:72px;border-radius:6px;flex:none")}<div style="font-size:13px">Timber framing basics<div class="t2">8 lessons · Free</div></div></div>`,
     hide_course_progress_section: () => `<div style="margin:10px 14px 0"><div style="font-size:12.5px">Lesson 3 of 8 completed</div><div style="height:4px;border-radius:2px;background:#3a3a3a;margin-top:6px"><div style="width:37%;height:4px;border-radius:2px;background:#3ea6ff"></div></div></div>`,
     hide_quizzes_section: () => H("Quiz") + `<div style="margin:0 14px;padding:10px 12px;border-radius:12px;border:1px solid #444;font-size:13px">Which joint holds the roof beam?<div style="display:flex;gap:6px;margin-top:8px">${["Mortise", "Dovetail", "Lap"].map(t => `<span class="chip" style="height:28px">${t}</span>`).join("")}</div></div>`,
     hide_explore_podcast_section: () => H("Podcast") + `<div style="display:flex;gap:10px;padding:0 14px;align-items:center"><div style="width:52px;height:52px;border-radius:8px;background:${ART[6]};flex:none"></div><div style="font-size:13px">Fjord & Timber Talks<div class="t2">Podcast · 32 episodes</div></div></div>`,
   };
-  const sec = ([k, t, b]) => C(k, SEC[k] ? SEC[k]() : H(esc(t)) + `<div class="t2" style="padding:0 14px">${esc(b)}</div>`, { blk: 1 });
+  function sec([k, t, b]) { return C(k, SEC[k] ? SEC[k]() : H(esc(t)) + `<div class="t2" style="padding:0 14px">${esc(b)}</div>`, { blk: 1 }); }
   return `<div style="background:#0f0f0f;height:350px;position:relative;overflow:hidden">
     <div style="height:84px;position:relative">${videoFrame(0)}</div>
     <div class="inner-scroll" style="position:absolute;left:0;right:0;top:70px;bottom:0;background:#212121;border-radius:14px 14px 0 0;overflow-y:auto;scrollbar-width:thin;padding-bottom:14px">
       <div style="width:36px;height:4px;border-radius:2px;background:#555;margin:8px auto 0"></div>
       <div style="display:flex;align-items:center;padding:6px 14px 2px;border-bottom:1px solid #333"><b style="font-size:17px;flex:1;padding:6px 0">Description</b>${I("close", "ico", 'style="width:20px;height:20px"')}</div>
-      ${DESC.map(sec).join("")}
-      <div style="display:flex;align-items:center;gap:10px;padding:16px 14px 6px;margin-top:10px;border-top:1px solid #333">${av(0, 36)}<div style="flex:1;min-width:0"><div class="t1">${VIDEOS[0].c}</div><div class="t2">412K subscribers</div></div>
-        ${C("hide_subscribe_button", `<span class="chip" style="background:#f1f1f1;color:#0f0f0f;height:30px">Subscribe</span>`)}</div>
-      <div style="display:flex;gap:8px;padding:6px 14px">${["Videos", "About"].map(t => `<span class="chip" style="height:32px;flex:1;justify-content:center;background:transparent;border:1px solid #555">${t}</span>`).join("")}</div>
+      ${DESC.filter(d => !INFO_PARTS.includes(d[0])).map(sec).join("")}
     </div></div>`;
 };
 

@@ -107,11 +107,16 @@ function fitScale(w, h) {
 // Performance (Max, Nov 22): a phone's drawing never changes the pair's size (each .dev has its own
 // width and height), so the copy is made without it, and a pair whose labels, captions, phone sizes
 // and label scale are unchanged reuses the last measurement: a comparison asks many times a second.
+// (Max, Nov 25: Quick actions top margin's wheel lagged) a slider or wheel redraws the pair at every value,
+// a new pair each time, so the last measurements are kept for the comparison, not for one pair; digits
+// count as one shape ("12 dp" and "13 dp" take the same room: the editor's font draws digits all one width).
+const PAIR_MEMO = new Map();
 function measurePair(gen) {
-  const devs = [...gen.querySelectorAll(".dev")], cap = c => c.textContent;
+  const devs = [...gen.querySelectorAll(".dev")], cap = c => c.textContent.replace(/\d/g, "0");
   const key = [devs.map(d => d.style.width + "x" + d.style.height).join(), [...gen.querySelectorAll(":scope > .dl7 > span")].map(cap).join("|"),
     [...gen.querySelectorAll(":scope > .dl7 > .sf7")].map(cap).join("|"), gen.style.getPropertyValue("--dsc"), gen.querySelectorAll(".ask7").length, gen.parentElement.clientWidth].join("#");
   if (gen._measured && gen._measured.key === key) return gen._measured.m;
+  const memo = PAIR_MEMO.get(key); if (memo) { gen._measured = { key, m: memo }; return memo; }
   const base = gen.cloneNode(true);
   base.querySelectorAll(".dev").forEach(d => d.replaceChildren());
   base.removeAttribute("data-fit"); base.classList.add("probe7");
@@ -130,6 +135,7 @@ function measurePair(gen) {
   probes.forEach(v => v && v.remove());
   const m = { rowWH, colWH, sideWH, topWH };
   gen._measured = { key, m };
+  PAIR_MEMO.set(key, m); if (PAIR_MEMO.size > 24) PAIR_MEMO.delete(PAIR_MEMO.keys().next().value);
   return m;
 }
 // where an element sits inside the pair, in the pair's own unscaled pixels (whatever its scale is right
@@ -1508,7 +1514,7 @@ def("snackbar", "style", "custom_snackbar_theme custom_snackbar_color_dark custo
 
 // ------------------------------------------------------------------ section order with the new ones
 {
-  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "sponsorblock", "playback", "behaviour", "watch", "description", "comments", "ambient", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "ads", "look", "snackbar", "dearrow", "misc"];
+  const order = ["player", "endscreen", "seekbar", "fullscreen", "flyout", "captions", "sponsorblock", "playback", "behaviour", "watch", "description", "ambient", "comments", "danmaku", "miniplayer", "feed", "channel", "explore", "shorts", "nav", "ads", "look", "snackbar", "dearrow", "misc"];
   const all = [...SECTIONS]; SECTIONS.length = 0;
   order.forEach(id => { const s = all.find(x => x.id === id); if (s) SECTIONS.push(s); });
 }

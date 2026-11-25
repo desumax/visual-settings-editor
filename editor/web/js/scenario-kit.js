@@ -56,10 +56,18 @@ function fingerOn(dev, f, el, fx = .5, fy = .5, ms = 0) {
 // Every "mark, then remove" story (a part of the page outlined in red, then folded away) runs on one
 // clock, so all of them change speed together (Max, Nov 24: 30% faster than the 350 / 1050 / 1700 ms
 // they had). The fold itself is .tgt7's transition (motion.css), sped up the same way.
+// A part that fills the phone up to its edges (a scrim, a gradient) has its red outline drawn inside
+// itself: drawn outside, the phone cut off all but one side, which read as a stray red line across the
+// video (Max, Nov 25: Tap and hold gradient).
+function atEdges7(e) {
+  const d = e.closest(".dev"); if (!d) return false;
+  const r = e.getBoundingClientRect(), o = d.getBoundingClientRect(), s = o.width / (d.offsetWidth || 1), c = d.clientLeft * s, k = 2.5 * s;
+  return [r.left - o.left - c < k, o.right - c - r.right < k, r.top - o.top - c < k, o.bottom - c - r.bottom < k].filter(Boolean).length >= 2;
+}
 const MARK_T = { mark: 245, gone: 735, unmark: 1190 };
 function markGone(targets, remove, o = {}) {
   const t = [...targets];
-  at(MARK_T.mark, () => t.forEach(e => { e.classList.remove("instant7"); if (o.reveal) e.classList.remove("gone7"); e.classList.add("mark7"); }));
+  at(MARK_T.mark, () => t.forEach(e => { e.classList.remove("instant7"); if (o.reveal) e.classList.remove("gone7"); e.classList.toggle("in7", atEdges7(e)); e.classList.add("mark7"); }));
   at(MARK_T.gone, () => { if (remove) t.forEach(e => e.classList.add("gone7")); if (o.then) o.then(); });
   at(MARK_T.unmark, () => t.forEach(e => e.classList.remove("mark7")));
 }
@@ -704,6 +712,10 @@ scen("shorts", "skip_live_shorts", (box, on) => {
 // of the screen, so the space opens above it: the seekbar and time go up. True to scale: the drawn phone is
 // a landscape phone 412 dp tall (Realme GT 8 Pro), so a dp is its height / 412 px (Max, Nov 25: match the
 // scale). The dp label sits on the row's line, right of the buttons, so it never crosses the seekbar.
+// a phone's inner height, measured once per phone size: reading it from a phone just drawn laid the whole
+// page out again at every value of a slider (Max, Nov 25: the wheel lagged)
+const DEV_INNER = {};
+const devInnerH = dev => DEV_INNER[dev.style.height + "/" + dev.className] ??= dev.clientHeight;
 scen("watch", "quick_actions_top_margin", (box, v) => {
   // no blue or white lines (Max, Nov 25): the drawing and the dp labels say it
   const m = Number(v) || 0, live = scLive;
@@ -713,7 +725,7 @@ scen("watch", "quick_actions_top_margin", (box, v) => {
     <div class="gap7" style="position:absolute;right:4px;bottom:19px;width:2px;height:0;border:solid #ffd21f;border-width:1px 0;background:linear-gradient(#ffd21f,#ffd21f) center/1px 100% no-repeat;box-sizing:border-box;opacity:0"></div>
     <div style="position:absolute;left:8px;right:8px;bottom:4px;display:flex;gap:3px">${qa}</div>`);
   const dev = box.querySelector(".dev"), up = dev.querySelector(".up7"), gap = dev.querySelector(".gap7");
-  const k = dev.clientHeight / 412, px = dp => dp * k;
+  const k = devInnerH(dev) / 412, px = dp => dp * k;
   // the space at a size in dp, with the yellow measure beside it (only while there is a space)
   const set = dp => { up.style.translate = `0 -${px(dp)}px`; gap.style.height = px(dp) + "px"; gap.style.opacity = dp > .5 ? 1 : 0; };
   const label = () => { if (m) dev.insertAdjacentHTML("beforeend", `<b class="new7" style="position:absolute;right:4px;bottom:5px;font-size:5px;line-height:8px;color:#ffd21f">${m} dp</b>`); };
@@ -908,7 +920,7 @@ hidePage("description", "hide_ask_gemini_button", "", panel7("Ask about this vid
   ${tgt7(`<div style="display:flex;gap:3px;align-items:center;justify-content:center;padding:2px;border-radius:6px;border:1px solid #444">${ico7("spark", 6)}Ask Gemini</div>`)}`));
 hidePage("captions", "hide_sync_button", "", panel7("Transcript", ["0:12 · Today we start the roof", "0:31 · First the rafters go up", "0:48 · Then the boards, one by one", "1:05 · Time for the shingles"].map((t, n) => `<div style="color:${n === 1 ? "#fff" : "#aaa"}">${t}</div>`).join("") + tgt7(`<div style="justify-self:center;padding:2px 6px;border-radius:8px;background:#f1f1f1;color:#0f0f0f;width:max-content;margin:0 auto">Sync to video time</div>`)));
 hidePage("comments", "hide_subscribers_community_guidelines", "Before posting in a channel's community", top7("Fjord & Timber", ["more"]) + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b;font-size:6px">Please follow the community guidelines · Got it</div>`) + cmt7(2, "Love the roof!"));
-hidePage("seekbar", "hide_tap_and_hold_gradient", "Holding the video for 2× speed", `<div style="position:absolute;inset:0;background:${ART[3]}"></div><div class="tgt7" style="position:absolute;left:0;right:0;top:0;height:40%;background:linear-gradient(rgba(0,0,0,.75),transparent)"></div><div class="toastin" style="top:6px;z-index:2">2× ▶▶</div>`, { dev: "land", raw: true });
+hidePage("seekbar", "hide_tap_and_hold_gradient", "Holding the video for 2× speed", `<div style="position:absolute;inset:0;background:${ART[3]}"></div><div class="tgt7 fade7" style="position:absolute;left:0;right:0;top:0;bottom:60%;background:linear-gradient(rgba(0,0,0,.75),transparent)"></div><div class="toastin" style="top:6px;z-index:2">2× ▶▶</div>`, { dev: "land", raw: true });
 // Morphe (OnTheGoSheet): the player menu's On-the-go opens Morphe's own panel right under the video:
 // a handle, "On-the-go" and ✕, the thumbnail, title and channel, a time bar, big previous / −10 /
 // play-pause / +10 / next buttons, then audio mode (headset) and speed. Audio mode slides the panel up
@@ -1583,8 +1595,12 @@ function feedLikeBadge({ count, ratio, pos }) {
   const c = count ? `<span style="display:flex;gap:1.5px;align-items:center">${ico7("like", 5.5, "#fff")}48K</span>` : "", r = ratio ? `<span>96%</span>` : "";
   const box7 = "background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600;color:#fff;line-height:1.2";
   if (pos === "NEXT_TO_VIEW_COUNT") return `<div class="fb7" style="position:absolute;left:3px;bottom:3px;${box7};display:grid"><div style="display:flex;gap:3px;align-items:center"><span>1.2M views</span><span style="width:.5px;align-self:stretch;background:#888"></span>${c}${r}</div>${bar}</div>`;
-  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:50%;translate:0 -30%" : "left:3px;top:3px";
-  return `<div class="fb7" style="position:absolute;${at7};${box7};display:grid;justify-items:center;gap:1px">${c}${r}${bar}</div>`;
+  // stacked: the like bar spans the badge right under the ratio (it had no width in the centred grid, so
+  // the badge only showed an empty strip at its bottom, Max, Nov 25), and at MIDDLE_RIGHT the badge ends
+  // under the Watch later button and above the duration badge (FeedEngagementCountsPatch: top =
+  // max(minTop, middle - height / 2), which is about 12 px on this thumbnail) instead of covering either
+  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:12.5px" : "left:3px;top:3px";
+  return `<div class="fb7" style="position:absolute;${at7};${box7};font-size:4.6px;line-height:1.05;display:grid;justify-items:center;gap:.5px;padding-bottom:1px">${c}${r}${bar.replace("margin-top:1px", "margin-top:0;justify-self:stretch")}</div>`;
 }
 function feedLikeScen(key, plan) {
   AWAY.add("morphe_" + key);

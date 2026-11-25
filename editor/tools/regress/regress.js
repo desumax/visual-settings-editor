@@ -1459,6 +1459,29 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "wheel-turn-stays-light",
+    report: "Nov 25 (14:58): in web view, the Quick actions top margin wheel is very laggy (every value redrew the covered preview and measured the comparison from scratch)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_quick_actions_top_margin";
+        setPicker(false); goToSetting(k); await wait(1500);
+        const src = document.querySelector(`#list [data-wheel="${k}"]`)?.parentElement.querySelector(".wsrc"); if (!src) return "no wheel";
+        if (!$("canvas").classList.contains("show")) return "no comparison";
+        const r0 = renderCount; let probes = 0;
+        const mo = new MutationObserver(rs => rs.forEach(x => x.addedNodes.forEach(n => { if (n.classList && n.classList.contains("probe7")) probes++; })));
+        mo.observe($("canvas"), { childList: true, subtree: true });
+        for (let i = 1; i <= 10; i++) { src.value = String(i); src.dispatchEvent(new Event("input", { bubbles: true })); await new Promise(r => requestAnimationFrame(() => setTimeout(r, 0))); }
+        mo.disconnect();
+        return { renders: renderCount - r0, probes };
+      });
+      ok(typeof r === "object", String(r));
+      ok(r.renders === 0, `the covered preview was redrawn ${r.renders} times for 10 values`);
+      ok(r.probes <= 16, `the comparison was measured from scratch ${r.probes / 4} times for 10 values`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

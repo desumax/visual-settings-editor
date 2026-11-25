@@ -696,6 +696,10 @@ scen("shorts", "skip_live_shorts", (box, on) => {
 // of the screen, so the space opens above it: the seekbar and time go up. True to scale: the drawn phone is
 // a landscape phone 412 dp tall (Realme GT 8 Pro), so a dp is its height / 412 px (Max, Nov 25: match the
 // scale). The dp label sits on the row's line, right of the buttons, so it never crosses the seekbar.
+// a phone's inner height, measured once per phone size: reading it from a phone just drawn laid the whole
+// page out again at every value of a slider (Max, Nov 25: the wheel lagged)
+const DEV_INNER = {};
+const devInnerH = dev => DEV_INNER[dev.style.height + "/" + dev.className] ??= dev.clientHeight;
 scen("watch", "quick_actions_top_margin", (box, v) => {
   // no blue or white lines (Max, Nov 25): the drawing and the dp labels say it
   const m = Number(v) || 0, live = scLive;
@@ -705,7 +709,7 @@ scen("watch", "quick_actions_top_margin", (box, v) => {
     <div class="gap7" style="position:absolute;right:4px;bottom:19px;width:2px;height:0;border:solid #ffd21f;border-width:1px 0;background:linear-gradient(#ffd21f,#ffd21f) center/1px 100% no-repeat;box-sizing:border-box;opacity:0"></div>
     <div style="position:absolute;left:8px;right:8px;bottom:4px;display:flex;gap:3px">${qa}</div>`);
   const dev = box.querySelector(".dev"), up = dev.querySelector(".up7"), gap = dev.querySelector(".gap7");
-  const k = dev.clientHeight / 412, px = dp => dp * k;
+  const k = devInnerH(dev) / 412, px = dp => dp * k;
   // the space at a size in dp, with the yellow measure beside it (only while there is a space)
   const set = dp => { up.style.translate = `0 -${px(dp)}px`; gap.style.height = px(dp) + "px"; gap.style.opacity = dp > .5 ? 1 : 0; };
   const label = () => { if (m) dev.insertAdjacentHTML("beforeend", `<b class="new7" style="position:absolute;right:4px;bottom:5px;font-size:5px;line-height:8px;color:#ffd21f">${m} dp</b>`); };

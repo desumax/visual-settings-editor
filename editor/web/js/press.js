@@ -204,6 +204,10 @@ $("list").addEventListener("input", e => {
     // a slider with a live overlay (swipe overlay look, zone sizes) redraws only that overlay: redrawing
     // the whole preview on every step flashed parts of it
     if (LIVE_HUD[k] && selected === k) LIVE_HUD[k]();
+    // (the preview under a comparison that follows the slider is covered by it, so it catches up when the
+    // comparison closes, as for a selection (select.js): redrawing it at every value made the wheel lag,
+    // Quick actions top margin, Max, Nov 25)
+    else if (SCN[k] && t.type === "range" && selected === k && $("canvas").classList.contains("show")) stageStale = true;
     else { if (selected !== k) stopScenario(); selected = k; renderStage(); highlight(k, false); if (LIVE_HUD[k]) LIVE_HUD[k](); }
     if (SCN[k] && t.type === "range") liveScenario(k, JSON.parse(t.dataset.before)); // its comparison follows the slider
   }

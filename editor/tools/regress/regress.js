@@ -1482,6 +1482,35 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "theme-backgrounds-as-morphe",
+    report: "Nov 25 (14:58): the look must react to Dark theme background, Custom dark background and Light theme background as the Morphe code expects; Light theme background did nothing",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
+        const look = async (sel, prefs) => { for (const [k, v] of Object.entries(prefs)) setPref(k, v); commit(); goToSetting(sel); await wait(900); const e = document.querySelector("#stage .look7"); return e ? getComputedStyle(e).backgroundColor : "none"; };
+        const ed = () => getComputedStyle($("phone")).getPropertyValue("--m-bg").trim();
+        setPicker(false);
+        out.light = await look("morphe_theme_color_light", { morphe_theme_color_light: "LIGHT_GREEN" });
+        out.custom = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark: "CUSTOM", morphe_theme_color_dark_custom: "#80123456" });
+        out.customEd = ed();
+        out.bad = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark_custom: "not a colour" });
+        out.named = await look("morphe_theme_color_dark_custom", { morphe_theme_color_dark_custom: "Navy" });
+        out.dark = await look("morphe_theme_color_dark", { morphe_theme_color_dark: "DARK_RED" });
+        for (const t of ["m3", "glass"]) { theme = t; applyTheme(); out["ed_" + t] = ed(); }
+        return out;
+      });
+      ok(r.light === "rgb(204, 255, 204)", `Light theme background Light green: the App look preview shows ${r.light}`);
+      ok(r.custom === "rgb(18, 52, 86)", `Custom dark background #80123456 (made opaque, as Morphe does): ${r.custom}`);
+      ok(r.customEd === "#123456", `the editor's background with a custom dark theme: ${r.customEd}`);
+      ok(r.bad === "rgb(15, 15, 15)", `a custom colour that isn't one falls back to #0F0F0F: ${r.bad}`);
+      ok(r.named === "rgb(0, 0, 128)", `a colour name (Navy), as Android reads it: ${r.named}`);
+      ok(r.dark === "rgb(41, 0, 0)", `Dark theme background Dark red: ${r.dark}`);
+      ok(r.ed_m3 === "#290000" && r.ed_glass === "#290000", `the Morphe and Glass designs follow the dark theme: ${r.ed_m3} / ${r.ed_glass}`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

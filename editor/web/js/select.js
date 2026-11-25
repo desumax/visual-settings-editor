@@ -56,6 +56,7 @@ function select(k, from, arrive = false) {
   if (section === "shorts" && (SHORTS_SHEET.has(k) || SHORTS_SHEET.has(prevSel))) redraw();
   if (section === "feed" && (k === "morphe_feed_card_layout" || prevSel === "morphe_feed_card_layout")) redraw();
   if (section === "captions" && (k === "morphe_secondary_caption_language" || prevSel === "morphe_secondary_caption_language")) redraw();
+  if (section === "look" && LIGHT_LOOK.has(k) !== LIGHT_LOOK.has(prevSel)) redraw(); // the light theme page (scenarios.js)
   // a hidden setting stays revealed while it is selected; it collapses once you move to another one
   // (unless the new selection needs it, such as the hidden seekbar for Tap to seek)
   if (dropGhost && lentTo(k, dropGhost)) { ghosts.delete(dropGhost); stageEls(dropGhost).forEach(e => e.classList.remove("sel", "selx")); wakeRings(); }

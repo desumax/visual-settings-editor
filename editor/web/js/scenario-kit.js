@@ -519,6 +519,90 @@ scen("look", "theme_color_change_foreground", (box, on) => {
   at(300, () => { if (!on) return; dev.querySelectorAll(".fg7").forEach(e => { e.style.color = ink; e.style.fill = ink; }); pg.style.color = ink; dev.querySelectorAll(".pg7 > div:first-child svg").forEach(e => { e.style.fill = ink; }); });
   return "";
 });
+// Startup animation (Max, Nov 25: it did nothing): opening the app from the home screen, as Morphe plays it.
+// Drawn from SplashAnimationPatch and Morphe's own animation file (custom-branding/raw/morphe_startup_animation
+// .json, 42 frames at 60 fps): the Morphe mark's left pillar (#1E5AA8) and right pillar (#00AFAE) grow up from
+// their feet with a small overshoot (frames 0-18 and 3-21), the wave (gradient #1E5AA8 to #00AFAE) rises 26 units
+// into place (5-21), the mark grows from 33.3 to 37% (0-28) and a white sheen sweeps across it (23-39).
+// - Color / Monochrome: YouTube's own one-second logo animation, in red or in the theme's foreground colour.
+// - Morphe Color / Morphe Monochrome: the Morphe animation above, in its colours or in the foreground colour.
+// - Glow / Morphe Glow 1 / Morphe Glow 2 (Rive, 21.30+ and 21.39+): the logo comes into focus out of a coloured
+//   glow, for as long as Startup animation duration says (1200 ms by default); a tap skips it.
+// - Disabled: Android's splash shows the plain icon for a moment and the app opens.
+// The splash is drawn in the theme's background colour (Morphe's splash theme follows the theme colour).
+const MORPHE_MARK = {
+  wave: "M127 108C93 108 83 133 83 148L83 202C113 169 158 229 163 235C191 267 207 322 256 324C304 322 323 268 349 235C349 235 394 161 429 155C429 127 418 108 385 108C351 108 327 158 310 180C293 202 285 226 256 226C227 226 218 201 202 180C185 158 161 108 127 108Z",
+  right: "M349 285L349 370C350 391 368 408 389 408C410 408 428 391 429 370L429 182C418 168 355 245 349 285Z",
+  left: "M123 140C102 140 84 157 83 178L83 370C84 391 102 408 123 408C144 408 162 391 163 370L163 178C162 157 144 140 123 140Z",
+};
+let markN = 0;
+function morpheMark(size, mono) {
+  const id = "mm" + (++markN), fill = c => mono ? mono : c;
+  return `<svg class="mark7" viewBox="83 108 346 300" style="width:${size}px;height:${size * 300 / 346}px;overflow:visible"><defs><linearGradient id="${id}g" gradientUnits="userSpaceOnUse" x1="83" y1="216" x2="429" y2="216"><stop offset="0" stop-color="${fill("#1e5aa8")}"/><stop offset="1" stop-color="${fill("#00afae")}"/></linearGradient>
+    <clipPath id="${id}c"><path d="${MORPHE_MARK.wave}"/><path d="${MORPHE_MARK.left}"/><path d="${MORPHE_MARK.right}"/></clipPath></defs>
+    <path class="pl7" d="${MORPHE_MARK.left}" fill="${fill("#1e5aa8")}" style="transform-origin:123px 408px"/><path class="pr7" d="${MORPHE_MARK.right}" fill="${fill("#00afae")}" style="transform-origin:389px 408px"/>
+    <path class="wv7" d="${MORPHE_MARK.wave}" fill="url(#${id}g)"/><g clip-path="url(#${id}c)"><rect class="sh7" x="-32" y="-104" width="64" height="720" fill="#fff" fill-opacity=".55" transform="translate(0 0)" style="transform:translate(-120px,0) rotate(20deg);transform-box:view-box;transform-origin:0 256px"/></g></svg>`;
+}
+// YouTube's logo: the rounded red tile with its white play triangle (or the theme's foreground colour)
+const ytLogo = (size, mono, bg) => `<svg class="ytl7" viewBox="0 0 28 20" style="width:${size}px;height:${size * 20 / 28}px"><rect width="28" height="20" rx="5.6" fill="${mono || "#ff0033"}"/><path d="M11.2 5.6v8.8l7.6-4.4z" fill="${mono ? bg : "#fff"}"/></svg>`;
+const LOTTIE_EASE = "cubic-bezier(.2,.2,.1,1)", F60 = n => n * 1000 / 60;
+function playMorpheMark(svg) {
+  const o = (f0, f1) => ({ delay: F60(f0), duration: F60(f1 - f0), easing: LOTTIE_EASE, fill: "both" });
+  svg.querySelector(".pl7").animate([{ transform: "scaleY(0)" }, { transform: "scaleY(1.06)", offset: 12 / 18 }, { transform: "scaleY(1)" }], o(0, 18));
+  svg.querySelector(".pr7").animate([{ transform: "scaleY(0)" }, { transform: "scaleY(1.06)", offset: 12 / 18 }, { transform: "scaleY(1)" }], o(3, 21));
+  svg.querySelector(".wv7").animate([{ transform: "translateY(26px)" }, { transform: "translateY(0)" }], o(5, 21));
+  svg.animate([{ transform: "scale(.9)" }, { transform: "scale(1)" }], o(0, 28));
+  svg.querySelector(".sh7").animate([{ transform: "translate(-40px,0) rotate(20deg)" }, { transform: "translate(560px,0) rotate(20deg)" }], { delay: F60(23), duration: F60(16), easing: "cubic-bezier(.45,0,.8,.2)", fill: "both" });
+}
+const SPLASH_RIVE = new Set(["RIVE_GLOW", "RIVE_GLOW_MORPHE", "RIVE_GLOW_MORPHE_2"]);
+function splashStory(box, style, glowMs) {
+  const bg = themeColor(true), ink = themeInk(true), mono = /BLACK_AND_WHITE|MONOCHROME/.test(style) ? ink : null;
+  const morphe = /^MORPHE|^RIVE_GLOW_MORPHE/.test(style);
+  const icon = `<span style="width:20px;height:20px;border-radius:6px;background:#0f1a2b;display:grid;place-items:center">${morpheMark(13)}</span>`;
+  const apps = ["#3ddc84", "#4285f4", "#ea4335", "#fbbc04", "#a142f4", "#24c1e0", "#f6aea9"];
+  box.innerHTML = device("port", `<div class="hs7" style="position:absolute;inset:0;background:linear-gradient(160deg,#22304f,#3b2a55 55%,#1b1e2b);display:grid;grid-template-columns:repeat(4,1fr);align-content:end;gap:9px 0;justify-items:center;padding:0 6px 26px">
+      ${apps.map(c => `<span style="width:20px;height:20px;border-radius:6px;background:${c};opacity:.85"></span>`).join("")}<span class="ic7">${icon}</span></div>
+    <div class="spl7" style="position:absolute;inset:0;background:${bg};display:grid;place-items:center;opacity:0;clip-path:circle(0 at 80% 84%)"></div>
+    <div class="app7" style="position:absolute;inset:0;opacity:0">${pageRows(feed7(`${big7(2, "Night train to Bodø")}${big7(4, "Building a tiny cabin")}`)).replace("background:#0f0f0f", `background:${bg}`)}</div>`);
+  const dev = box.querySelector(".dev"), f = dev.querySelector(".finger"), spl = dev.querySelector(".spl7"), app = dev.querySelector(".app7");
+  const ic = dev.querySelector(".ic7"), W = dev.clientWidth, H = dev.clientHeight;
+  const r = ic.getBoundingClientRect(), d = dev.getBoundingClientRect(), k = d.width / (dev.offsetWidth || 1);
+  const ix = (r.left - d.left + r.width / 2) / k - dev.clientLeft, iy = (r.top - d.top + r.height / 2) / k - dev.clientTop;
+  spl.style.clipPath = `circle(0 at ${ix}px ${iy}px)`;
+  at(120, () => fingerTo(f, ix, iy));
+  at(420, () => tapF(f));
+  const T0 = 540, open = () => spl.animate([{ opacity: 0, clipPath: `circle(0 at ${ix}px ${iy}px)` }, { opacity: 1, clipPath: `circle(${Math.hypot(W, H)}px at ${ix}px ${iy}px)` }], { duration: 260, easing: "cubic-bezier(.2,.8,.2,1)", fill: "forwards" });
+  // the splash lasts as long as the style plays, in real time (at() stretches a story to fill its round)
+  const show = ms => later(() => app.animate([{ opacity: 0, transform: "scale(.96)" }, { opacity: 1, transform: "none" }], { duration: 220, easing: "ease-out", fill: "forwards" }), 260 + ms);
+  at(T0, () => { f.classList.remove("show"); open(); });
+  if (style === "DISABLED") { // Android's own splash: the plain icon, then the app
+    at(T0, () => { spl.innerHTML = icon.replace("width:20px;height:20px", "width:26px;height:26px"); show(220); });
+    return;
+  }
+  if (SPLASH_RIVE.has(style)) { // the logo comes into focus out of its glow, as long as the duration says
+    const ms = Math.max(200, Number(glowMs) || 1200), logo = morphe ? morpheMark(34, mono) : ytLogo(34, mono, bg);
+    const glow = morphe ? "radial-gradient(circle,rgba(30,90,168,.9),rgba(0,175,174,.55) 45%,transparent 70%)" : "radial-gradient(circle,rgba(255,0,51,.85),rgba(255,120,60,.5) 45%,transparent 70%)";
+    at(T0, () => {
+      spl.innerHTML = `<div style="position:relative;display:grid;place-items:center"><i class="gl7" style="position:absolute;width:80px;height:80px;border-radius:50%;background:${glow}"></i><div class="lg7" style="position:relative">${logo}</div></div>`;
+      spl.querySelector(".gl7").animate([{ opacity: 0, transform: "scale(.4)" }, { opacity: 1, transform: "scale(1.1)", offset: .45 }, { opacity: 0, transform: "scale(1.5)" }], { duration: ms, easing: "ease-out", fill: "both" });
+      spl.querySelector(".lg7").animate([{ opacity: 0, filter: "blur(6px)", transform: "scale(1.25)" }, { opacity: 1, filter: "blur(0)", transform: "scale(1)", offset: .6 }, { opacity: 1, filter: "blur(0)", transform: "scale(1)" }], { duration: ms, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
+      show(ms);
+    });
+    return;
+  }
+  if (morphe) { at(T0, () => { spl.innerHTML = morpheMark(34, mono); playMorpheMark(spl.querySelector("svg")); show(F60(42) + 120); }); return; }
+  // YouTube's own logo animation (one second): the tile pops in, the triangle follows
+  at(T0, () => {
+    spl.innerHTML = ytLogo(34, mono, bg);
+    const s = spl.querySelector("svg");
+    s.animate([{ transform: "scale(0)" }, { transform: "scale(1.12)", offset: .45 }, { transform: "scale(.96)", offset: .7 }, { transform: "scale(1)" }], { duration: 700, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
+    s.querySelector("path").animate([{ opacity: 0, transform: "scale(.3)" }, { opacity: 1, transform: "scale(1)" }], { delay: 300, duration: 400, easing: "cubic-bezier(.2,.8,.2,1)", fill: "both" });
+    s.querySelector("path").style.transformOrigin = "14px 10px";
+    show(1000);
+  });
+}
+scen("look", "splash_screen_style", (box, v) => { splashStory(box, String(v), V("morphe_splash_screen_duration")); return ""; });
+scen("look", "splash_screen_duration", (box, v) => { const st = String(V("morphe_splash_screen_style")); splashStory(box, SPLASH_RIVE.has(st) ? st : "RIVE_GLOW_MORPHE", v); return ""; });
 scen("look", "custom_filter", (box, on) => {
   situation("Your own custom filter");
   box.innerHTML = device("port", pageRows(feed7(big7(3, "Building a tiny cabin") + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b;font-size:6px">Sponsored shelf you don't want</div>`) + row7(4, "Night train to Bodø"))));

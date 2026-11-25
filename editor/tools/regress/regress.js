@@ -1585,6 +1585,28 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "startup-animation-plays",
+    report: "Nov 25 (14:58): Startup animation doesn't do anything: fix and animate it, based on the Morphe code",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), k = "morphe_splash_screen_style", out = { def: defaults[k] };
+        setPicker(false);
+        for (const v of ["FPS_60_ONE_SECOND", "MORPHE_MONOCHROME", "DISABLED"]) {
+          setPref(k, v); commit(); goToSetting(k); await wait(2600);
+          const sides = [...document.querySelectorAll("#canvas .dl7")];
+          out[v] = sides.map(c => { const s = c.querySelector(".spl7"); return !s ? "none" : s.querySelector(".ytl7") ? "yt" : s.querySelector("span > .mark7") ? "icon" : s.querySelector(".mark7") ? (s.querySelector(".pl7").getAttribute("fill") === "#1e5aa8" ? "morphe" : "morphe-mono") : s.innerHTML.trim() ? "icon" : "empty"; }).join("|");
+        }
+        return out;
+      });
+      ok(r.def === "MORPHE_COLOR", `Morphe's own default here is Morphe Color, the editor starts on ${r.def}`);
+      ok(r.FPS_60_ONE_SECOND === "morphe|yt", `Color: ${r.FPS_60_ONE_SECOND}`);
+      ok(r.MORPHE_MONOCHROME === "morphe|morphe-mono", `Morphe Monochrome: ${r.MORPHE_MONOCHROME}`);
+      ok(r.DISABLED === "morphe|icon", `Disabled: ${r.DISABLED}`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

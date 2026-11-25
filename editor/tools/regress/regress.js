@@ -1445,6 +1445,20 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "info-cards-section-holds-its-parts",
+    report: "Nov 25 (14:58): are the sub settings under Info cards section correct? (Morphe's sub-settings sit inside YouTube's infocards section, but the preview drew them outside it, so hiding the section left them all showing)",
+    async run() {
+      const { p, ctx } = await open();
+      const k = "morphe_hide_info_cards_section";
+      await p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 900)); }, k);
+      await p.click(`#list [data-sw="${k}"]`); await sleep(1500);
+      const left = await p.evaluate(() => ["featured_videos_section", "featured_playlists_section", "featured_channels_section", "featured_links_section", "channel_links_section", "subscribe_button"]
+        .filter(x => [...document.querySelectorAll(`[data-k="morphe_hide_${x}"]`)].some(e => !e.closest("#list") && e.getBoundingClientRect().height > 1)));
+      ok(!left.length, `Info cards section hidden, but these still show: ${left.join(", ")}`);
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

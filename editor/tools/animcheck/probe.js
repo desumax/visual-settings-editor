@@ -101,6 +101,8 @@
       const svg = f.querySelector("svg"); if (!svg || opacityOf(f, stick) < .3) continue;
       const ph = f.closest(".dev") || stage.firstElementChild || stage; const pr = ph.getBoundingClientRect(), pw = Math.min(pr.width, pr.height), fw = svg.getBoundingClientRect().width;
       if (pw > 20 && fw > 1) s.fingers.push(fw / pw);
+      const fr = svg.getBoundingClientRect();
+      (s.fpos = s.fpos || []).push({ id: idOf(f), x: fr.left / (pw / 100), y: fr.top / (pw / 100), hold: f.classList.contains("hold") });
     }
     // everything inside is measured from the preview box: when the box itself slides (the top bar hides
     // as a card is selected) nothing in it has moved
@@ -310,6 +312,15 @@
       if (!job.ask && (!pr.length || Math.max(...pr) < 8)) add("no-progress", 0, "the progress line never grows");
     }
     { const fr = ss.flatMap(s => s.fingers || []); if (fr.length) { const m = Math.max(...fr); job.finger = m; if (m > FINGER_MAX) add("finger-big", ss.find(s => (s.fingers || []).includes(m)).t, `the hand is ${(m * 100).toFixed(1)}% of its phone's short side (at most ${FINGER_MAX * 100}%)`); } }
+    // drag-no-hold (Max, Nov 25: Pinch-to-zoom's fingers had no red hold circle): a finger that moves on the
+    // phone for over 300 ms is dragging, and a dragging finger shows its hold ring (.finger.hold)
+    { const run = {}; for (const s of ss) for (const p of (s.fpos || [])) {
+        const r = run[p.id]; run[p.id] = { ...p, t: s.t, moving: 0 };
+        if (!r || s.t - r.t > 250) continue; // first seen, or hidden in between: it landed afresh
+        const d = Math.hypot(p.x - r.x, p.y - r.y);
+        run[p.id].moving = d > 1.5 && !p.hold ? (r.moving || 0) + (s.t - r.t) : 0;
+        if (run[p.id].moving > 300) add("drag-no-hold", s.t, "a finger drags across the phone without its hold ring", job.kind === "scn" ? "fail" : "warn", "drag");
+      } }
     if (job.kind === "demo") { if (ss.reduce((n, s) => n + s.muts, 0) < 2) add("nothing-happens", 0, "the preview never changes", "warn"); }
     return out;
   }

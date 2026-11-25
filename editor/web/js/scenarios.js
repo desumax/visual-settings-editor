@@ -404,13 +404,17 @@ function startCollected(list) {
 // is first put in its place with transitions off: a finger just made or just reset had no drawn
 // start to fade from, so it popped in, and one hidden elsewhere slid in from its last spot.
 const FINGER_FADE = 200;
+// A finger that fades in lands on the screen; moving it on from there before it taps is a drag, so it
+// shows its hold ring (Max, Nov 25: Pinch-to-zoom's fingers had none; every drag in every story). After
+// a tap it is lifted, and a move is only the hand going to the next spot.
 function fingerShow(f, x, y, ms = 0) {
-  if (!f.classList.contains("show")) { f.style.transition = "none"; f.style.left = x + "px"; f.style.top = y + "px"; void f.offsetWidth; ms = 0; }
+  if (!f.classList.contains("show")) { f.style.transition = "none"; f.style.left = x + "px"; f.style.top = y + "px"; void f.offsetWidth; ms = 0; f._lifted = false; f.classList.remove("hold"); }
+  else if (ms && !f._lifted) f.classList.add("hold");
   f.style.transition = (ms ? `left ${ms}ms var(--ease), top ${ms}ms var(--ease), ` : "") + `opacity ${FINGER_FADE}ms var(--ease)`;
   f.style.left = x + "px"; f.style.top = y + "px"; f.classList.add("show");
 }
 function fingerTo(f, x, y, ms = 0) { fingerShow(f, x, y, ms); }
-function tapF(f) { f.classList.remove("tap"); void f.offsetWidth; f.classList.add("tap"); }
+function tapF(f) { f._lifted = true; f.classList.remove("hold", "tap"); void f.offsetWidth; f.classList.add("tap"); }
 const miniSeek = (pct = 30, marks = []) => `<div class="msk" style="position:absolute;left:8%;right:8%;bottom:16%;height:3px;background:rgba(255,255,255,.3)"><div class="mp" style="position:absolute;left:0;top:0;bottom:0;width:${pct}%;background:#ff0033;transition:width .9s linear"></div>${marks.map(m => `<i style="position:absolute;left:${m}%;top:-1px;width:2px;height:5px;background:#000"></i>`).join("")}</div>`;
 // the time over the mini seekbar, as YouTube puts it: just above the bar's left end, never on it (Max, Nov 25:
 // "Copy timestamp by default" drew it across the seekbar); one helper for every story with a time

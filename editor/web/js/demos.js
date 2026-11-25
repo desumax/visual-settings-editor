@@ -99,7 +99,7 @@ function place(f, x, y, ms) {
   fingerShow(f, x, y, ms);
 }
 function hideF(f, after) { dT(() => { f.classList.remove("show", "hold"); }, after); }
-function tapAt(x, y, f = finger()) { if (!f) return; place(f, x, y); f.classList.remove("tap"); void f.offsetWidth; f.classList.add("tap"); hideF(f, 520); }
+function tapAt(x, y, f = finger()) { if (!f) return; place(f, x, y); f._lifted = true; f.classList.remove("tap"); void f.offsetWidth; f.classList.add("tap"); hideF(f, 520); }
 function fmt(total, pct) { const s = Math.round(total * pct / 100); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; }
 function setSeek(pct) { const p = $("played"); if (p) p.style.width = pct + "%"; ["knob", "knobRing"].forEach(id => { const k = $(id); if (k) k.style.left = pct + "%"; }); }
 // A message pill on the live preview: on the screen that is on top (a story's cover, else the preview).

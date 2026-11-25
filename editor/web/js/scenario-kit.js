@@ -1573,8 +1573,12 @@ function feedLikeBadge({ count, ratio, pos }) {
   const c = count ? `<span style="display:flex;gap:1.5px;align-items:center">${ico7("like", 5.5, "#fff")}48K</span>` : "", r = ratio ? `<span>96%</span>` : "";
   const box7 = "background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600;color:#fff;line-height:1.2";
   if (pos === "NEXT_TO_VIEW_COUNT") return `<div class="fb7" style="position:absolute;left:3px;bottom:3px;${box7};display:grid"><div style="display:flex;gap:3px;align-items:center"><span>1.2M views</span><span style="width:.5px;align-self:stretch;background:#888"></span>${c}${r}</div>${bar}</div>`;
-  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:50%;translate:0 -30%" : "left:3px;top:3px";
-  return `<div class="fb7" style="position:absolute;${at7};${box7};display:grid;justify-items:center;gap:1px">${c}${r}${bar}</div>`;
+  // stacked: the like bar spans the badge right under the ratio (it had no width in the centred grid, so
+  // the badge only showed an empty strip at its bottom, Max, Nov 25), and at MIDDLE_RIGHT the badge ends
+  // under the Watch later button and above the duration badge (FeedEngagementCountsPatch: top =
+  // max(minTop, middle - height / 2), which is about 12 px on this thumbnail) instead of covering either
+  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:12.5px" : "left:3px;top:3px";
+  return `<div class="fb7" style="position:absolute;${at7};${box7};font-size:4.6px;line-height:1.05;display:grid;justify-items:center;gap:.5px;padding-bottom:1px">${c}${r}${bar.replace("margin-top:1px", "margin-top:0;justify-self:stretch")}</div>`;
 }
 function feedLikeScen(key, plan) {
   AWAY.add("morphe_" + key);

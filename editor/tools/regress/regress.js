@@ -1396,6 +1396,32 @@ const CHECKS = [
       await ctx.close();
     },
   },
+  {
+    name: "feed-like-badge-stacked-fits",
+    report: "Nov 25 (14:58): Feed thumbnail like position, the right side black pill: its bottom border is too large (the like bar had no width, and the badge covered the duration)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
+        setPicker(false); setPref("morphe_ryd_enabled", true);
+        for (const v of ["MIDDLE_RIGHT", "TOP_LEFT"]) {
+          setPref("morphe_ryd_feed_counts_position", v); goToSetting("morphe_ryd_feed_counts_position"); await wait(1800);
+          const b = [...document.querySelectorAll("#canvas .fb7")].pop(); if (!b) { out[v] = "no badge"; continue; }
+          const bar = b.querySelector("i"), br = b.getBoundingClientRect(), th = b.parentElement;
+          const others = [...th.querySelectorAll(":scope > span")].map(e => e.getBoundingClientRect());
+          const hit = others.some(o => Math.min(o.right, br.right) - Math.max(o.left, br.left) > 1 && Math.min(o.bottom, br.bottom) - Math.max(o.top, br.top) > 1);
+          out[v] = { bar: bar ? Math.round(bar.getBoundingClientRect().width / br.width * 100) : -1, hit, dbg: JSON.stringify([br, ...others].map(o => [o.left, o.top, o.right, o.bottom].map(Math.round))) };
+        }
+        return out;
+      });
+      for (const [v, x] of Object.entries(r)) {
+        ok(typeof x === "object", `${v}: ${x}`);
+        ok(x.bar > 60, `${v}: the like bar is ${x.bar}% of the badge's width`);
+        ok(!x.hit, `${v}: the badge covers another thumbnail badge ${x.dbg}`);
+      }
+      await ctx.close();
+    },
+  },
 ];
 
 (async () => {

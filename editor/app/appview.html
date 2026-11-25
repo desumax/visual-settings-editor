@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>App view</title>
+<style>
+:root { --bg: #0b0c10; --ink: #e3e2e6; --ink-2: #a9adb5; --btn: #282a2c; --btn-h: #333537; --accent: #3ea6ff; }
+@media (prefers-color-scheme: light) { :root:not([data-theme="dark"]) { --bg: #f3f4f6; --ink: #1a1c1e; --ink-2: #555a62; --btn: #e3e5e8; --btn-h: #d6d9dd; --accent: #065fd4; } }
+:root[data-theme="dark"] { --bg: #0b0c10; --ink: #e3e2e6; --ink-2: #a9adb5; --btn: #282a2c; --btn-h: #333537; --accent: #3ea6ff; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--ink); font: 14px/1.4 Roboto, system-ui, -apple-system, "Segoe UI", sans-serif; display: flex; flex-direction: column; align-items: center; gap: 14px; padding: 18px 16px 28px; }
+header { width: 100%; max-width: 428px; display: flex; align-items: center; gap: 10px; }
+header h1 { margin: 0; font-size: 17px; font-weight: 500; flex: 1; }
+header p { margin: 2px 0 0; font-size: 12px; color: var(--ink-2); }
+a.web, button { border: 0; border-radius: 999px; background: var(--btn); color: var(--ink); font: inherit; font-size: 13px; font-weight: 500; padding: 8px 14px; cursor: pointer; text-decoration: none; white-space: nowrap; }
+a.web:hover, button:hover { background: var(--btn-h); }
+/* realme GT 8 Pro: 1440 x 3136 px at 3.5x = a 412 x 896 screen in CSS pixels, the size the app's WebView gets */
+.phone { position: relative; width: 428px; height: 912px; flex: none; transform-origin: top center; border: 8px solid #000; border-radius: 34px; overflow: hidden; background: #0f0f0f; box-shadow: 0 10px 40px rgba(0,0,0,.45); }
+.phone iframe { width: 100%; height: 100%; border: 0; display: block; }
+/* thin strips on both sides of the screen: drag inwards from one for the Back gesture, as on the phone */
+.edge { position: absolute; top: 0; bottom: 0; width: 18px; z-index: 3; cursor: e-resize; touch-action: none; }
+.edge.l { left: 0; } .edge.r { right: 0; cursor: w-resize; }
+.bar { display: flex; gap: 8px; }
+.toast { position: absolute; left: 50%; bottom: 24px; transform: translate(-50%, 12px); max-width: 86%; background: #f1f1f1; color: #0f0f0f; font-size: 13px; padding: 10px 14px; border-radius: 10px; box-shadow: 0 4px 16px rgba(0,0,0,.5); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; text-align: center; }
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+.bar a.web { display: none; }
+/* On a phone (or any small window) a drawn phone inside the real one left the editor at 70% of its size,
+   and nothing usable sideways. There the editor fills the screen, as it does in the app, and only a
+   slim bar stays for Back, reopening and the way to the web preview. */
+@media (max-width: 520px), (max-height: 620px) {
+  body { padding: 0; gap: 0; height: 100vh; height: 100dvh; min-height: 0; overflow: hidden; }
+  header { display: none; }
+  .phone { width: 100%; height: auto; flex: 1 1 0; min-height: 0; border: 0; border-radius: 0; box-shadow: none; transform: none !important; margin: 0 !important; }
+  .bar { flex: none; width: 100%; gap: 6px; padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px)); justify-content: center; background: var(--bg); }
+  .bar a.web { display: inline-block; }
+  .bar button, .bar a.web { padding: 6px 12px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div style="flex:1"><h1>App view</h1><p>The page the app's editor loads, at the realme GT 8 Pro's screen size. Drag in from a side edge for the Back gesture.</p></div>
+  <a class="web" href="index.html">Web preview</a>
+</header>
+<div class="phone"><iframe id="app" src="app/index.html" title="In-app editor"></iframe><div class="edge l" data-edge="0"></div><div class="edge r" data-edge="1"></div><div class="toast" id="toast"></div></div>
+<div class="bar">
+  <button id="back" title="The phone's Back gesture">Back</button>
+  <button id="again">Open the editor again</button>
+  <a class="web" href="index.html">Web preview</a>
+</div>
+<script>
+const frame = document.getElementById("app"), toast = document.getElementById("toast");
+let tt = 0;
+function say(t) { toast.textContent = t; toast.classList.add("on"); clearTimeout(tt); tt = setTimeout(() => toast.classList.remove("on"), 2600); }
+const phone = document.querySelector(".phone");
+const small = matchMedia("(max-width: 520px), (max-height: 620px)"); // the editor fills the screen (see the styles)
+function fit() { const k = small.matches ? 1 : Math.min(1, (innerHeight - 150) / 912, (innerWidth - 32) / 428); phone.style.transform = k < 1 ? `scale(${k})` : ""; phone.style.marginBottom = k < 1 ? `${-912 * (1 - k)}px` : ""; }
+addEventListener("resize", fit); fit();
+document.getElementById("again").onclick = () => { frame.src = "app/index.html"; };
+// Back does what the phone's Back does: the page handles it, or the editor is left
+document.getElementById("back").onclick = () => {
+  const w = frame.contentWindow;
+  if (w && typeof w.morpheBack === "function") w.morpheBack(); else say("Back leaves the editor");
+};
+addEventListener("keydown", e => { if (e.key === "Escape" || e.key === "Backspace" && !/input|textarea/i.test(e.target.tagName)) document.getElementById("back").click(); });
+// predictive back: progress follows the drag, letting go past a third of the way goes back; the
+// finger's place goes along in the page's own px, as the app sends it (the phone may be scaled)
+const pageX = e => { const r = frame.getBoundingClientRect(); return (e.clientX - r.left) * frame.offsetWidth / (r.width || 1); };
+document.querySelectorAll(".edge").forEach(strip => {
+  let g = null;
+  strip.addEventListener("pointerdown", e => {
+    const w = frame.contentWindow; if (!w) return;
+    strip.setPointerCapture(e.pointerId);
+    g = { x: e.clientX, edge: Number(strip.dataset.edge), p: 0, w };
+    w.morpheBackStart && w.morpheBackStart(g.edge, pageX(e));
+  });
+  strip.addEventListener("pointermove", e => {
+    if (!g) return;
+    const w = phone.getBoundingClientRect().width; // the phone may be scaled down, or fill the screen
+    g.p = Math.min(1, Math.max(0, (g.edge ? g.x - e.clientX : e.clientX - g.x) / (w * 0.45)));
+    g.w.morpheBackProgress && g.w.morpheBackProgress(g.p, pageX(e));
+  });
+  const end = () => {
+    if (!g) return;
+    if (g.p > 0.33) { if (g.w.morpheBack) g.w.morpheBack(); } else if (g.w.morpheBackCancel) g.w.morpheBackCancel();
+    g = null;
+  };
+  strip.addEventListener("pointerup", end); strip.addEventListener("pointercancel", end);
+});
+addEventListener("message", e => {
+  const a = e.data && e.data.appview; if (!a) return;
+  if (a === "close") say("Here the app returns to YouTube settings");
+  if (a === "restart") say("Here the app restarts YouTube");
+  if (a === "disable") say("Here the new design is switched off and the regular Morphe settings come back");
+});
+</script>
+</body>
+</html>

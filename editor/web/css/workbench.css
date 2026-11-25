@@ -1,0 +1,258 @@
+/* The inspector, search, the top bar, reset, compact rows, two-state toggles, sub-options, locks and the unlock animation.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* ---------- inspector ---------- */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r-l); padding: 16px; min-width: 0; }
+.card h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--ink-3); margin: 0 0 10px; font-weight: 600; }
+.card h3 { font-size: 17px; margin: 0 0 4px; font-weight: 500; text-wrap: balance; }
+.card p { margin: 0; color: var(--ink-2); font-size: 13px; line-height: 1.5; }
+.kv { display: grid; grid-template-columns: 96px minmax(0,1fr); gap: 6px 10px; font-size: 12.5px; margin-top: 12px; }
+.kv dt { color: var(--ink-3); }
+.kv dd { margin: 0; font-family: var(--mono); font-size: 12px; word-break: break-word; color: var(--ink); }
+.kv a { color: var(--m-primary); }
+.pill { display: inline-block; font-family: var(--font); font-size: 11px; padding: 1px 8px; border-radius: 999px; background: var(--m-c-high); color: var(--m-on-var); }
+.cov { display: grid; gap: 6px; }
+.covlead { font-size: 13px; margin: 0 0 10px; }
+.covkey { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; margin-bottom: 6px; }
+.covkey span { display: inline-flex; align-items: center; gap: 5px; }
+.covkey i, .bar3 i { display: inline-block; height: 10px; width: 10px; border-radius: 2px; }
+.covkey b { font-size: 15px; font-weight: 600; }
+.covhelp { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; margin: 6px 0 10px; }
+i.anim { background: var(--m-brand-2); } i.shown { background: var(--m-brand-1); opacity: .55; } i.none { background: #6b6f76; opacity: .55; } i.ok { background: #4cc764; opacity: .8; }
+.cov .r3 > summary { display: grid; grid-template-columns: 120px minmax(0,1fr) 78px; gap: 8px; align-items: center; font-size: 12.5px; cursor: pointer; list-style: none; }
+.cov .r3 > summary::-webkit-details-marker { display: none; }
+.bar3 { display: flex; height: 8px; border-radius: 3px; overflow: hidden; background: var(--m-c-high); }
+.bar3 i { width: auto; height: 100%; border-radius: 0; flex: none; }
+.cov .r3 .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; white-space: nowrap; }
+.cov .r3 .num i { color: var(--ink-3); margin: 0 2px; font-style: normal; }
+.covmiss { margin: 4px 0 8px 12px; font-size: 12px; color: var(--ink-2); display: grid; gap: 2px; }
+.cov .r { display: grid; grid-template-columns: 120px minmax(0,1fr) 54px; gap: 8px; align-items: center; font-size: 12.5px; }
+.cov .bar { height: 6px; background: var(--m-c-high); border-radius: 3px; overflow: hidden; }
+.cov .bar i { display: block; height: 100%; background: linear-gradient(90deg, var(--m-brand-1), var(--m-brand-2)); }
+.cov .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-2); font-size: 12px; }
+.big { font-size: 30px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.btn { border: 0; background: var(--m-c-high); border-radius: 999px; height: 36px; padding: 0 16px; font-size: 13px; font-weight: 500; cursor: pointer; transition: background var(--dur) var(--ease); }
+.btn:hover { background: var(--m-c-highest); }
+.btn[aria-pressed="true"] { background: var(--m-primary); color: var(--m-on-primary); }
+.btn.danger { color: var(--m-error); }
+.devices .btnrow { margin-top: 0; }
+.scale { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: 13px; color: var(--ink-2); }
+.scale input { flex: 1; accent-color: var(--m-primary); }
+.vsel { width: 100%; height: 40px; border-radius: var(--r-m); background: var(--m-c-highest); color: var(--m-on); border: 1px solid var(--m-outline-var); padding: 0 10px; font: inherit; font-size: 14px; margin-top: 4px; }
+.scale output { font-family: var(--mono); font-size: 12px; min-width: 40px; text-align: right; }
+pre.json { background: var(--m-c-lowest); border: 1px solid var(--line); border-radius: var(--r-s); padding: 10px; font-family: var(--mono); font-size: 11.5px; color: var(--ink-2); max-height: 180px; overflow: auto; margin: 10px 0 0; white-space: pre-wrap; word-break: break-all; }
+.howto { display: grid; gap: 8px; font-size: 13px; color: var(--ink-2); }
+.howto b { color: var(--ink); font-weight: 500; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } } /* one pass: a looping pulse or spinner stops on its last frame instead of restarting every frame */
+
+/* search */
+.appbar { position: relative; }
+.searchbar { position: absolute; left: 48px; right: 10px; top: 6px; height: 40px; display: flex; align-items: center; gap: 4px; padding-left: 14px; border-radius: 999px; background: var(--m-c-high); z-index: 2;
+  clip-path: inset(0 var(--cr, 0px) 0 var(--cl, calc(100% - 40px)) round 20px); opacity: 0; pointer-events: none; transition: clip-path 300ms var(--ease), opacity 120ms linear 180ms; }
+.searchbar svg { width: 20px; height: 20px; fill: var(--m-on-var); flex: none; }
+.searchbar input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--m-on); font: inherit; font-size: 15px; outline: none; }
+.searchbar input::-webkit-search-cancel-button { display: none; }
+.app.searching .searchbar { clip-path: inset(0 round 20px); opacity: 1; pointer-events: auto; transition: clip-path 300ms var(--ease), opacity 80ms linear; }
+.app.searching #btnSearch, .app.searching #btnReset, .app.searching .seg { opacity: 0; pointer-events: none; }
+#btnReset:disabled { opacity: .35; cursor: default; }
+/* the top bar slides away while you scroll down the list and comes back when you scroll up */
+/* It moves with translate only, so hiding or showing it re-lays out nothing: the bar floats over the top
+   of the editor, the editor sits one bar lower and slides up with it (the margin-top this replaced
+   resized the editor and the list on every frame, the hitch Max saw, Nov 22). The editor stays the
+   app's full height, so its last bar's height is below the screen while the bar shows: the list has
+   that much room at its end. */
+.app > .appbar { position: absolute; left: 0; right: 0; top: 0; transition: translate 260ms var(--ease), opacity 200ms var(--ease); }
+.app > .editor { translate: 0 var(--abh, 56px); transition: translate 260ms var(--ease); }
+.app > .editor .scroller { padding-bottom: var(--abh, 56px); box-sizing: border-box; }
+.app.barhidden > .appbar { translate: 0 -100%; opacity: 0; pointer-events: none; }
+.app.barhidden > .editor { translate: 0 0; }
+.dlg .choice { display: grid; gap: 2px; margin: 4px 0 6px; }
+.dlg .choice button { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; padding: 12px 10px; border: 0; border-radius: 8px; background: transparent; color: inherit; font: inherit; font-size: 14px; cursor: pointer; }
+.dlg .choice button:hover:not(:disabled) { background: rgba(255,255,255,.06); }
+.dlg .choice button:disabled { opacity: .4; cursor: default; }
+.dlg .choice small { color: #aaa; font-size: 12px; white-space: nowrap; }
+.app.searching .stick { display: none; }
+.sres { display: flex; flex-direction: column; gap: 1px; padding: 10px 16px; cursor: pointer; }
+.sres + .sres { border-top: 1px solid rgba(67,71,78,.55); }
+.sres:hover { background: rgba(227,226,230,.04); }
+.sres .ttl { font-size: 15px; line-height: 1.3; }
+.sres .ttl mark { background: rgba(164,201,255,.22); color: inherit; border-radius: 3px; }
+.sres .where { font-size: 12px; color: var(--m-primary); }
+.sres .lk { width: 14px; height: 14px; fill: var(--m-warning); vertical-align: -1px; margin-left: 6px; }
+.sres .sum.need { color: var(--m-warning); }
+.sres.soff { cursor: default; }
+.sres .sum { font-size: 12.5px; color: var(--m-on-var); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.shint { padding: 18px 20px; font-size: 13px; color: var(--m-on-var); }
+/* reset */
+.resetbtn { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 8px; border-radius: 999px; border: 0; background: transparent; color: var(--m-primary); font-size: 12.5px; font-weight: 600; cursor: pointer; transition: opacity var(--dur) var(--ease), background var(--dur) var(--ease); }
+.resetbtn:hover { background: rgba(164,201,255,.08); }
+.resetbtn svg { width: 16px; height: 16px; fill: currentColor; }
+.resetbtn:disabled { opacity: .38; cursor: default; background: transparent; }
+/* rows: compact locked layout */
+.row .side { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex: none; }
+/* toggles: as narrow as their two words (equal halves, the longer word sets both) and closer to the
+   card's right edge; the title and description get the room (Max, Nov 20) */
+.row .side > .lt7, .row .side > .sw { margin-right: -6px; }
+.row:has(.side > .lt7, .side > .sw) { gap: 10px; }
+.row .lk { width: 14px; height: 14px; fill: var(--m-warning); vertical-align: -1px; margin-left: 6px; }
+.row .need2 { font-size: 12px; color: var(--m-warning); line-height: 1.35; margin-top: 3px; }
+.row .side .need3 { font-size: 11.5px; font-weight: 600; color: var(--m-warning); line-height: 1.3; max-width: 112px; text-align: left; align-self: flex-start; }
+#list .gone { display: none; }
+.row .over { font-size: 11px; color: var(--m-on-var); letter-spacing: .02em; margin-bottom: 1px; }
+.goto { height: 26px; padding: 0 8px 0 10px; font-size: 11.5px; white-space: nowrap; }
+/* sub-options */
+.kids { display: grid; grid-template-rows: 0fr; transition: grid-template-rows 280ms var(--ease); }
+.kids.open { grid-template-rows: 1fr; }
+.kids > .kin { overflow: hidden; min-height: 0; }
+.kids .row { padding-left: 34px; border-top: 1px solid rgba(67,71,78,.35); }
+.kids .row::after { content: ""; position: absolute; left: 20px; top: 0; bottom: 0; width: 2px; background: rgba(164,201,255,.18); }
+.kids .row .ttl { font-size: 14px; }
+.kids .row.peek { display: flex; }
+.kids .row.hide { display: none; }
+.kids .row.deep, .theme-yt .kids .row.deep { padding-left: 54px; }
+.kids .row.deep::after { left: 40px; }
+.ttl .nw { white-space: nowrap; }
+#devTourBtn { position: fixed; left: 10px; bottom: 10px; z-index: 9998; border: 0; border-radius: 14px; padding: 6px 12px; background: #1a73e8; color: #fff; font: 600 12px/1.2 system-ui, sans-serif; cursor: pointer; opacity: .85; }
+#devTour { position: fixed; left: 50%; bottom: 10px; transform: translateX(-50%); z-index: 9998; display: flex; align-items: center; gap: 6px; width: min(460px, calc(100vw - 20px)); padding: 6px; border-radius: 16px; background: #1b2a44; box-shadow: 0 4px 18px rgba(0,0,0,.5); color: #fff; font-family: system-ui, sans-serif; }
+#devTour[hidden], #devTourBtn[hidden] { display: none; }
+#devTour .dt-go { flex: none; width: 40px; height: 40px; border: 0; border-radius: 12px; background: #1a73e8; color: #fff; font-size: 24px; line-height: 1; cursor: pointer; }
+#devTour .dt-mid { flex: 1; min-width: 0; text-align: center; }
+#devTour .dt-n { font-size: 11px; opacity: .7; }
+#devTour .dt-k { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: copy; }
+#devTour .dt-x { flex: none; width: 28px; height: 28px; border: 0; border-radius: 50%; background: transparent; color: #fff; font-size: 18px; cursor: pointer; opacity: .7; }
+.devcopy { position: fixed; z-index: 9999; transform: translate(-50%, -140%); background: #1a73e8; color: #fff; font: 600 12px/1.3 system-ui, sans-serif; padding: 4px 9px; border-radius: 8px; pointer-events: none; white-space: nowrap; animation: devcopy 1.1s ease forwards; }
+@keyframes devcopy { 0% { opacity: 0; } 12%, 75% { opacity: 1; } 100% { opacity: 0; } }
+.devdone { display: inline-grid; place-items: center; width: 15px; height: 15px; margin-left: 5px; border-radius: 50%; background: #2e7d32; color: #fff; font-size: 10px; font-weight: 700; vertical-align: middle; line-height: 1; } /* DEV ONLY */
+/* two-way toggle naming both states (clean design) */
+.lt7 { flex: none; position: relative; display: inline-grid; grid-template-columns: 1fr 1fr; align-items: stretch; width: auto; height: 34px; padding: 2px; /* 20% taller than 28px (Max, Nov 20) */ border: 0; border-radius: 999px; background: var(--m-c-highest, #303134); cursor: pointer; font: inherit; font-size: 12px; font-weight: 600; touch-action: manipulation; isolation: isolate; }
+.lt7 > i { position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 999px; background: var(--m-primary, #3ea6ff);
+  transition: transform var(--spring-dur-l) var(--spring), background-color .32s var(--ease), width var(--spring-dur) var(--spring); }
+.lt7[data-at="r"] > i { transform: translateX(100%); }
+.lt7[data-tone="neg"] > i { background: #5c2b2b; }
+html:not(.touchwait) .lt7:active > i { width: calc(50% + 4px); } /* the thumb stretches a little under the finger */
+html:not(.touchwait) .lt7[data-at="r"]:active > i { transform: translateX(calc(100% - 12px)); }
+.lt7 > span { display: grid; place-items: center; min-width: 34px; padding: 0 7px; white-space: nowrap; border-radius: 999px; color: var(--m-on-var, #aaa); transition: color .3s var(--ease); }
+.lt7[data-at="l"] > span:first-of-type, .lt7[data-at="r"] > span:last-of-type { color: var(--on-green-ink); }
+.lt7[data-tone="neg"][data-at="l"] > span:first-of-type, .lt7[data-tone="neg"][data-at="r"] > span:last-of-type { color: #ffd9d6; }
+.lt7.still > i, .lt7.still > span, .sw.still, .sw.still::after { transition: none; }
+.theme-yt .lt7 { background: #272727; }
+.lt7[data-tone="pos"] > i, .theme-yt .lt7[data-tone="pos"] > i { background: var(--on-green); }
+.theme-yt .lt7[data-tone="pos"][data-at="l"] > span:first-of-type, .theme-yt .lt7[data-tone="pos"][data-at="r"] > span:last-of-type { color: var(--on-green-ink); }
+.row.dis .lt7 { opacity: var(--disabled, .38); }
+.designrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.designrow .dsg { display: flex; align-items: center; gap: 10px; }
+.designrow { align-items: flex-end; flex-wrap: nowrap; }
+.designrow .dcol { display: grid; gap: 8px; justify-items: start; flex: 1; min-width: 0; }
+/* "Disable new design" sits beside the three-way toggle, centred on it (Max, Nov 22) */
+.designrow .drow { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; }
+.offnew { flex: none; display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(255,255,255,.18); background: transparent; color: var(--m-on-var, #aaa); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px 6px 10px; border-radius: 16px; cursor: pointer; text-align: left; line-height: 1.2; max-width: 128px; }
+.offnew svg { width: 16px; height: 16px; fill: currentColor; }
+.offnew:hover, .offnew:focus-visible { color: #ffb4ab; border-color: rgba(255,180,171,.5); }
+.seg3 { display: inline-flex; flex: none; padding: 3px; border-radius: 999px; background: var(--m-c-highest, #303134); position: relative; isolation: isolate; }
+.seg3 button { border: 0; background: transparent; color: var(--m-on-var, #aaa); font: inherit; font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; cursor: pointer; transition: color 300ms var(--ease); }
+.seg3 button[aria-checked="true"] { color: var(--m-on-primary, #062e6f); }
+.seg3:not(.th) button[aria-checked="true"] { background: var(--m-primary, #3ea6ff); } /* until the thumb is placed */
+.seg3-th { position: absolute; z-index: -1; top: 3px; bottom: 3px; left: 3px; width: 0; border-radius: 999px; background: var(--m-primary, #3ea6ff); transition: left 300ms var(--ease), width 300ms var(--ease); }
+.seg3:not(.th) .seg3-th { display: none; }
+/* SponsorBlock categories: the picked choice is filled with the segment's own colour, in every UI design */
+.row.segcol .ctl .opt[aria-pressed="true"]:not(.neg, [data-val="ignore"]), .theme-glass .row.segcol .ctl .opt[aria-pressed="true"]:not(.neg, [data-val="ignore"]) { background-color: var(--seg-col); border-color: var(--seg-col); color: var(--seg-ink); }
+.seg3 button[aria-disabled="true"] { opacity: .38; cursor: not-allowed; } /* a choice this device can't use (Glass on an old Android) */
+.kidbtn { display: inline-flex; align-items: center; justify-content: center; gap: 4px; height: 20px; min-width: 51px; padding: 0 8px; margin-left: 6px; border-radius: 10px; border: 0; background: var(--m-c-highest); color: var(--m-on-var); font-size: 11px; line-height: 1; font-weight: 600; cursor: pointer; vertical-align: 2px; }
+.kidbtn svg { display: block; width: 16px; height: 16px; fill: currentColor; transition: transform 280ms var(--ease); }
+.kidbtn[aria-expanded="true"] svg { transform: rotate(180deg); }
+/* unlock */
+.row.unlock { animation: unlockbg 530ms var(--ease); } /* in step with the lock, now .56 s: 20% faster than .7 s (Max, Nov 23) */
+@keyframes unlockbg { 0% { background: rgba(144,216,137,0); } 25% { background: rgba(144,216,137,.16); } 100% { background: rgba(144,216,137,0); } }
+/* Locked (Max, Nov 23): the control is greyed out under a cover that shows only the gold lock, the colour
+   of the "Parent setting must be..." line. Unlocking breaks the lock and opens the cover from the middle
+   to both ends like sliding doors, in the unlock's .7 s (ULK_MS). */
+:root { --lk-grey: var(--m-c-highest, #303134); --lk-veil: rgba(30,31,34,.88); --lk-gold: var(--m-warning, #F5BD48); }
+.theme-yt { --lk-grey: #272727; }
+.side > :has(> .lk7), .txt > .ctl:has(> .lk7) { position: relative; }
+.row.dis .side > :has(> .lk7), .row.dis .txt > .ctl:has(> .lk7) { opacity: 1; }
+.lk7 { position: absolute; inset: 0; z-index: 4; border-radius: inherit; display: grid; place-items: center; pointer-events: none; color: var(--lk-gold); background: var(--lk-grey); font-weight: inherit; }
+.ctl > .lk7 { border-radius: 12px; background: var(--lk-veil); }
+.sw > .lk7 { inset: -2px; } /* over the switch's border too */
+.theme-yt .sw > .lk7 { inset: -2px -4px; border-radius: 12px; } /* its thumb is wider than the track */
+.lki { display: block; width: 18.7px; height: 18.7px; overflow: visible; } /* 10% larger (Max, Nov 23) */
+.ctl > .lk7 .lki { width: 24.2px; height: 24.2px; }
+.lki .lks { fill: none; stroke: var(--lk-gold); stroke-width: 2.4; stroke-linecap: round; transform-box: fill-box; }
+.lki .lkb { fill: var(--lk-gold); }
+.lki .lkk { fill: var(--lk-grey); }
+.ctl > .lk7 .lkk { fill: #1e1f22; }
+/* the opening: two halves of the cover, each holding its half of the lock, plus the design's effects */
+.lk7.go { background: none; }
+.lk7.go .lkh { position: absolute; top: 0; bottom: 0; width: calc(50% + .5px); overflow: hidden; background: var(--lk-grey); }
+.ctl > .lk7.go .lkh { background: var(--lk-veil); }
+.lk7.go .lkh.l { left: 0; border-top-left-radius: inherit; border-bottom-left-radius: inherit; }
+.lk7.go .lkh.r { right: 0; border-top-right-radius: inherit; border-bottom-right-radius: inherit; }
+.lk7.go .lkc { position: absolute; top: 0; bottom: 0; width: calc(200% - 1px); display: grid; place-items: center; }
+.lk7.go .lkh.l .lkc { left: 0; }
+.lk7.go .lkh.r .lkc { right: 0; }
+.lk7.go * { animation-duration: 560ms; animation-fill-mode: both; animation-timing-function: cubic-bezier(.4,0,.2,1); }
+/* Doors: the shackle swings open and stays on the left door, the lock cracks down the middle, and its halves
+   slide out to both ends with the grey. As they part, each door casts a shadow on the control behind and
+   shows a lit inner edge, and a shade over the control lifts, so the doors read as in front of it.
+   .7 s (ULK_MS; Max, Nov 23). The doors' shadows fade out as they leave, so nothing is left to vanish
+   when the cover is removed (they used to sit on the control at full strength until the last frame). */
+.lk7.go { overflow: hidden; }
+.lk7.go .lks { transform-origin: 0% 100%; animation-name: lkA-sh; }
+.lk7.go .lki { animation-name: lkA-pop; }
+.lk7.go .lkh.l { animation-name: lkA-l; }
+.lk7.go .lkh.r { animation-name: lkA-r; }
+.lk7.go .lkc { animation-name: lkA-fade; }
+.lk7.go .lkshade { position: absolute; inset: 0; border-radius: inherit; background: rgba(0,0,0,.42); box-shadow: inset 0 0 9px 3px rgba(0,0,0,.55); animation-name: lkA-shade; }
+/* swung round its left leg until it sits wholly left of the crack, so it rides out on the left door */
+@keyframes lkA-sh { 0% { transform: none; } 10% { transform: translateY(1.5px); } 28%, 100% { transform: translateY(-1.5px) rotate(-75deg); } }
+@keyframes lkA-pop { 0% { transform: none; } 12% { transform: scale(1.16); } 26%, 100% { transform: none; } }
+/* the doors crack open a little, hold for a beat with the gap showing the toggle deep behind, then slide */
+@keyframes lkA-l { 0%, 30% { transform: none; box-shadow: none; } 38% { transform: translateX(-5px) scale(1.03); box-shadow: 7px 0 10px -3px rgba(0,0,0,.85), inset -1.5px 0 0 rgba(255,255,255,.22); } 46% { transform: translateX(-7px) scale(1.04); box-shadow: 8px 0 12px -3px rgba(0,0,0,.85), inset -1.5px 0 0 rgba(255,255,255,.22); animation-timing-function: cubic-bezier(.55,0,.25,1); } 100% { transform: translateX(-104%) scale(1.04); box-shadow: 10px 0 14px -3px rgba(0,0,0,0), inset -1.5px 0 0 rgba(255,255,255,0); } }
+@keyframes lkA-r { 0%, 30% { transform: none; box-shadow: none; } 38% { transform: translateX(5px) scale(1.03); box-shadow: -7px 0 10px -3px rgba(0,0,0,.85), inset 1.5px 0 0 rgba(255,255,255,.22); } 46% { transform: translateX(7px) scale(1.04); box-shadow: -8px 0 12px -3px rgba(0,0,0,.85), inset 1.5px 0 0 rgba(255,255,255,.22); animation-timing-function: cubic-bezier(.55,0,.25,1); } 100% { transform: translateX(104%) scale(1.04); box-shadow: -10px 0 14px -3px rgba(0,0,0,0), inset 1.5px 0 0 rgba(255,255,255,0); } }
+@keyframes lkA-fade { 0%, 74% { opacity: 1; } 100% { opacity: 0; } }
+/* the shade over the control behind lifts as the doors clear it */
+@keyframes lkA-shade { 0%, 36% { opacity: 1; } 90%, 100% { opacity: 0; } }
+
+/* live preview: no scrollbars (space is scarce), scrolling still works */
+.stage *, .canvas *, .phone, .phone * { scrollbar-width: none !important; }
+.stage .inner-scroll { overflow-x: hidden !important; }
+.navbar .ntab { flex: 1 1 0; min-width: 0; transition: flex .5s var(--ease), opacity var(--dur) var(--ease); }
+.navbar.narrow .ntab { flex: 0 0 52px; }
+.navbar .ntab.sizing { flex: 0 0 auto !important; }
+/* the glass navigation bar (scenarios.js): a floating capsule, buttons sized by Maximum width and Button spacing */
+.navbar.glassnav { display: flex; align-items: center; margin: 0 auto 10px; padding: 0; overflow: hidden; justify-content: center; }
+.navbar.glassnav .ntab { flex: 1 1 0; min-width: 48px; }
+.navbar.glassnav > .ntab:first-child { align-self: stretch; display: grid; align-content: center; margin: 4px 0; border-radius: calc(var(--gr, 16px) - 4px); background: rgba(255,255,255,.15); max-width: 96px; }
+.pg.pvis { position: relative; grid-column: 1 / -1; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 2px)), 1fr)); gap: 4px; }
+.pick.lifted { position: relative; z-index: 5; background: var(--m-c-highest) !important; box-shadow: 0 10px 28px rgba(0,0,0,.55); transition: none; cursor: grabbing; }
+.arranging .pick:not(.lifted) { animation: wig .28s ease-in-out infinite alternate; }
+@keyframes wig { from { rotate: -.6deg; } to { rotate: .6deg; } }
+.themerow { gap: 8px !important; padding: 6px 4px 2px !important; cursor: default !important; }
+.themetog { flex: 1; display: flex; align-items: center; gap: 12px; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+.ordreset { display: inline-flex; align-items: center; gap: 6px; background: transparent; border: 1px solid rgba(255,255,255,.18); color: inherit; border-radius: 18px; padding: 7px 12px; font: 500 12.5px var(--font, inherit); cursor: pointer; }
+.ordreset svg { width: 16px; height: 16px; fill: currentColor; }
+.ordreset:disabled { opacity: .38; cursor: default; }
+.themerow.ordrow { justify-content: flex-end; padding-top: 4px !important; }
+.ordhint { font-size: 12px; color: var(--m-on-var); padding-left: 8px; }
+.doodle { display: flex; gap: 1px; font: 800 15px/1 inherit; }
+.doodle span { color: #fff; padding: 3px 3px; border-radius: 4px; display: inline-block; animation: dood 1.6s ease-in-out infinite; }
+.doodle span:nth-child(2) { animation-delay: .12s; } .doodle span:nth-child(3) { animation-delay: .24s; } .doodle span:nth-child(4) { animation-delay: .36s; } .doodle span:nth-child(5) { animation-delay: .48s; }
+@keyframes dood { 0%, 60%, 100% { transform: none; } 30% { transform: translateY(-3px) rotate(-6deg); } }
+.plainlogo { display: none !important; }
+.c.off:not(.ghost) + .plainlogo { display: flex !important; }
+@keyframes slidein7 { from { transform: translateX(100%); } to { transform: none; } }
+@keyframes sheetup { from { transform: translateY(100%); } to { transform: none; } }
+[data-icons] .pbtn svg path { transition: all .25s var(--ease); }
+/* Thin: YouTube's older thin player icons; Bold matches Automatic on the bold player; the other styles draw the real icon set (iconstyles.js) */
+[data-icons="REGULAR"] .pbtn svg:not(.sty) path { fill: none; stroke: #fff; stroke-width: .9; stroke-linejoin: round; }
+/* the segment editor and the voting menu open from their button (top right, inset so the button's
+   selection or preview outline is never cut by the edge of the video): right under it, right-aligned */
+.sbedit { position: absolute; left: 14px; right: 14px; top: 56px; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; z-index: 25; }
+.sbedit .chip { height: 24px; font-size: 10.5px; padding: 0 7px; gap: 3px; background: rgba(0,0,0,.78); border: 1px solid rgba(255,255,255,.2); }
+.row.nudge { animation: nudge .6s var(--ease); }
+@keyframes nudge { 0%,100% { background: transparent; } 30% { background: rgba(62,166,255,.18); } }
+#thumbBubble { transition: opacity .2s; }
+#thumbBubble:not(.dragging) > .c:not(.sel):not(.ghost) { opacity: 0; transition: opacity .2s; }
+.stage.dragging, .stage.dragging * { cursor: grabbing !important; user-select: none; }
+.stage [style*="overflow-x:auto"] > * { flex-shrink: 0; }
+.stage *::-webkit-scrollbar, .canvas *::-webkit-scrollbar, .phone::-webkit-scrollbar, .phone *::-webkit-scrollbar { display: none !important; width: 0 !important; height: 0 !important; }
+

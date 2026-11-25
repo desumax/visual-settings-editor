@@ -1,0 +1,74 @@
+name: Editor checks
+
+# Runs the editor's regression checks (one per bug that was reported, editor/tools/regress) and the
+# animation check (every animated setting and option, editor/tools/animcheck) on every push that
+# touches the editor, so a fixed bug that comes back is caught here before it reaches a release.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "editor/**"
+      - "CHANGELOG.md"
+      - "patches-bundle.json"
+      - ".github/workflows/editor-checks.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: editor-checks-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    name: Regression and animation checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # in a folder of its own, so the release tooling's packages are not installed
+      - name: Install Playwright and Chromium
+        run: |
+          npm install --prefix "$RUNNER_TEMP/pw" --no-package-lock playwright@1.63.0
+          "$RUNNER_TEMP/pw/node_modules/.bin/playwright" install --with-deps chromium
+          echo "NODE_PATH=$RUNNER_TEMP/pw/node_modules" >> "$GITHUB_ENV"
+
+      - name: Changelog check (each release its own entry in Manager)
+        run: python editor/tools/check_changelog.py
+
+      - name: Regression checks
+        working-directory: editor
+        run: node tools/regress/regress.js
+
+      - name: Animation check (phone size, web and App view)
+        if: always()
+        working-directory: editor
+        run: node tools/animcheck/animcheck.js --out ${{ runner.temp }}/animcheck
+
+      - name: Animation check (small phone)
+        if: always()
+        working-directory: editor
+        run: node tools/animcheck/animcheck.js --size 360x740 --out ${{ runner.temp }}/animcheck-small
+
+      - name: Keep the reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: animcheck-reports
+          path: |
+            ${{ runner.temp }}/animcheck/report.md
+            ${{ runner.temp }}/animcheck-small/report.md
+          if-no-files-found: ignore

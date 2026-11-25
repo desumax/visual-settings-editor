@@ -1,0 +1,310 @@
+/* The settings list (Manager cards): rows, controls, option pills, switches, the list editor, dialogs, the tutorial and the screen menu.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* ---------- list (Manager settings cards) ---------- */
+.list { padding: 4px 0 96px; }
+.sechead { padding: 18px 20px 8px; font-size: 13px; font-weight: 600; color: var(--m-primary); display: flex; justify-content: space-between; gap: 10px; align-items: baseline; letter-spacing: .01em; }
+.sechead span { color: var(--m-on-var); font-weight: 400; font-size: 12px; }
+.secnote { padding: 0 20px 8px; font-size: 12px; color: var(--m-on-var); line-height: 1.45; }
+.group { margin: 0 12px 4px; background: var(--m-c); border-radius: var(--r-l); overflow: hidden; }
+.gtitle { display: flex; align-items: center; gap: 6px; padding: 10px 16px 4px; font-size: 11.5px; font-weight: 600; color: var(--m-on-var); text-transform: uppercase; letter-spacing: .06em; }
+.gtitle svg { width: 14px; height: 14px; fill: currentColor; }
+.row { display: flex; gap: 14px; align-items: center; padding: 12px 16px; cursor: pointer; position: relative; user-select: none; -webkit-user-select: none; min-height: 52px; transition: background var(--dur) var(--ease), opacity 600ms var(--ease); }
+.zgrid > .row.zprev { writing-mode: vertical-rl; transform: rotate(180deg); min-height: 0; width: 52px; padding: 12px 0; justify-content: center; align-items: center; border-left: 1px solid rgba(67,71,78,.55); }
+.zgrid > .row.zprev .txt { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; } .zgrid > .row.zprev .ttl { text-align: center; } .zgrid > .row.zprev .sum { display: none; }
+.zgrid { display: grid; grid-template-columns: minmax(0, 1fr) auto; } .zgrid > .zcol { min-width: 0; }
+.group > * + .zgrid, .zgrid + * { border-top: 1px solid rgba(67,71,78,.55); }
+.row + .row, .unit + .row, .unit + .unit > .row:first-child, .row + .unit > .row:first-child { border-top: 1px solid rgba(67,71,78,.55); }
+/* rows of one Morphe sub-screen ("Filter bar") in one card, its title once on top (shareCards) */
+.shared > .shead { padding: 12px 16px 0; font-size: 12px; font-weight: 500; color: var(--m-on-var); letter-spacing: .02em; }
+.shared > .shead + .row { padding-top: 6px; }
+.shared + .row, .row + .shared, .unit + .shared, .shared + .shared, .shared + .unit > .row:first-child { border-top: 1px solid rgba(67,71,78,.55); }
+.row:hover { background: rgba(227,226,230,.04); }
+.row.sel { background: rgba(164,201,255,.12); }
+.row.sel::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--m-primary); }
+.row.dis .kind, .row.dis .ttl, .row.dis .sum:not(.need), .row.dis .ctl, .row.dis .state, .row.dis .sw { opacity: var(--disabled); }
+.row.pressing::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; background: var(--yt-red); animation: bar .48s linear var(--press-lead, 0ms) forwards; }
+@keyframes bar { from { width: 0; } to { width: 100%; } }
+.row.unlock { animation: unlock 1.1s var(--ease); }
+.row.unlock .kind { animation: unlockicon 1.1s var(--ease); }
+@keyframes unlock { 0% { background: rgba(245,189,72,.0); } 25% { background: rgba(144,216,137,.22); } 100% { background: transparent; } }
+@keyframes unlockicon { 0% { transform: scale(1); } 30% { transform: scale(1.25) rotate(-8deg); } 60% { transform: scale(.95); } 100% { transform: none; } }
+.row .kind { width: 36px; height: 36px; border-radius: var(--r-m); background: var(--m-c-highest); display: grid; place-items: center; flex: none; position: relative; }
+.row .kind svg { width: 20px; height: 20px; fill: var(--m-on-var); }
+.row.live .kind svg { fill: var(--m-primary); }
+.row.offstate .kind svg { fill: var(--m-outline); }
+.row .txt { flex: 1; min-width: 0; }
+.row .ttl { font-size: 15px; line-height: 1.3; color: var(--m-on); }
+.row .sum { font-size: 12.5px; color: var(--m-on-var); line-height: 1.4; margin-top: 2px; white-space: pre-line; overflow: hidden; max-height: 2.8em; transition: max-height 280ms var(--ease); }
+.row .sum.long:not(.open) { -webkit-mask-image: linear-gradient(180deg, #000 52%, transparent 100%); mask-image: linear-gradient(180deg, #000 52%, transparent 100%); }
+/* the selected card's description unfolds to its real height, max-content, which the Chromium 138
+   minimum can animate (interpolate-size). It used to unfold to a height measured for every card on every
+   list redraw (--full); that height went stale when the card's width changed while it was open (the
+   preview resizing, the fonts arriving), and the text was cut off. */
+.row .sum { interpolate-size: allow-keywords; }
+.row .sum.open { max-height: max-content; }
+/* one card height for every setting with a description (title + two lines), one for those without */
+.row:has(> .txt > .sum) { min-height: 70px; }
+.row:not(:has(> .txt > .sum)) { min-height: 56px; }
+.row .state { min-width: 62px; text-align: center; }
+.kidbtn.kidoff { opacity: .55; cursor: pointer; }
+.kidbtn.kidoff[aria-expanded="true"] { opacity: .85; }
+.kidbtn.kidin { cursor: default; } /* a sub-option's own sub-options: shown under it, no folding */
+.kidbtn.kidoff svg { width: 12px; height: 12px; }
+.row .sum.need { color: var(--m-warning); display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; -webkit-line-clamp: unset; }
+.goto { display: inline-flex; align-items: center; gap: 4px; height: 28px; padding: 0 10px 0 12px; border-radius: 999px; border: 0; background: var(--m-primary-c); color: var(--m-on-primary-c); font-size: 12px; font-weight: 600; cursor: pointer; }
+.goto svg { width: 14px; height: 14px; fill: currentColor; }
+html:not(.touchwait) .goto:active { transform: scale(.96); }
+.tag { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; font-weight: 600; padding: 1px 6px 1px 4px; border-radius: 999px; background: rgba(164,201,255,.14); color: var(--m-primary); margin-left: 6px; vertical-align: 2px; text-transform: uppercase; letter-spacing: .04em; }
+.tag svg { width: 10px; height: 10px; fill: currentColor; }
+.tag.rs { background: rgba(245,189,72,.14); color: var(--m-warning); }
+.row .state { font-size: 11.5px; font-weight: 600; padding: 3px 9px; border-radius: 999px; flex: none; background: var(--m-c-highest); color: var(--m-on-var); }
+.row .state.on { background: var(--on-green); color: var(--on-green-ink); } /* same tokens as toggles and picked options */
+.row .state.off { background: #5c2b2b; color: #ffd9d6; }
+.replay { width: 32px; height: 32px; border-radius: 50%; border: 0; background: var(--m-c-highest); display: grid; place-items: center; cursor: pointer; flex: none; }
+.replay svg { width: 18px; height: 18px; fill: var(--m-primary); }
+.ctl { margin-top: 8px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* a number or colour box sits on the right of the card, where a toggle would be: no extra line */
+.row .txt:has(> .ctl.side) { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; align-items: center; }
+.row .txt:has(> .ctl.side) > :not(.ctl) { grid-column: 1; }
+.row .ctl.side { grid-column: 2; grid-row: 1 / span 2; margin-top: 0; flex-direction: column; flex-wrap: nowrap; gap: 1px; align-self: center; }
+/* the card is only as tall as its text: the side box takes no line of its own */
+.row:has(> .txt > .ctl.side) { min-height: 0; }
+/* no spinner arrows in number boxes: the value stays centred (type a number instead) */
+input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.row .ctl.side input[type=number] { width: 64px; height: 30px; text-align: center; padding: 0 8px; border-radius: 999px; }
+.row .ctl.side input[type=color] { -webkit-appearance: none; appearance: none; width: 44px; height: 26px; padding: 0; border: 0; border-radius: 999px; background: none; cursor: pointer; overflow: hidden; }
+.row .ctl.side input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+.row .ctl.side input[type=color]::-webkit-color-swatch { border: 1px solid rgba(255,255,255,.25); border-radius: 999px; }
+.row .ctl.side input[type=color]::-moz-color-swatch { border: 1px solid rgba(255,255,255,.25); border-radius: 999px; }
+.row .ctl.side .val { min-width: 0; text-align: center; font-size: 9.5px; line-height: 1.1; }
+.ctl .opt { border: 1px solid var(--m-outline-var); background: transparent; border-radius: 999px; height: auto; min-height: 30px; max-width: 100%; padding: 5px 12px; line-height: 1.2; overflow-wrap: anywhere; text-align: center; font-size: 12px; cursor: pointer; color: var(--m-on); transition: background var(--dur) var(--ease); }
+/* option pills sit in a grid whose columns fitOpts works out from the labels and the width */
+.ctl.optgrid, .fallback .ctl.optgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 6px; }
+.ctl.optgrid .opt { padding: 2px 6px; height: auto; min-height: 30px; line-height: 1.15; white-space: normal; overflow-wrap: anywhere; text-align: center; }
+.ctl.optgrid.tight .opt { font-size: var(--tight-fs); padding-left: 3px; padding-right: 3px; white-space: nowrap; overflow-wrap: normal; } /* fitPills: short values kept on one line */
+/* the picked option wears the colours of its side in the comparison: green like Show / On for any choice
+   other than the default, grey for the default, red for Off
+   or Hide (NEG_WORD), the same tokens as the toggles and the Off / On labels (.dl7 > span) */
+.ctl .opt[aria-pressed="true"] { background: var(--on-green); border-color: var(--on-green); color: var(--on-green-ink); }
+.ctl .opt[aria-pressed="true"]:is(.def, .offw) { background: #3a3a3a; border-color: #3a3a3a; color: #fff; } /* the default (Auto, Default): neutral, like its side in the comparison */
+.ctl .opt[aria-pressed="true"].neg { background: #5c2b2b; border-color: #5c2b2b; color: #ffd9d6; }
+/* optGlide: one thumb carries the pressed colour from the old pill to the new one */
+.ctl.optgrid { position: relative; isolation: isolate; }
+/* layers: pill borders, then the gliding colour, then the labels (Max, Nov 23: the colour over the borders) */
+.ctl.optgrid > .opt > .ol { position: relative; z-index: 2; }
+.ctl.optgrid.gliding > .opt[aria-pressed="true"] { background: transparent; border-color: transparent; transition: none; }
+.ctl input[type=range] { flex: 1; min-width: 120px; accent-color: var(--m-primary); }
+.ctl .val { font-family: var(--mono); font-size: 12px; color: var(--m-on-var); min-width: 44px; text-align: right; }
+/* Material 3 switch with check/close icon in the thumb (Manager ToggleSwitch) */
+.sw { width: 52px; height: 32px; border-radius: 16px; background: var(--m-c-highest); border: 2px solid var(--m-outline); position: relative; flex: none; cursor: pointer; padding: 0; transition: background var(--dur) var(--ease), border-color var(--dur) var(--ease); }
+.sw::after { content: ""; position: absolute; left: 4px; top: 4px; width: 20px; height: 20px; border-radius: 50%; background: var(--m-outline) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%23333537' d='M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z'/%3E%3C/svg%3E") center/14px no-repeat; transition: left var(--dur) var(--ease), width var(--dur) var(--ease), background-color var(--dur) var(--ease); }
+.sw[aria-checked="true"] { background: var(--on-green); border-color: var(--on-green); }
+.sw[aria-checked="true"]::after { left: 22px; top: 2px; width: 24px; height: 24px; background: var(--on-green-ink) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='%232b5c34' d='M9 16.17 4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z'/%3E%3C/svg%3E") center/16px no-repeat; }
+/* one look for every box in a setting card, with or without a live preview */
+.ctl select, .ctl input[type=text], .ctl input[type=number], .ctl textarea {
+  background: var(--m-c-highest); color: var(--m-on); border: 1px solid var(--m-outline-var); border-radius: var(--r-s); padding: 7px 10px; font: inherit; font-size: 13px; width: 100%; max-width: 100%;
+}
+.ctl textarea { min-height: 54px; resize: vertical; font-family: var(--mono); font-size: 12px; }
+.fallback .ctl { flex-wrap: nowrap; }
+/* the shared list editor (speeds, filter words, whitelists): chips plus an add field */
+.ctl.lst, .fallback .ctl.lst { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; align-items: center; }
+/* every chip is as wide as the widest one (fitPills sets the columns); text centred, remove button at the end */
+.lchip { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px; min-width: 0; height: 30px; padding: 0 2px 0 8px; border-radius: 15px; background: var(--m-c-highest); color: var(--m-on); font-size: 13px; font-variant-numeric: tabular-nums; text-align: center; white-space: nowrap; overflow: hidden; }
+.lchip .lx { width: 22px; height: 22px; border: 0; border-radius: 50%; background: transparent; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.lchip .lx svg { width: 14px; height: 14px; fill: var(--m-on-var); }
+.lchip .lx:hover { background: rgba(255,255,255,.08); }
+.ladd { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; height: 30px; border-radius: 15px; border: 1px dashed var(--m-outline); padding: 0 2px 0 11px; }
+.ctl .ladd input.lin { width: 92px; border: 0; background: transparent; padding: 0; height: 28px; font-size: 13px; color: var(--m-on); outline: none; }
+.ladd .lplus { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--m-secondary-c); display: grid; place-items: center; cursor: pointer; padding: 0; }
+.ladd .lplus svg { width: 16px; height: 16px; fill: #D8E3F8; }
+.lst button:disabled, .lst input:disabled { opacity: .5; cursor: default; }
+/* a list card's Reset: the screen Reset's look (.resetbtn) in a pill, beside the title, never adding height */
+.ttlrow { display: flex; align-items: flex-start; gap: 8px; }
+.ttlrow > .ttl { flex: 1; min-width: 0; }
+.resetbtn.lreset { flex: none; height: 26px; margin: -3px 0; padding: 0 10px 0 7px; background: var(--m-c-highest); }
+.resetbtn.lreset:hover:not(:disabled) { background: var(--m-c-highest); filter: brightness(1.15); }
+.resetbtn.lreset:disabled { background: var(--m-c-highest); }
+.lerr { grid-column: 1 / -1; flex-basis: 100%; font-size: 11.5px; color: var(--m-error); }
+.ctl a.opt.linkbtn { display: inline-flex; align-items: center; gap: 6px; color: var(--m-primary, #3ea6ff); text-decoration: none; width: max-content; } .ctl a.opt.linkbtn svg { width: 16px; height: 16px; fill: currentColor; } /* an info row's website (linkFor) */
+.ctl .opt.actbtn { display: inline-flex; align-items: center; gap: 6px; color: var(--m-primary, #3ea6ff); width: max-content; } .ctl .opt.actbtn svg { width: 16px; height: 16px; fill: currentColor; } /* a row that runs something in Morphe (actionFor) */
+.lhint { grid-column: 1 / -1; flex-basis: 100%; font-size: 12px; line-height: 1.35; color: var(--m-on-var, #aaa); } /* a list filled from somewhere else (channel whitelists): where to add to it */
+/* option pills always wrap onto new lines and grow with their text, so it never spills past the border */
+.fallback .ctl:has(.opt) { flex-wrap: wrap; }
+.search { margin: 12px 12px 0; display: flex; align-items: center; gap: 8px; background: var(--m-c-high); border-radius: 999px; padding: 0 16px; height: 48px; }
+.search svg { width: 20px; height: 20px; fill: var(--m-on-var); flex: none; }
+.search input { flex: 1; min-width: 0; background: transparent; border: 0; color: var(--m-on); font: inherit; font-size: 14px; outline: none; }
+
+.snack { position: absolute; left: 12px; right: 12px; bottom: 14px; background: var(--m-on); color: #1A1C1E; border-radius: var(--r-s); padding: 10px 12px 10px 16px; font-size: 13px; display: flex; gap: 10px; align-items: center; z-index: 60; transform: translateY(140%); opacity: 0; transition: transform var(--dur) var(--ease), opacity var(--dur) var(--ease); box-shadow: 0 6px 20px rgba(0,0,0,.5); }
+.snack.show { transform: none; opacity: 1; }
+.snack .m { flex: 1; min-width: 0; line-height: 1.35; }
+.snack code { font-family: var(--mono); font-size: 11px; color: #555; word-break: break-all; }
+.snack button { border: 0; background: transparent; color: #005FAC; font-weight: 600; cursor: pointer; padding: 6px 8px; }
+
+/* dialog (Manager AppDialog: 28dp corners, 0.95 scale-in, 220ms) */
+/* the scrim fades only its own colour, so a popup that grows out of its row (openDialog) is solid from
+   the first frame; .closing keeps it on screen while it shrinks back into the row */
+.dlgscrim { position: absolute; inset: 0; z-index: 70; display: grid; place-items: center; padding: 24px; visibility: hidden; pointer-events: none; transition: visibility 0s linear calc(var(--dur) / 1.5); --scrim: rgba(0,0,0,.55); }
+/* the dark layer fades by opacity (the compositor draws it), not by repainting a colour every frame */
+.dlgscrim::before { content: ""; position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity calc(var(--dur) / 1.5) var(--ease); }
+.dlgscrim.open { visibility: visible; pointer-events: auto; transition: none; }
+.dlgscrim.open::before { opacity: 1; }
+.dlgscrim.closing { visibility: visible; }
+.dlgscrim > .dlg { position: relative; will-change: transform, opacity; }
+.dlg { width: 100%; max-width: 380px; background: var(--m-c-high); border-radius: var(--r-xl); padding: 24px; opacity: 0; transform: scale(.95); transition: transform calc(var(--spring-dur) / 1.5) var(--spring), opacity calc(var(--dur) / 1.5) var(--ease); } /* 1.5x as fast (Max, Nov 24) */
+.dlgscrim.open .dlg { opacity: 1; transform: none; }
+.dlg .di { width: 40px; height: 40px; margin: 0 auto 12px; display: grid; place-items: center; }
+.dlg .di svg { width: 28px; height: 28px; fill: var(--m-warning); }
+.dlg h2 { margin: 0 0 8px; font-size: 22px; font-weight: 500; text-align: center; color: var(--m-on); text-wrap: balance; }
+.dlg p { margin: 0 0 12px; color: var(--m-on-var); font-size: 14px; line-height: 1.5; text-align: center; }
+.dlg ul { margin: 0 0 16px; padding: 10px 14px; list-style: none; background: var(--m-c); border-radius: var(--r-m); max-height: 160px; overflow: auto; display: grid; gap: 6px; font-size: 13px; color: var(--m-on); }
+.dlg .acts { display: grid; gap: 8px; }
+.dbtn { height: 52px; border-radius: 999px; border: 0; font-size: 14px; font-weight: 600; cursor: pointer; }
+.dbtn.primary { background: var(--m-primary); color: var(--m-on-primary); }
+.dbtn.tonal { background: var(--m-secondary-c); color: #D8E3F8; }
+html:not(.touchwait) .dbtn:active { transform: scale(.98); }
+.dbtn.text { background: transparent; color: var(--m-primary); height: 44px; }
+.dbtn.text.neg { color: #ffb4ab; } /* resetting changes: the quiet, red-text choice */
+.dbtn.primary.neg { background: #8c1d18; color: #ffdad6; }
+.restarting { position: absolute; inset: 0; background: #000; z-index: 80; display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity 300ms var(--ease); }
+.restarting.on { opacity: 1; pointer-events: auto; }
+.restarting .logo { width: 72px; height: 72px; border-radius: 20px; background: linear-gradient(135deg, var(--m-brand-1), var(--m-brand-2)); }
+/* the logo pulses only while the restart screen is up: hidden, it kept the phone drawing frames forever (performance) */
+.restarting.on .logo { animation: pulse 0.9s var(--ease) infinite alternate; }
+@keyframes pulse { from { transform: scale(.9); opacity: .7; } to { transform: scale(1.05); opacity: 1; } }
+.exitflash { animation: exitflash 700ms var(--ease); }
+@keyframes exitflash { 0% { transform: none; opacity: 1; } 45% { transform: translateX(40px); opacity: 0; } 55% { transform: translateX(-30px); opacity: 0; } 100% { transform: none; opacity: 1; } }
+
+/* tutorial */
+.tut { position: absolute; inset: 0; z-index: 90; background: rgba(12,14,17,.92); display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; gap: 18px; opacity: 0; pointer-events: none; transition: opacity 300ms var(--ease); }
+.tut.on { opacity: 1; pointer-events: auto; }
+/* A short screen (a phone held sideways, a small window): the tutorial scrolls instead of being cut at
+   both ends. The auto margins centre it while it fits and let it start at the top when it doesn't
+   (centring alone pushes the title above the top, out of reach). */
+.tut { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; justify-content: flex-start; }
+.tut > * { flex-shrink: 0; } /* nothing is squeezed under its neighbour: the page scrolls */
+.tut > :first-child { margin-top: auto; }
+.tut > :last-child { margin-bottom: auto; }
+@media (max-height: 520px) { .tut { padding: 10px 16px; gap: 10px; } .tut h2 { font-size: 18px; } }
+.tut h2 { margin: 0; font-size: 22px; font-weight: 500; text-align: center; color: var(--m-on); }
+.tut .tsub { margin: -10px 0 0; font-size: 13px; color: var(--m-on-var); text-align: center; }
+.tut .tstage { position: relative; width: 300px; max-width: 100%; aspect-ratio: 16/9; border-radius: var(--r-l); overflow: hidden; background: linear-gradient(180deg,#2b4c7e 0%,#5a7fb5 55%,#2f5233 56%,#1d3320 100%); box-shadow: 0 0 0 1px #333; }
+.tut .tbtns { position: absolute; top: 10px; right: 10px; display: flex; }
+.tut .tb { width: 40px; height: 40px; margin-left: 6px; border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.35); transition: opacity 280ms var(--ease), width 280ms var(--ease), margin 280ms var(--ease), outline-color 200ms; outline: 2px solid transparent; outline-offset: 2px; position: relative; }
+.tut .tb svg { width: 24px; height: 24px; fill: #fff; }
+.tut .tb.sel { outline-color: var(--ring-on); }
+.tut .tb.off { opacity: 0; width: 0; margin-left: 0; outline-color: transparent; }
+.tut .tb.ghost { opacity: .6; outline: 1.5px dashed var(--yt-red); }
+.tut .tring { position: absolute; inset: -5px; border-radius: 50%; border: 2px solid var(--yt-red); clip-path: inset(0 100% 0 0); }
+.tut .tring.go { animation: press .48s linear forwards; }
+.tut .steps { display: flex; gap: 2px; }
+.tut .steps button { border: 0; background: transparent; padding: 10px 3px; cursor: pointer; }
+.tut .steps button i { display: block; width: 26px; height: 5px; border-radius: 3px; background: var(--m-c-highest); transition: background var(--dur), transform var(--dur-short); }
+.tut .steps button.done i { background: rgba(164,201,255,.4); }
+.tut .steps button.on i { background: var(--m-primary); transform: scaleY(1.3); }
+.tut .steps button:hover i { background: rgba(164,201,255,.7); }
+.tut .tlist { position: relative; width: 300px; max-width: 100%; display: flex; align-items: center; gap: 12px; padding: 10px 14px; border-radius: var(--r-l); background: #2a2c31; overflow: hidden; transition: background var(--dur) var(--ease); }
+.tut .tlist.sel { background: var(--m-secondary-c); }
+.tut .tlist .state { font-size: 12px; font-weight: 500; padding: 3px 8px; border-radius: 6px; background: var(--on-green); color: var(--on-green-ink); }
+.tut .tlist .state.off { background: #5c2b2b; color: #ffd9d6; }
+.tut .tlist .lt7 { pointer-events: none; height: 26px; font-size: 11px; }
+.tut .tlist .lt7 { width: 92px; }
+.tut .tl-t { flex: 1; font-size: 14px; color: var(--m-on); }
+.tut .tl-t small { display: block; font-size: 12px; color: var(--m-on-var); }
+.tut .tl-bar { position: absolute; left: 0; bottom: 0; height: 2px; width: 0; background: var(--yt-red); }
+.tut .tl-bar.go { animation: bar .48s linear var(--press-lead, 0ms) forwards; }
+.tut .tb.charging svg { opacity: .6; transition: opacity .48s linear; }
+.tut .tb.reveal { animation: revealk .34s var(--ease); }
+.tfinger { z-index: 95; }
+.tut .tcap { min-height: 44px; text-align: center; font-size: 16px; color: var(--m-on); max-width: 300px; line-height: 1.4; }
+.tut .tdemo { display: flex; flex-direction: column; align-items: center; gap: 8px; width: 300px; max-width: 100%; }
+.tut .tbar7 { position: relative; display: none; align-items: center; gap: 6px; width: 100%; height: 34px; padding: 0 6px; border-radius: 10px; background: #2a2c31; }
+.tut .tbar7 { display: flex; } /* always there, as in the app */
+.tut .tpill { display: inline-flex; align-items: center; gap: 2px; font-size: 13px; font-weight: 500; color: var(--m-on); padding: 4px 6px; border-radius: 8px; }
+.tut .tpill svg { width: 16px; height: 16px; fill: currentColor; }
+.tut .tsp { flex: 1; }
+.tut .tic { display: grid; place-items: center; width: 26px; height: 26px; }
+.tut .tic svg { width: 18px; height: 18px; fill: var(--m-on); }
+.tut .tseg { position: relative; display: grid; grid-template-columns: 1fr 1fr; border-radius: 999px; padding: 2px; background: #303134; isolation: isolate; }
+.tut .tseg::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 999px; background: var(--m-brand-1); transform: translateX(100%); transition: transform var(--spring-dur-l) var(--spring), background-color 300ms var(--ease); }
+.tut .tseg:has(#tOrig.on)::before { transform: none; background: var(--yt-red); }
+.tut .tseg b { font-size: 10px; font-weight: 600; padding: 3px 7px; text-align: center; border-radius: 999px; color: var(--m-on-var); transition: color 300ms var(--ease); }
+.tut .tseg #tOrig.on { color: #fff; }
+.tut .tseg #tMorphe.on { color: #fff; }
+.tut .tq { position: absolute; inset: 3px 3px 3px 3px; border-radius: 14px; background: var(--m-c-highest); color: var(--m-on); font-size: 13px; display: flex; align-items: center; padding: 0 10px; opacity: 0; pointer-events: none; clip-path: inset(0 var(--cr, 0px) 0 var(--cl, 50%) round 14px); transition: clip-path 300ms var(--ease), opacity 120ms linear 180ms; }
+.tut .tq.show { opacity: 1; clip-path: inset(0 round 14px); transition: clip-path 300ms var(--ease), opacity 80ms linear; }
+.tut .tq span { white-space: pre; overflow: hidden; }
+.tut .tq::after { content: ""; width: 1px; height: 14px; background: var(--m-primary); margin-left: 1px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+.tut .tpick { position: absolute; inset: 8px; border-radius: 10px; background: rgba(28,30,34,.96); opacity: 0; transform: scale(.96); transition: opacity 200ms, transform 200ms; pointer-events: none; z-index: 5; }
+.tut .tpick { display: grid; grid-template-columns: 1fr 1fr; align-content: start; gap: 3px; padding: 6px; background: #212121; }
+.tut .tpg span { display: flex; align-items: center; gap: 6px; padding: 5px 6px; font-size: 10.5px; font-weight: 500; color: #f1f1f1; border-radius: 6px; }
+.tut .tpg span svg { width: 14px; height: 14px; fill: #f1f1f1; flex: none; }
+.tut .tpg span.hit { background: rgba(255,255,255,.14); }
+.tut .tpick.show { opacity: 1; transform: none; }
+.tut .tstage.stock { filter: saturate(.7); }
+/* the tabs keep their space when switched off, so nothing on the page moves */
+.tut .ttabs { display: flex; gap: 4px; width: 100%; overflow: hidden; opacity: 0; transform: translateY(-6px); transition: opacity .3s var(--ease), transform .3s var(--ease); }
+.tut .tdemo.grouped .ttabs { opacity: 1; transform: none; }
+.tut .tseek { position: absolute; left: 12px; right: 12px; bottom: 12px; height: 3px; background: rgba(255,255,255,.3); }
+.tut .tseek > div { width: 30%; height: 3px; background: #ff0033; }
+.tut .tseek { opacity: .4; filter: grayscale(1); } /* like the editor: a part another tab changes is greyed */
+/* stand-ins for other screens: the watch page and its comments */
+.tut .tview { position: absolute; inset: 0; z-index: 3; background: #0f0f0f; opacity: 0; transition: opacity .3s var(--ease); display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+.tut .tstage[data-view="watch"] .tview[data-v="watch"], .tut .tstage[data-view="comments"] .tview[data-v="comments"] { opacity: 1; }
+.tut .tv-vid { height: 56%; flex: none; background-size: cover !important; transition: height .3s var(--ease); }
+.tut .tv-vid.short { height: 34%; }
+.tut .tv-l { height: 7px; margin: 0 10px; border-radius: 4px; background: #3a3a3a; }
+.tut .tv-l.w80 { width: 75%; background: #e8e8e8; } .tut .tv-l.w50 { width: 45%; }
+.tut .tv-chips { display: flex; gap: 5px; margin: 2px 10px 0; } .tut .tv-chips i { width: 44px; height: 16px; border-radius: 8px; background: #272727; }
+.tut .tv-h { margin: 0 10px; font-size: 10px; font-weight: 600; color: #f1f1f1; }
+.tut .tv-c { display: flex; gap: 7px; align-items: center; margin: 0 10px; }
+.tut .tv-c b { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.tut .tv-c span { display: grid; gap: 3px; flex: 1; } .tut .tv-c i { height: 5px; border-radius: 3px; background: #3a3a3a; } .tut .tv-c i.w40 { width: 35%; background: #8a8a8a; } .tut .tv-c i.w80 { width: 80%; }
+/* the screen menu, with its two settings at the end as in the app */
+.tut .tpick { display: flex; flex-direction: column; justify-content: space-between; }
+.tut .tpg { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+.tut .tpg.many { grid-template-columns: 1fr 1fr 1fr; gap: 1px 3px; }
+.tut .tpg span.sm { font-size: 8.5px; padding: 3px 5px; }
+.tut .tpfoot { display: grid; gap: 3px; border-top: 1px solid #3a3a3a; padding-top: 4px; }
+.tut .tprow { display: flex; align-items: center; justify-content: space-between; font-size: 10px; color: #f1f1f1; padding: 0 4px; }
+.tut .tprow .sw { transform: scale(.55); transform-origin: right center; margin: -7px 0; }
+.tut .tseg3 { display: flex; border-radius: 999px; background: #303134; padding: 2px; }
+.tut .tseg3 b { font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 999px; color: #aaa; transition: background .3s var(--ease), color .3s var(--ease); }
+.tut .tseg3 b.on { background: #3ea6ff; color: #0f0f0f; }
+/* the card appears once something is tapped, and morphs when the list design changes */
+.tut .tlist { transition: background var(--dur) var(--ease), opacity .35s var(--ease), transform .45s cubic-bezier(.3,1.35,.45,1); }
+.tut .tlist.pre { opacity: 0; transform: translateY(10px) scale(.96); }
+.tut .tlist.morph > * { animation: tmorph .35s var(--ease); }
+@keyframes tmorph { from { opacity: 0; transform: translateY(4px); } }
+.tut .ttabs span { flex: none; font-size: 11px; font-weight: 500; padding: 5px 9px; border-radius: 6px; background: #272727; color: #f1f1f1; transition: background var(--dur), color var(--dur); }
+.tut .ttabs span.on { background: #f1f1f1; color: #0f0f0f; }
+.tut .tlist { flex-wrap: wrap; }
+/* the last page: the real style choices, in place of the preview (the demo keeps its height) */
+.tut .tstyle { display: none; width: 100%; gap: 12px; padding: 14px; align-content: center; border-radius: var(--r-l); background: #2a2c31; }
+.tut .tdemo[data-page="style"] .tstyle { display: grid; }
+.tut .tdemo[data-page="style"] .tstage, .tut .tdemo[data-page="style"] .ttabs { display: none; }
+.tut .tsrow { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 500; color: var(--m-on); }
+.tut .tsrow .seg3 button { font-size: 11.5px; padding: 6px 10px; }
+.tut .tcap b { display: inline-grid; place-items: center; width: 22px; height: 22px; margin-right: 8px; border-radius: 50%; background: var(--m-primary); color: var(--m-on-primary, #00315c); font-size: 13px; vertical-align: 2px; }
+.tut .tcap small { display: block; font-size: 12.5px; color: var(--m-on-var); margin-top: 2px; }
+.tut .ok { height: 48px; min-width: 160px; padding: 0 28px; border-radius: 999px; border: 0; font-size: 15px; font-weight: 600; color: #fff; background: linear-gradient(90deg, var(--m-brand-1), var(--m-brand-2)); cursor: pointer; opacity: 0; transform: translateY(8px); transition: opacity 300ms var(--ease), transform 300ms var(--ease); pointer-events: none; }
+.tut .ok.show { opacity: 1; transform: none; pointer-events: auto; }
+.tut .wait { font-size: 12px; color: var(--m-outline); height: 16px; }
+
+/* Import / Export, as Morphe's dialog (list.js importExportDialog) */
+.dlg textarea.iex { display: block; width: 100%; box-sizing: border-box; min-height: 180px; max-height: 46vh; margin: 8px 0 0; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--m-c-highest, #303134); color: inherit; font: 12px/1.45 "Roboto Mono", ui-monospace, monospace; resize: vertical; white-space: pre; overflow: auto; }
+.dlg .iexrow { display: flex; gap: 8px; margin: 10px 0 2px; } .dlg .iexrow .dbtn { flex: 1 1 0; }
+
+/* a row that runs something in Morphe (Clear saved loop counts, Import / Export): a compact pill on the
+   right of its card, where the toggles sit */
+.actpill { flex: none; display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 12px; border-radius: 999px; border: 0; background: var(--m-c-high, #272727); color: var(--m-primary, #3ea6ff); font: inherit; font-size: 12.5px; font-weight: 500; cursor: pointer; white-space: nowrap; }
+.actpill svg { width: 15px; height: 15px; fill: currentColor; }
+.theme-yt .actpill { background: #272727; color: #3ea6ff; }
+.theme-glass .actpill { background-color: var(--g-ctl); box-shadow: var(--g-ctl-edge); }
+html:not(.touchwait) .actpill:active { filter: brightness(1.25); }
+/* Morphe design: the same card list as Glass (Max, Nov 24): every setting its own rounded card, a hair apart; rows that belong together (a unit, a shared sub-screen, a zone grid) stay one card */
+.theme-m3 .group { background: none; margin: 0 10px 2px; overflow: visible; }
+.theme-m3 .group > :is(.row, .unit, .zgrid, .shared) { background-color: var(--m-c); border-radius: 22px; margin-bottom: 2px; overflow: hidden; }
+.theme-m3 .group > .row, .theme-m3 .group > .shared, .theme-m3 .group > .unit > .row:first-child, .theme-m3 .group > .zgrid, .theme-m3 .group > * + .zgrid, .theme-m3 .zgrid + * { border-top: 0; }
+.theme-m3 .group > .row.sel::before, .theme-m3 .group > .unit > .row.sel:first-child::before { top: 14px; bottom: 14px; }

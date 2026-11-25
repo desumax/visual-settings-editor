@@ -1,0 +1,201 @@
+/* Page layout: the workbench, device frames, the Original / Morphe toggle, the screen picker, the editor body and group cards.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* Layout: dev workbench. A device frame (phone, landscape, tablet or desktop window) holds the
+   editor; an inspector sits beside or below it. Editor chrome follows Morphe Manager's Material 3
+   dark scheme (ui/theme/Color.kt, shared/Defaults.kt); the preview itself stays YouTube. */
+:root {
+  color-scheme: dark;
+  /* Morphe Manager dark scheme */
+  --m-bg: #1A1C1E;
+  --m-surface: #1A1C1E;
+  --m-c-lowest: #0C0E11;
+  --m-c: #1E2022;
+  --m-c-high: #282A2C;
+  --m-c-highest: #333537;
+  --m-on: #E3E2E6;
+  --m-on-var: #C3C6CF;
+  --m-outline: #8D9199;
+  --m-outline-var: #43474E;
+  --m-primary: #A4C9FF;
+  --m-on-primary: #00315D;
+  --m-primary-c: #004884;
+  --m-on-primary-c: #D4E3FF;
+  --m-secondary-c: #3D4758;
+  --m-warning: #F5BD48;
+  --m-success: #90D889;
+  --m-error: #FFB4AB;
+  --m-brand-1: #1E5AA8;
+  --m-brand-2: #00AFAE;
+  /* Defaults.kt */
+  --r-s: 8px; --r-m: 12px; --r-l: 16px; --r-li: 20px; --r-xl: 28px;
+  --sp-s: 8px; --sp-l: 16px;
+  --dur: 220ms; --dur-short: 180ms; --dur-axis: 300ms;
+  --ease: cubic-bezier(.4, 0, .2, 1);
+  /* iOS-like spring (Max, Nov 24, every design): a damped spring (damping .68) that passes its end at 40%
+     of the time, overshoots by about 5% and settles. Presses, toggle thumbs, glides and cards use it. */
+  --spring: linear(0, 0.019, 0.07, 0.143, 0.23, 0.323, 0.419, 0.513, 0.602, 0.684, 0.758, 0.822, 0.877, 0.924, 0.962, 0.992, 1.015, 1.031, 1.043, 1.05, 1.054, 1.054, 1.053, 1.05, 1.046, 1.041, 1.036, 1.03, 1.025, 1.021, 1.016, 1.012, 1.009, 1.006, 1.004, 1.002, 1, 0.999, 0.998, 0.998, 1);
+  --spring-dur: 460ms; --spring-dur-l: 560ms;
+  --disabled: .38;
+  /* YouTube preview */
+  --yt-chip: #272727; --yt-red: #ff0033; --yt-blue: #3ea6ff;
+  /* Show / On: a dark green, the twin of the dark red Hide / Off; the ring on a shown, selected element uses its bright tone */
+  --on-green: #2b5c34; --on-green-ink: #d6f5d9; --ring-on: #4cc764;
+  /* workbench */
+  --page: #0b0c10; --panel: #17191E; --line: #2a2d33; --ink: #E3E2E6; --ink-2: #A9ADB5; --ink-3: #70747c;
+  --font: "Roboto", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "Roboto Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  background: var(--page); color: var(--ink); font-family: var(--font);
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 20px;
+  -webkit-tap-highlight-color: transparent;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--m-primary); outline-offset: 2px; }
+
+.bench { display: flex; flex-wrap: wrap; gap: 28px; justify-content: center; align-items: flex-start; }
+.devwrap { flex: none; max-width: 100%; position: relative; }
+.inspector { display: flex; flex-direction: column; gap: 16px; width: 380px; max-width: 100%; min-width: 0; }
+@media (max-width: 860px) {
+  body { padding-block: 0 16px; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+  .devwrap { width: 100%; }
+  .inspector { width: auto; margin-inline: 16px; flex: 1 1 100%; }
+  .devices { display: none !important; }
+}
+
+/* ---------- device ---------- */
+.phone {
+  width: 400px; height: 820px; background: var(--m-bg); border-radius: 34px; border: 8px solid #000;
+  box-shadow: 0 0 0 1px #2c2c2c, 0 30px 80px rgba(0,0,0,.6);
+  display: flex; flex-direction: column; overflow: hidden; overflow: clip; position: relative; transform-origin: top left;
+}
+.phone.desktop { border-radius: 12px; border-width: 1px; border-color: #3a3d44; }
+.phone.desktop .status { display: none; }
+@media (max-width: 860px) { .phone { width: 100% !important; height: 100vh !important; height: 100dvh !important; border-radius: 0; border: 0; box-shadow: none; transform: none !important; } }
+.app { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; overflow: clip; }
+.status { height: 26px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 18px; font-size: 12px; color: var(--m-on); font-weight: 500; background: var(--m-bg); }
+.status .dots { display: flex; gap: 5px; align-items: center; }
+.status .dots i { width: 14px; height: 9px; border: 1.5px solid var(--m-on); border-radius: 2px; display: block; }
+/* the editor fills a real phone's screen here: the drawn status bar ("9:41 5G") would sit under the real one */
+@media (max-width: 860px) { .status { display: none; } }
+
+.appbar { flex: none; display: flex; align-items: center; gap: 6px; padding: 6px 10px 8px 4px; background: var(--m-bg); position: relative; z-index: 30; }
+.iconbtn { width: 40px; height: 40px; border-radius: 50%; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; flex: none; transition: background var(--dur) var(--ease), transform var(--spring-dur) var(--spring); }
+.iconbtn:hover { background: rgba(227,226,230,.08); }
+html:not(.touchwait) .iconbtn:active { transform: scale(.92); }
+.iconbtn svg { width: 24px; height: 24px; fill: var(--m-on); }
+.secpill { display: flex; align-items: center; gap: 6px; height: 40px; padding: 0 12px 0 10px; border-radius: 999px; border: 0; background: var(--m-c-high); cursor: pointer; min-width: 0; flex: 1 1 auto; max-width: max-content; transition: background var(--dur) var(--ease), transform var(--spring-dur) var(--spring); }
+.secpill:hover { background: var(--m-c-highest); }
+html:not(.touchwait) .secpill:active { transform: scale(.96); }
+.secpill svg { width: 20px; height: 20px; fill: var(--m-primary); flex: none; }
+.secpill { flex: none; }
+.secpill .lbl { display: none; font-size: 15px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.secpill .chev { fill: var(--m-on-var); transition: transform var(--dur) var(--ease); }
+.secpill[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.grow { flex: 1; min-width: 4px; }
+/* scale, not transform: a transform keyframe replaces the element's own transform while it plays, so a part centred with translateX(-50%) popped in half its width to the right, then jumped back */
+@keyframes pop { from { scale: .6; opacity: 0; } to { scale: 1; opacity: 1; } }
+/* Original / Morphe: a two-way toggle. The thumb slides to the chosen side: YouTube red on
+   Original, the project's blue on Morphe. A tap anywhere on it switches. */
+.seg { --seg-on: var(--m-brand-1); --seg-on-ink: #fff; margin-left: auto; position: relative; display: grid; grid-template-columns: 1fr 1fr; background: var(--m-c-highest, #303134); border-radius: 999px; padding: 2px; flex: none; cursor: pointer; isolation: isolate; }
+.theme-yt .seg { background: #303134; }
+.seg::before { content: ""; position: absolute; z-index: -1; top: 2px; bottom: 2px; left: 2px; width: calc(50% - 2px); border-radius: 999px; background: var(--seg-on); transform: translateX(100%); transition: transform var(--spring-dur-l) var(--spring), background-color 300ms var(--ease); }
+.seg:has(#btnOrig[aria-pressed="true"])::before { transform: none; background: var(--yt-red); }
+.seg button { border: 0; background: transparent; height: 28px; padding: 0 10px; border-radius: 999px; font: inherit; font-size: 12.5px; font-weight: 600; color: var(--m-on-var); cursor: pointer; transition: color 300ms var(--ease); }
+.seg #btnMod[aria-pressed="true"] { color: var(--seg-on-ink); }
+.seg #btnOrig[aria-pressed="true"] { color: #fff; }
+
+/* section picker */
+.picker { position: absolute; left: 8px; right: 8px; top: 54px; z-index: 40; background: var(--m-c-high); border-radius: var(--r-li); padding: var(--sp-s); box-shadow: 0 12px 36px rgba(0,0,0,.55);
+  transform-origin: 60px 0; opacity: 0; transform: scale(.95) translateY(-6px); pointer-events: none; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); max-height: calc(100% - 70px); overflow: auto; }
+.picker.open { opacity: 1; transform: none; pointer-events: auto; }
+.picker .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px; }
+.pick { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: var(--r-m); border: 0; background: transparent; text-align: left; cursor: pointer; opacity: 0; transform: translateY(-4px); transition: background var(--dur) var(--ease), opacity var(--dur) var(--ease), transform var(--dur) var(--ease); }
+.picker.open .pick { opacity: 1; transform: none; }
+.pick:hover { background: rgba(227,226,230,.06); }
+.pick[aria-current="true"] { background: var(--m-secondary-c); }
+.pick .pi { width: 36px; height: 36px; border-radius: var(--r-m); background: var(--m-c-highest); display: grid; place-items: center; flex: none; }
+.pick .pi svg { width: 20px; height: 20px; fill: var(--m-primary); }
+.pick .pt { font-size: 14px; font-weight: 500; }
+.pick .ps { font-size: 11.5px; color: var(--m-on-var); margin-top: 1px; }
+.scrimfull { position: absolute; inset: 0; background: rgba(0,0,0,.35); z-index: 35; opacity: 0; pointer-events: none; transition: opacity var(--dur) var(--ease); }
+.scrimfull.open { opacity: 1; pointer-events: auto; }
+
+/* editor body: one column on phones, two panes from 600dp (Manager's Medium window class) */
+.editor { flex: 1; min-height: 0; container-type: inline-size; container-name: ed; position: relative; }
+.scroller { height: 100%; overflow-y: auto; overflow-x: hidden; position: relative; overscroll-behavior: contain; }
+.stick { position: sticky; top: 0; z-index: 5; background: var(--m-bg); }
+.tabs7 { display: none; gap: 6px; padding: 0 10px 8px; overflow-x: auto; scrollbar-width: none; }
+.tabs7::-webkit-scrollbar { display: none; }
+.stick.grouped .tabs7 { display: flex; }
+.stick.noscene .stagebox { display: none; }
+.stick.noscene .tabs7 { padding-top: 8px; }
+.tab7 { flex: none; height: 32px; padding: 0 12px; border-radius: 8px; border: 0; background: var(--m-c-high, #272727); color: var(--m-on, #f1f1f1); font: inherit; font-size: 13.5px; font-weight: 500; cursor: pointer; transition: background .2s, color .2s; }
+.tab7 { touch-action: pan-x; user-select: none; -webkit-user-select: none; transition: transform .15s; }
+.tab7.lift { transform: scale(1.08); box-shadow: 0 4px 12px rgba(0,0,0,.6); outline: 2px solid var(--m-primary, #3ea6ff); position: relative; z-index: 2; }
+.tab7[aria-selected="true"] { background: var(--m-on, #f1f1f1); color: var(--m-bg, #0f0f0f); }
+.theme-yt .tab7 { background: #272727; color: #f1f1f1; }
+.theme-yt .tab7[aria-selected="true"] { background: #f1f1f1; color: #0f0f0f; }
+.pgroups .pick .ps + .ps { opacity: .7; }
+/* Group cards (screen menu, tabs layout), design D (Max, Nov 22): a rail on the left with the icon and
+   the settings count, the name and a line per tab on the right. "html #pickGrid" outranks the in-app
+   card rules, so the app shows the same card. */
+html #pickGrid .pg.pgroups.pvis:not(.nx) { flex: none; grid-template-columns: 1fr 1fr; grid-auto-rows: 1fr; gap: 8px; } /* one height for every card: the tallest one's */
+html #pickGrid .pg.pgroups.pvis:not(.nx) .pick.gcard { --gc-bg: var(--m-c-high, #262626); --gc-tab: var(--m-c-highest, #383838); display: grid; grid-template-columns: 50px minmax(0, 1fr); align-items: stretch; gap: 0; padding: 0; min-height: 134px; border-radius: 20px; overflow: hidden; background: var(--gc-bg); text-align: left; color: var(--m-on, #f1f1f1); position: relative; }
+.theme-yt #pickGrid .pg.pgroups.pvis:not(.nx) .pick.gcard { --gc-bg: #262626; --gc-tab: #3a3a3a; }
+html #pickGrid .pg.pgroups.pvis:not(.nx) .pick.gcard[aria-current="true"] { background: var(--gc-bg); box-shadow: none; }
+/* the current card's outline is drawn over the rail, not under it */
+.gcard[aria-current="true"]::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 2px var(--m-primary, #3ea6ff); pointer-events: none; z-index: 2; }
+html #pickGrid .pg.pgroups.pvis:not(.nx) .pick.gcard:hover { filter: brightness(1.08); }
+.gcard .gc-rail { background: var(--gc-tab); display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 12px 0 11px; }
+html #pickGrid .pg.pgroups.pvis:not(.nx) .gcard .pi { width: auto; height: auto; margin: 0; background: none; display: block; }
+html #pickGrid .pg.pgroups.pvis:not(.nx) .gcard .pi svg { width: 23px; height: 23px; display: block; fill: var(--m-on, #f1f1f1); } /* 15% larger than the 20 px of the design (Max, Nov 22) */
+.gcard .gc-n { text-align: center; line-height: 1; }
+.gcard .gc-n b { display: block; font-size: 17px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.gcard .gc-n small { font-size: 9.5px; color: var(--m-on-var, #aaa); letter-spacing: .02em; }
+.gcard .gc-body { min-width: 0; padding: 11px 10px 8px 11px; display: flex; flex-direction: column; }
+.gcard .gc-t { font-size: 15px; font-weight: 700; line-height: 1.25; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.gcard .gc-tabs { display: flex; flex-direction: column; }
+.gcard .gc-tabs span { font-size: 12.5px; line-height: 16.5px; color: var(--m-on-var, #aaa); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* grouped: the six cards fill the menu without scrolling (list.js fitMenu sets --gch, the row height, and --gz,
+   the zoom of each card's contents, from the space the menu has; --gcl spreads the lines in a tall card).
+   On the web the menu then reaches down to the bottom of the screen, as the app's menu page does. */
+html #pickGrid.gfit .pg.pgroups.pvis:not(.nx) { flex: none; grid-auto-rows: var(--gch); }
+html #pickGrid.gfit .pg.pgroups.pvis:not(.nx) .pick.gcard { zoom: var(--gz); height: calc(var(--gch) / var(--gz)); min-height: 0; }
+#pickGrid.gfit .gcard .gc-tabs span { line-height: var(--gcl, 16.5px); }
+html:not(.inapp) .picker:has(.pg.pgroups) { bottom: 8px; max-height: none; }
+/* Reset order in the top bar while the menu is open, between its title and search; what compares or resets
+   the screen makes room for it then (the menu covers the screen) */
+.appbar > .barord { display: none; flex: none; margin-left: auto; padding: 6px 11px; font-size: 13px; white-space: nowrap; }
+html.pickopen .appbar > .barord { display: inline-flex; }
+html.pickopen .appbar .seg, html.pickopen #btnReset { display: none; }
+/* the frame's line is drawn on top of the preview (::after), not as a border around it: the clipped
+   preview bled into a real border's anti-aliased corners and made them look thin and grey. The box
+   itself doesn't clip (that cut the line's own edge pixels); the preview and canvas clip just inside the
+   line, so the line's corners blend only with the page */
+.stagebox > .stage, .stagebox > .canvas { border-radius: 14px; clip-path: inset(.75px round 13.25px); }
+.stagebox::after { content: ""; position: absolute; inset: 0; border: 1.5px solid var(--m-outline, #5f6368); border-radius: inherit; pointer-events: none; z-index: 50; transition: border-color .25s; }
+.stagebox { position: relative; margin: 4px 3.5px 4px; border-radius: 14px; box-shadow: 0 0 0 1px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.45); transition: border-color .25s; }
+.stagebox.changed::after { animation: framepulse .7s var(--ease); }
+@keyframes framepulse { 0% { border-color: var(--ring-on); box-shadow: inset 0 0 0 3px rgba(76,199,100,.35); } 100% { } }
+.stick { box-shadow: 0 1px 0 var(--m-outline, #444), 0 6px 10px -6px rgba(0,0,0,.6); }
+/* a strip above the preview that stays when it is pinned to the top of the screen: the selection ring
+   around the preview's edge has room there, so it is drawn outside the frame before and after
+   scrolling (Max, Nov 22). The preview's own top margin used to collapse out of the stick, so it
+   vanished when pinned; padding keeps it inside. The black around the preview is kept to a few px on
+   every side, enough for the ring, so the preview itself gets the room (Max, Nov 23). */
+.stick { padding-top: 2px; }
+.stick > .stagebox { margin-top: 2px; }
+#stage.swap-out, #list.swap-out { opacity: 0; transform: translateX(var(--dir, 24px)); transition: opacity 120ms var(--ease), transform 120ms var(--ease); }
+#stage.swap-in, #list.swap-in { animation: axisin var(--dur-axis) var(--ease); }
+@keyframes axisin { from { opacity: 0; transform: translateX(calc(var(--dir, 24px) * -1)); } to { opacity: 1; transform: none; } }
+@container ed (min-width: 600px) {
+  .content { display: grid; grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); gap: 0 var(--sp-l); padding: 0 var(--sp-l); align-items: start; }
+  .stick { top: var(--sp-l); margin-top: var(--sp-l); padding-top: 0; border-radius: var(--r-l); overflow: hidden; box-shadow: none; }
+  .stick > .stagebox { margin-top: 4px; }
+  .list { padding-top: var(--sp-s); }
+}
+@container ed (min-width: 1000px) { .content { grid-template-columns: minmax(0, 560px) minmax(0, 560px); justify-content: center; } }
+

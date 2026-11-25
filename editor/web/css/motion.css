@@ -1,0 +1,160 @@
+/* Shared motion and the scenario kit: glides, paint() passes, caption pills, reset prompt, search folding, flashes.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+.themerow.uirow { padding: 8px 8px 6px 12px !important; }
+.uirow .tt { min-width: 0; }
+.uirow .tt small { display: block; }
+.uirow .seg3 { margin-left: auto; }
+/* the list design's live sample: a small real card under its toggle */
+.dprev { width: 100%; pointer-events: none; margin: 0 0 16px; text-align: left; }
+.dprev .group { margin: 0; }
+.dprev .row { min-height: 44px; padding-top: 8px; padding-bottom: 8px; }
+.dprev .row .sum { display: none; }
+/* glideRun (list.js): the blobs that carry a choice's colour, over the box and under its labels */
+.glayer { position: absolute; left: 0; top: 0; pointer-events: none; }
+.glayer > i { position: absolute; left: 0; top: 0; contain: layout style; will-change: transform, opacity; transform-origin: 0 0; }
+.seg3.gliding .seg3-th, .lt7.gliding > i { visibility: hidden; }
+/* the two-state toggles (toggleGlide) and the tutorial's small pickers (pickGlide) */
+.sw.gliding::after, .seg.gliding::before, .tut .tseg.gliding::before { visibility: hidden; }
+.seg.still::before, .tut .tseg.still::before { transition: none; }
+.sw > .glayer > i { box-shadow: 0 1px 3px rgba(0,0,0,.35); }
+/* blobs that merge (goo) carry no edge of their own: each blob's rim showed as rings inside the moving fill */
+.glayer.goo > i { box-shadow: none !important; }
+.tut .tseg3, .tut .ttabs { position: relative; isolation: isolate; }
+.tut .tseg3.gliding > b.on, .tut .ttabs.gliding > span.on { background: transparent; transition: none; }
+.tabs7 { position: relative; isolation: isolate; }
+/* the labels are positioned without a stacking context of their own (no z-index), so they paint over the
+   moving fill and the label text can blend with it; the dev marker beside it keeps its colour */
+.tab7 > .ol { position: relative; }
+.tab7 > .ol > .tx { position: relative; }
+/* while the fill moves, the chosen tab looks like the others (its own pill, under the fill), as option
+   pills do; the fill lands on it and its own white takes over in the same place (Max, Nov 24) */
+.tabs7.gliding > .tab7[aria-selected="true"] { background: var(--m-c-high, #272727) !important; color: var(--m-on, #f1f1f1) !important; transition-property: transform !important; } /* it changes look at once (a fade from white showed as a grey pill) */
+.theme-yt .tabs7.gliding > .tab7[aria-selected="true"] { background: #272727 !important; color: #f1f1f1 !important; }
+.theme-glass .tabs7.gliding > .tab7[aria-selected="true"] { background: var(--g-ctl) !important; box-shadow: var(--g-ctl-edge) !important; }
+/* labels change colour smoothly (Max, Nov 24: the labels popped at the end, blended text looked bold and every
+   other label brightened when the blend went off): the old tab's label lightens as its fill drains, the new
+   tab's darkens as the fill lands on it, the rest never change */
+.tab7 { --tab-ink: var(--m-bg, #0f0f0f); }
+.theme-yt .tab7 { --tab-ink: #0f0f0f; }
+.theme-glass .tab7 { --tab-ink: #111; }
+.tab7 > .ol > .tx { transition: color .16s var(--ease); }
+.tabs7.gliding > .tab7[aria-selected="true"] > .ol > .tx { animation: tabInk .22s var(--ease) .12s both; }
+@keyframes tabInk { to { color: var(--tab-ink); } }
+/* the glass lens on the parts the fill passes over (tabs, and chosen thumbs in Full) bent the moving fill
+   into streaks and cut the labels' blend off from it: those parts go without it while the fill moves; the
+   rest keep it, so nothing else flickers when the fill lands (glideRun marks them .gpath) */
+.gliding > .gpath { -webkit-backdrop-filter: none !important; backdrop-filter: none !important; }
+/* paint() (list.js): while a redraw's mark passes run, nothing transitions */
+.painting, .painting * { transition: none !important; }
+/* round 9 scenario kit */
+.pg7 * { min-width: 0; }
+/* Every caption pill inside a scenario phone ("Nothing happens", "Locked", "🔊 100%", "Loop 2", ...) is
+   one class with one size: --pill7 is how big its text is on screen, so changing that one number
+   resizes the pills of every animation. --dsc is the scale the pair is first drawn at (fitDev); it stays
+   fixed for the whole story, so when the pair rescales (a phone turning) a pill scales with its phone
+   instead of growing or shrinking on its own. */
+:root { --pill7: 12px; }
+.dev .toastin, .dev .badge7 { font-size: calc(var(--pill7) / var(--dsc, 1.7)); line-height: 1.25; font-weight: 500; color: #fff; background: rgba(0,0,0,.72); border-radius: .75em; }
+.dev .toastin { white-space: normal; width: max-content; max-width: 88%; text-align: center; padding: .28em .8em; }
+.dev .toastin svg, .dev .badge7 svg { width: 1.15em !important; height: 1.15em !important; vertical-align: -.2em; }
+/* an icon in a pill sits on its own line (icons are display:block): centred over the text, not at its left */
+.dev .toastin svg, .dev .badge7 svg { margin: 0 auto .12em; }
+.dev .badge7 { text-align: center; }
+/* in a landscape phone (short) a message keeps its icon on its line, before the text, so it takes one line */
+.dev.land .toastin svg { display: inline-block; margin: 0 .3em 0 0; }
+/* the smaller readouts in a corner of a video (Loop 2, 1.5×): one size for all of them too */
+.dev .badge7:empty, .dev .toastin:empty { display: none; }
+.dev .badge7 { position: absolute; font-size: calc(var(--pill7) * .9 / var(--dsc, 1.7)); padding: .05em .45em; white-space: nowrap; pointer-events: none; z-index: 31; }
+/* Text centred top to bottom in every black pill (corner readouts, messages) and the Off / On labels: the
+   line box is trimmed to the capital letters and the baseline (text-box), so equal padding above and below
+   centres the letters themselves. A plain line box keeps the font's taller ascent above the letters, which
+   pushed the text up. (text-box is in every supported WebView since the Chromium 138 minimum.) */
+.dev .badge7, .dev .toastin, .dl7 > span { text-box: trim-both cap alphabetic; }
+.dev .badge7 { padding: .3em .45em; }
+.dev .toastin { padding: .42em .8em; }
+.dl7 > span { padding: .42em .75em; }
+.dev .toastin svg, .dev .badge7 svg { vertical-align: -.12em; }
+/* A part that goes (or comes back) folds by its real size: height (or width) from auto to 0, which the
+   Chromium 138 minimum allows (interpolate-size, 129). The old max-height: 90px stand-in folded at an
+   uneven speed (a short part only moved in the last fifth of the time, a pause first) and clipped a part
+   taller than 90 px. */
+.tgt7 { interpolate-size: allow-keywords; transition: height .32s var(--ease), width .32s var(--ease), opacity .21s, margin .32s, padding .32s; overflow: hidden; }
+.tgt7.w7 { display: inline-flex; vertical-align: bottom; flex: none; white-space: nowrap; }
+.tgt7.gone7 { height: 0 !important; opacity: 0; margin-top: 0 !important; margin-bottom: 0 !important; padding-top: 0 !important; padding-bottom: 0 !important; }
+.tgt7.w7.gone7 { width: 0 !important; height: auto !important; }
+.tgt7.instant7 { transition: none !important; }
+.pg7 > .tgt7.gone7 { margin-bottom: -5px !important; }
+.tgt7.mark7 { outline: 1.5px dashed #ff0033; outline-offset: 1px; border-radius: 3px; animation: mark7 .9s ease-in-out infinite alternate; }
+/* a target that is one part (a pill centred in its line, a button): the outline hugs that part, not the
+   whole line around it (Max, Nov 23 PM: 'Sync to video' button). Every hidden-element comparison. */
+.tgt7.mark7:has(> :only-child) { outline-color: transparent; animation: none; }
+.tgt7.mark7:not(.gone7):has(> :only-child) { overflow: visible; }
+.tgt7.mark7 > :only-child { outline: 1.5px dashed #ff0033; outline-offset: 1px; animation: mark7 .9s ease-in-out infinite alternate; }
+.tgt7.mark7 > :only-child:not([style*="border-radius"]) { border-radius: 3px; }
+@keyframes mark7 { from { outline-color: rgba(255,0,51,.35); } to { outline-color: #ff0033; } }
+.x7 { position: absolute; z-index: 32; display: grid; place-items: center; background: rgba(0,0,0,.35); border-radius: 50%; animation: pop .25s var(--ease); pointer-events: none; }
+.clock7 { position: absolute; inset: 0; z-index: 32; display: grid; place-content: center; justify-items: center; gap: 4px; background: rgba(0,0,0,.72); font-size: 7px; color: #fff; animation: ghostin .2s; }
+.clock7 .face { width: 26px; height: 26px; border-radius: 50%; border: 2px solid #fff; position: relative; }
+.clock7 .face i { position: absolute; left: 50%; bottom: 50%; width: 2px; margin-left: -1px; background: #fff; transform-origin: 50% 100%; border-radius: 1px; }
+.clock7 .face .h { height: 7px; animation: clock7 6s linear infinite; }
+.clock7 .face .m { height: 10px; animation: clock7 .5s linear infinite; }
+@keyframes clock7 { to { transform: rotate(360deg); } }
+.check7 { position: absolute; left: 50%; top: 46%; translate: -50% 0; z-index: 32; display: flex; gap: 3px; align-items: center; background: rgba(0,0,0,.8); border-radius: 8px; padding: 3px 7px; font-size: 6.5px; width: max-content; max-width: 84%; line-height: 1.25; animation: pop .25s var(--ease); }
+.spin7 { position: absolute; left: 50%; top: 22%; width: 18px; height: 18px; margin-left: -9px; border-radius: 50%; background: #f1f1f1; display: grid; place-items: center; z-index: 31; animation: pop .25s var(--ease); box-shadow: 0 1px 4px rgba(0,0,0,.5); }
+.spin7 i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #3ea6ff; border-top-color: transparent; animation: clock7 .7s linear infinite; }
+.spin7.dead { background: #777; }
+.spin7.dead i { animation: none; border-color: #444; border-top-color: transparent; }
+.demo-label.dyn { transition: opacity .3s; }
+.knob[data-thumb] { background: transparent !important; box-shadow: none !important; }
+.knob[data-thumb]::after { content: "⭐"; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); font-size: 15px; line-height: 1; }
+.knob[data-thumb="big"]::after { font-size: 26px; }
+.knob[data-img]::after { content: ""; width: 16px; height: 16px; background: var(--img) center / contain no-repeat; }
+.knob[data-img][data-thumb="big"]::after { width: 28px; height: 28px; }
+.filepick { display: inline-flex; align-items: center; gap: 6px; }
+.filepick svg { width: 16px; height: 16px; fill: currentColor; }
+
+/* reset prompt: the app's dialog in small, over a dimmed demo */
+.tut .tdemo { position: relative; }
+.tut .tmenu { position: absolute; inset: -6px; z-index: 6; border-radius: 14px; background: rgba(0,0,0,.55); display: grid; place-items: center; opacity: 0; pointer-events: none; transition: opacity 200ms var(--ease); }
+.tut .tmenu.show { opacity: 1; }
+.tut .tdlg { width: 240px; background: #212121; border-radius: 12px; padding: 14px 14px 6px; box-shadow: 0 8px 28px rgba(0,0,0,.6); transform: scale(.94); transition: transform 220ms var(--ease); text-align: left; }
+.tut .tmenu.show .tdlg { transform: none; }
+.tut .tdlg b { display: block; font-size: 14px; font-weight: 500; color: #f1f1f1; }
+.tut .tdlg p { margin: 4px 0 8px; font-size: 11.5px; color: #aaa; line-height: 1.35; }
+.tut .tch { display: grid; gap: 1px; margin: 0 -6px; }
+.tut .tch span { display: flex; justify-content: space-between; align-items: center; padding: 7px 6px; border-radius: 6px; font-size: 12px; color: #f1f1f1; transition: background 150ms; }
+.tut .tch small { font-size: 10.5px; color: #aaa; }
+.tut .tacts { display: flex; justify-content: flex-end; margin: 4px -6px 0 0; }
+.tut .tacts span { padding: 6px 10px; border-radius: 14px; font-size: 12px; font-weight: 500; color: var(--yt-blue); transition: background 150ms; }
+.tut .tch span.hit, .tut .tacts span.hit { background: rgba(255,255,255,.1); }
+/* search: as in the app, the preview, tabs and card fold away and the results take their place */
+.tut .tstage { max-height: 200px; transition: max-height .35s var(--ease), opacity .25s var(--ease); }
+.tut .tlist { max-height: 90px; transition: background var(--dur) var(--ease), opacity .35s var(--ease), transform .45s cubic-bezier(.3,1.35,.45,1), max-height .35s var(--ease), padding .35s var(--ease), margin .35s var(--ease); }
+.tut .tdemo.searching .tstage, .tut .tdemo.searching .ttabs, .tut .tdemo.searching .tlist { max-height: 0; opacity: 0; margin-top: -8px; padding-top: 0; padding-bottom: 0; }
+.tut .ttabs { max-height: 30px; transition: opacity .3s var(--ease), transform .3s var(--ease), max-height .35s var(--ease), margin .35s var(--ease); }
+.tut .tres { width: 100%; max-height: 0; opacity: 0; overflow: hidden; border-radius: 12px; background: #2a2c31; transition: max-height .35s var(--ease), opacity .25s var(--ease); margin-top: -8px; }
+.tut .tdemo.searching .tres { max-height: 140px; opacity: 1; margin-top: 0; }
+.tut .tres-hint { padding: 12px 14px; font-size: 12px; color: var(--m-on-var); }
+.tut .tres-n, .tut .tsres { display: none; }
+.tut .tdemo.found .tres-hint { display: none; }
+.tut .tdemo.found .tres-n { display: block; padding: 8px 14px 2px; font-size: 11px; color: var(--m-on-var); }
+.tut .tdemo.found .tsres { display: flex; flex-direction: column; gap: 1px; padding: 8px 14px 10px; animation: tmorph .3s var(--ease); transition: background 150ms; }
+.tut .tsres .ttl { font-size: 14px; color: var(--m-on); }
+.tut .tsres .ttl mark { background: rgba(164,201,255,.22); color: inherit; border-radius: 3px; }
+.tut .tsres .where { font-size: 11px; color: var(--m-primary); }
+.tut .tsres.hit { background: rgba(255,255,255,.08); }
+/* tapping the card flashes the part of the preview it belongs to */
+.tut .tb.flash { animation: tflash .9s var(--ease); }
+@keyframes tflash { 0%, 50%, 100% { outline-color: var(--ring-on); } 25%, 75% { outline-color: transparent; } }
+
+/* ------------------------------------------------------------------ iOS-like motion (Max, Nov 24, every design)
+   role: press. A pressed control sinks a little and springs back with a small overshoot when it is let go
+   (--spring, base.css). Glass has the same role with its own press colours (glass.css); these are the
+   Original and Morphe designs. Each list keeps the transitions the part already had. A dragged tab
+   (.lift) keeps its lift. */
+.phone:not(.theme-glass) .ctl .opt { transition: background var(--dur) var(--ease), transform var(--spring-dur) var(--spring); }
+.phone:not(.theme-glass) :is(.seg3 button, .seg button) { transition: color 300ms var(--ease), transform var(--spring-dur) var(--spring); }
+.phone:not(.theme-glass) :is(.tab7, .kidbtn, .ordreset, .offnew, .goto, .dbtn) { transition: transform var(--spring-dur) var(--spring); }
+html:not(.touchwait) .phone:not(.theme-glass) :is(.ctl .opt, .tab7, .seg3 button, .seg button, .kidbtn, .ordreset, .offnew):not(.lift):active { transform: scale(.96); }
+/* a dialog or a text-selection bar in a comparison phone pops in from a little smaller (Select text, Nov 24) */
+@keyframes dlgin7 { from { opacity: 0; scale: .92; } }

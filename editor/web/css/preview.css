@@ -1,0 +1,263 @@
+/* The live preview and the scenario phones: selection rings, hidden parts, the finger, pairs of phones with their Off / On labels and captions.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* ---------- preview ---------- */
+.stage { position: relative; overflow: hidden; overflow: clip; background: #000; user-select: none; -webkit-user-select: none; touch-action: manipulation; color: #f1f1f1; }
+.c { position: relative; cursor: pointer; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); pointer-events: auto; }
+.stage .fixed7 { opacity: .4; filter: grayscale(1); pointer-events: none !important; } /* nothing on this screen changes it */
+.c.sel { outline: 2px solid var(--ring-on); outline-offset: 2px; border-radius: 6px; z-index: 20; }
+/* a selected part against the frame's edge has its ring on the ring layer above the frame instead */
+.c.selx.sel, .c.fit.selx::before { outline-color: transparent !important; }
+.ringlayer { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
+.ringlayer > i { position: absolute; box-sizing: border-box; border: 2px solid var(--ring-on); }
+.ringlayer > i.ghost { border-style: dashed; border-color: var(--yt-red); }
+.c.shade.sel { outline-offset: -3px; border-radius: 0; z-index: 0; }
+.c.off { opacity: 0; }
+.stage .c.dzt { transition: opacity .22s var(--ease) !important; }
+.stage .c.dz, .stage .c.ghost.dz { opacity: 0 !important; }
+/* Hidden components collapse, like Morphe's filters remove them from the real layout. It is !important so a
+   part that sets its own display inline (a flex row) collapses too, instead of leaving an empty gap. */
+.c.off:not(.ghost):not(.charging):not(.intray):not(.leaving) { display: none !important; }
+.c.sizing, .row.sizing { overflow: hidden; }
+/* text keeps its line while a component narrows, instead of wrapping into a taller block */
+.c.sizew { white-space: nowrap; flex-shrink: 0; min-width: 0; }
+.c.sizew > * { white-space: nowrap; }
+.c.sizei { display: inline-block; vertical-align: bottom; }
+.c.ghost { opacity: .6 !important; outline: 1.5px dashed var(--yt-red) !important; display: revert; animation: ghostin var(--dur) var(--ease); }
+.c.ghost > * { visibility: visible !important; }
+/* a hidden setting that is selected stays revealed and pulses slowly in red until you pick another one */
+/* (not a fitted one: its pulse is on its ring, ::before below. The fit rule that turned this off was the
+   weaker selector, so a hidden part in a wide wrapper pulsed across the whole line: 'Create a Short' button,
+   Max, Nov 24) */
+.stage .c.ghost.sel:not(.fit):not(.leaving):not(.charging):not(.flash) { animation: ghostpulse 1.8s ease-in-out .5s infinite; }
+@keyframes ghostpulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(255,0,51,0), inset 0 0 0 999px rgba(255,0,51,0); } 50% { box-shadow: 0 0 0 4px rgba(255,0,51,.35), inset 0 0 0 999px rgba(255,0,51,.16); } }
+/* a ghost folding away (unghost: it narrows to nothing) fades with its dashed ring: the ring stayed at full
+   strength and ended as a red line where the part had been (Max, Nov 24: Create new segment button to Use
+   compact Skip button; every hidden part). A transition beats the !important opacity above. */
+.stage .c.ghost.leaving { opacity: 0 !important; outline-color: transparent !important; transition: opacity 260ms var(--ease), outline-color 120ms var(--ease) !important; }
+.stage .c.fit.ghost.leaving::before { outline-color: transparent; transition: outline-color 120ms var(--ease); }
+.c.ghost-out { opacity: 0 !important; transition: opacity 450ms var(--ease) !important; animation: none; }
+@keyframes ghostin { from { opacity: 0; } }
+.c.intray { opacity: .55; outline: 1.5px dashed rgba(255,255,255,.5); outline-offset: 1px; border-radius: 8px; }
+.c.intray > * { visibility: visible !important; }
+.c.intray.ghost { opacity: 1 !important; }
+.c.off.charging > * { visibility: visible !important; animation: chargein .48s linear var(--press-lead, 0ms) forwards; }
+.c.ghost.charging > * { animation: none; }
+.c.ghost.charging { animation: none; }
+@keyframes chargein { from { opacity: 0; } to { opacity: .6; } }
+.c.reveal { animation: revealk .34s var(--ease); }
+@keyframes revealk { from { opacity: .6; } to { opacity: 1; } }
+.c.pressing::after { content: ""; position: absolute; inset: -4px; border-radius: 10px; border: 2px solid var(--yt-red); animation: press .48s linear var(--press-lead, 0ms) forwards; pointer-events: none; }
+@keyframes press { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+.c.flash { animation: flash .5s var(--ease); transform-origin: var(--pop, center); }
+/* the ring hugs what the element draws (see fitRing) */
+.c.fit.sel, .c.fit.ghost { outline: none !important; }
+.c.fit.sel::before, .c.fit.ghost::before { content: ""; position: absolute; left: var(--fl); top: var(--ft); right: var(--fr); bottom: var(--fb); outline: 2px solid var(--ring-on); outline-offset: 2px; border-radius: 6px; pointer-events: none; z-index: 21; }
+.c.fit.ghost::before { outline: 1.5px dashed var(--yt-red); outline-offset: 1px; }
+.stage .c.fit.ghost.sel { animation: none; }
+.stage .c.fit.ghost.sel:not(.leaving):not(.charging):not(.flash)::before { animation: ghostpulse 1.8s ease-in-out .5s infinite; }
+.c.fit.flash::after { left: calc(var(--fl) - 2px); top: calc(var(--ft) - 2px); right: calc(var(--fr) - 2px); bottom: calc(var(--fb) - 2px); }
+.c.fit.pressing::after { left: calc(var(--fl) - 4px); top: calc(var(--ft) - 4px); right: calc(var(--fr) - 4px); bottom: calc(var(--fb) - 4px); }
+.c.flash.flat { animation: none; }
+.c.flash.twice:not(.flat) { animation: flash 480ms var(--ease) 2; }
+@keyframes flash { 0% { scale: 1; } 40% { scale: 1.12; } 100% { scale: 1; } } /* scale, not transform: a part centred with an inline translate (Paused overlay buttons, Gesture hints) jumped sideways */
+/* list rows sit in clipped groups, so the ring is drawn inside the row: it shows on all four sides */
+.attn { animation: attn 480ms var(--ease) 2; }
+@keyframes attn { from { box-shadow: inset 0 0 0 2px rgba(62,166,255,.95); background-color: rgba(62,166,255,.22); } to { box-shadow: inset 0 0 0 2px rgba(62,166,255,0); background-color: transparent; } }
+.traypill { display: flex; align-items: center; gap: 2px; height: 26px; padding: 0 8px 0 4px; border-radius: 13px; border: 1.5px dashed rgba(255,255,255,.55); background: rgba(0,0,0,.45); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; pointer-events: auto; margin-right: 4px; }
+.traypill svg { width: 16px; height: 16px; fill: #fff; }
+.tray { position: absolute; left: 8px; right: 8px; bottom: 48px; background: rgba(20,20,20,.92); border-radius: 12px; padding: 6px 8px 8px; z-index: 25; animation: trayin var(--dur) var(--ease); }
+@keyframes trayin { from { opacity: 0; transform: translateY(8px) scale(.97); } }
+.trayhead { font-size: 10.5px; color: #bbb; margin: 0 2px 4px; }
+.trayrow { display: flex; flex-wrap: wrap; gap: 4px; }
+
+.ico { width: 24px; height: 24px; fill: #fff; display: block; }
+.thumb { border-radius: 8px; position: relative; overflow: hidden; }
+.dur { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.8); font-size: 11px; padding: 1px 4px; border-radius: 3px; font-weight: 500; }
+.av { border-radius: 50%; flex: none; }
+.t1 { font-size: 14px; line-height: 1.3; font-weight: 500; }
+.t2 { font-size: 12px; color: #aaa; line-height: 1.35; }
+.chip { background: var(--yt-chip); border-radius: 18px; padding: 0 12px; height: 32px; display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 500; white-space: nowrap; flex: none; color: #f1f1f1; }
+.chip .ico { width: 20px; height: 20px; }
+.video { position: relative; width: 100%; aspect-ratio: 16 / 9; overflow: hidden; }
+.frame { position: absolute; inset: 0; }
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.42); pointer-events: none; }
+.pbtn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; }
+.bigbtn { width: 56px; height: 56px; }
+.bigbtn .ico { width: 36px; height: 36px; }
+.seek { position: absolute; left: 12px; right: 12px; height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; }
+.seek .played { position: absolute; left: 0; top: 0; bottom: 0; background: var(--seek-1, var(--yt-red)); border-radius: 2px; }
+.seek .knobring { position: absolute; top: 50%; width: var(--kr, 18px); height: var(--kr, 18px); border-radius: 50%; pointer-events: none; }
+.seek .knobring.sel, .seek .knobring.flash::after { border-radius: 50%; }
+.seek .knob { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: var(--seek-1, var(--yt-red)); transform: translate(-50%, -50%); }
+.seek .buf { position: absolute; left: 0; top: 0; bottom: 0; background: rgba(255,255,255,.45); }
+.time { font-size: 12px; font-weight: 500; text-shadow: 0 0 3px rgba(0,0,0,.6); white-space: nowrap; }
+.toggle-auto { width: 36px; height: 14px; border-radius: 7px; background: rgba(255,255,255,.6); position: relative; }
+.toggle-auto::after { content: ""; position: absolute; right: -2px; top: -4px; width: 22px; height: 22px; border-radius: 50%; background: #fff; }
+.toggle-auto .ico { position: absolute; right: 1px; top: -1px; width: 16px; height: 16px; fill: #000; z-index: 1; }
+.badge-txt { font-size: 10px; font-weight: 700; border: 1.6px solid #fff; border-radius: 3px; padding: 0 3px; line-height: 14px; }
+/* finger: a hand whose fingertip sits on the touch point, plus a ripple */
+.finger { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; z-index: 30; transition: opacity 120ms; }
+.finger::before { content: ""; box-sizing: border-box; position: absolute; left: -15px; top: -15px; width: 30px; height: 30px; border-radius: 50%; background: rgba(255,255,255,.35); border: 2px solid rgba(255,255,255,.85); transform: scale(.5); opacity: 0; }
+.finger svg { position: absolute; left: -19px; top: -12.5px; width: 40px; height: 40px; fill: #fff; filter: drop-shadow(0 2px 3px rgba(0,0,0,.7)); }
+.finger.show { opacity: 1; }
+.finger.tap::before { animation: ripple .42s var(--ease); }
+.finger.hold::before { opacity: 1; transform: scale(.9); background: rgba(255,0,51,.35); transition: transform .3s, opacity .15s; }
+@keyframes ripple { 0% { transform: scale(.3); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
+.toastin { position: absolute; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,.7); border-radius: 16px; padding: 5px 12px; font-size: 12px; font-weight: 500; white-space: nowrap; z-index: 31; pointer-events: none; color: #fff; }
+.demo-label { position: absolute; left: 8px; top: 8px; background: rgba(0,0,0,.75); color: #fff; font-size: 11px; padding: 3px 8px; border-radius: 10px; z-index: 32; pointer-events: none; max-width: calc(100% - 16px); }
+.demo-label.bad { background: rgba(120,0,0,.85); }
+
+/* scenario canvas: standard black stage for animations of settings the live preview cannot show */
+.canvas { position: absolute; inset: 0; background: #000; z-index: 45; opacity: 0; transition: opacity var(--dur) var(--ease); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 26px 0 2px; overflow: hidden; pointer-events: none; }
+.canvas.show { opacity: 1; pointer-events: auto; }
+.canvas.nocap { padding-top: 2px; }
+.canvas .cap { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; color: #ddd; }
+.canvas .cap b { color: #fff; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.canvas .cap .st { flex: none; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #2b2b2b; }
+.canvas .cap .st.on { background: rgba(144,216,137,.2); color: var(--m-success); }
+.canvas:has(> .foot:not(:empty)) { padding-bottom: 28px; }
+.canvas .foot { position: absolute; bottom: 8px; left: 10px; right: 10px; text-align: center; font-size: 11.5px; color: #ccc; }
+.zones { position: absolute; inset: 0; pointer-events: none; z-index: 29; transition: opacity .35s var(--ease); }
+.zones.out { opacity: 0; }
+.zones i.zoff { background: rgba(255,255,255,.04); border-color: rgba(255,255,255,.25); }
+.zones.lab i { display: grid; place-items: center; }
+.zones.lab b { font: 600 11px/1.2 inherit; color: #fff; text-align: center; text-shadow: 0 1px 3px #000; }
+.zones.lab small { display: block; font-weight: 400; opacity: .85; }
+.zones.slide i { transition: width .25s var(--ease), left .25s var(--ease), right .25s var(--ease), height .25s var(--ease); }
+.zones i { position: absolute; top: 0; bottom: 0; background: rgba(164,201,255,.13); border: 1px dashed rgba(164,201,255,.55); }
+.canvas .sit { font-size: 11px; color: var(--m-primary); letter-spacing: .3px; min-height: 14px; transition: opacity 160ms var(--ease); }
+.canvas .sit:empty { display: none; } /* no situation line: its room goes to the phones */
+.dev .dv-video { position: absolute; left: 0; right: 0; top: 0; height: 34%; transition: height .5s var(--ease); overflow: hidden; }
+.dev.land .dv-video { height: 100%; }
+.dev .dv-below { position: absolute; left: 0; right: 0; top: 34%; bottom: 0; background: #0f0f0f; padding: 8px 6px; display: grid; align-content: start; gap: 6px; transition: opacity .3s var(--ease); }
+.dev .dv-below i { display: block; height: 8px; border-radius: 3px; background: #2a2a2a; }
+.dev .dv-below i:nth-child(2) { width: 70%; }
+.dev.land .dv-below { opacity: 0; }
+/* The faded half phone (device() with a crop, CROP7 in scenarios.js): the phone keeps its whole drawing,
+   and --cut7 of it at one end takes no room (a negative margin) and is faded out (a mask, which covers the
+   frame too). Turned on its side the phone is whole again: the cut slides to 0 with the turn.
+   --cut7 and --fade7 match CROP_CUT and CROP_FADE in scenarios.js. */
+@property --cut7 { syntax: "<length>"; inherits: false; initial-value: 0px; }
+@property --fade7 { syntax: "<length>"; inherits: false; initial-value: 0px; }
+.dev.crop7 { transition: width .5s var(--ease), height .5s var(--ease), transform .5s var(--ease), scale .5s var(--ease), --cut7 .5s var(--ease), --fade7 .5s var(--ease); }
+.dev.crop7.port { --cut7: 44px; --fade7: 26px; }
+.dev.ctop7 { margin-bottom: calc(-1 * var(--cut7)); -webkit-mask-image: linear-gradient(#000 calc(100% - var(--cut7) - var(--fade7)), transparent calc(100% - var(--cut7))); mask-image: linear-gradient(#000 calc(100% - var(--cut7) - var(--fade7)), transparent calc(100% - var(--cut7))); }
+.dev.cbot7 { margin-top: calc(-1 * var(--cut7)); -webkit-mask-image: linear-gradient(transparent var(--cut7), #000 calc(var(--cut7) + var(--fade7))); mask-image: linear-gradient(transparent var(--cut7), #000 calc(var(--cut7) + var(--fade7))); }
+.canvas .prog { position: absolute; left: 0; bottom: 0; height: 2px; background: var(--m-primary); width: 100%; transform: scaleX(0); transform-origin: 0 50%; }
+.dev { position: relative; background: #111; border: 3px solid #555; border-radius: 14px; overflow: hidden; transition: width .5s var(--ease), height .5s var(--ease), transform .5s var(--ease), scale .5s var(--ease); flex: none; contain: size layout paint; }
+/* every phone has its own width and height and clips its drawing, so what moves inside it (a finger, a
+   progress bar, a panel sliding in) is laid out within the phone alone, not the whole page (performance) */
+.scbox { transition: width .5s var(--ease), height .5s var(--ease); position: relative; flex: none; }
+/* the phone is centred on its scaled box, so scaling it never pushes it off-centre */
+.scbox > .dev, .scbox > .duo7 { position: absolute; left: 50%; top: 50%; translate: -50% -50%; }
+/* a pair hangs from the top of its box: when a caption joins or leaves the flow below the phones, the
+   phones stay put instead of jumping by half the caption's height (the box itself resizes smoothly) */
+.scbox > .duo7.gen { top: 0; translate: -50% 0; transform-origin: 50% 0; }
+.duo7 { width: 206px; height: 186px; display: flex; gap: 10px; transition: scale .5s var(--ease); }
+.dl7 { display: grid; gap: 3px; justify-items: center; align-content: start; }
+/* the Off / On labels over a pair: one size on screen for every comparison (--duopill), whatever the pair's
+   scale (--dsc), so a pair without captions grows its phones, not its labels */
+:root { --duopill: 12px; }
+.dl7 > span { font-size: calc(var(--duopill) / var(--dsc, 1.7)); font-weight: 600; color: #fff; background: #3a3a3a; border-radius: .7em; padding: 0 .75em; line-height: 1.55; }
+.dl7 > span.on { background: var(--on-green); color: var(--on-green-ink); } /* the same colours as the list toggles */
+.dl7 > span.neg { background: #5c2b2b; color: #ffd9d6; }
+/* the invisible copy fitDev measures: final sizes, no transitions, never painted */
+.duo7.gen.probe7 { position: absolute !important; left: 0 !important; top: 0 !important; translate: none !important; scale: 1 !important; visibility: hidden; pointer-events: none; }
+.probe7, .probe7 * { transition: none !important; animation: none !important; }
+.duo7.gen { width: max-content; height: auto; align-items: flex-start; justify-content: center; gap: 6px; }
+.duo7.gen .dl7 { width: min-content; }
+.duo7.gen .dl7 > span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.duo7.gen .side { position: relative; z-index: 1; } /* a gliding caption passes behind the phones */
+.duo7.gen .side > .dev { position: relative; }
+/* on the way into the side layout: captions out of the flow, phones placed as they will be */
+.duo7.gen.capgo { gap: 6px; }
+.duo7.gen.capgo .dl7 > .sf7 { position: absolute; visibility: hidden; }
+/* The Off / On labels sit beside the phones, never above them (Max, Nov 20): side by side, the left
+   label on the left of its phone and the right one on the right; stacked, each on the right of its
+   phone. Centred on the phone. The height labels took above the phones goes to the phones. */
+/* labels beside the phones sit close to them: the gaps are a few screen pixels (divided by the pair's
+   scale), and a caption spans under label and phone so its width never pushes them apart (Max, Nov 20) */
+.duo7.gen.labout { flex-direction: row !important; align-items: center; gap: calc(8px / var(--dsc, 1.7)); }
+.duo7.gen.labout .dl7 { width: max-content; column-gap: calc(5px / var(--dsc, 1.7)); align-items: center; }
+.duo7.gen.labout .dl7:first-child { grid-template-columns: auto min-content; grid-template-areas: "pill dev" "cap cap"; }
+.duo7.gen.labout .dl7 + .dl7 { grid-template-columns: min-content auto; grid-template-areas: "dev pill" "cap cap"; } /* not :last-child: a gliding caption copy may follow */
+.duo7.gen.labout .dl7:first-child > span { justify-self: end; }
+.duo7.gen.labout .dl7 + .dl7 > span { justify-self: start; }
+.duo7.gen.labright { flex-direction: column !important; align-items: stretch; }
+.duo7.gen.labright .dl7 { width: max-content; grid-template-columns: min-content auto; grid-template-areas: "dev pill" "cap cap"; column-gap: calc(5px / var(--dsc, 1.7)); align-items: center; justify-content: start; }
+.duo7.gen.labright .dl7 > span { justify-self: start; }
+.duo7.gen.labout .dl7 > span, .duo7.gen.labright .dl7 > span { grid-area: pill; }
+/* a long label beside a phone breaks onto two short lines instead of taking the phones' width */
+.duo7.gen.labout .dl7 > span:not(.ask), .duo7.gen.labright .dl7 > span:not(.ask) { white-space: normal; max-width: 5.6em; width: max-content; text-align: center; overflow: visible; line-height: 1.3; text-wrap: balance; }
+.duo7.gen.labout .dl7 > span.xlong, .duo7.gen.labright .dl7 > span.xlong { max-width: 9em; }
+.duo7.gen.labout .dl7 > .side, .duo7.gen.labright .dl7 > .side { grid-area: dev; }
+.duo7.gen.labout .dl7 > .sf7, .duo7.gen.labright .dl7 > .sf7 { grid-area: cap; }
+/* captions beside the phones (portrait pairs): on the outer side, under the label, both centred on the phone */
+.duo7.gen.capside { flex-direction: row !important; align-items: stretch; gap: 6px; }
+/* the label sits on the phone's middle line and its caption hangs under it, so the Off and On labels line
+   up whatever the length of either caption (centring label and caption together put the label with the
+   longer caption higher: Fix transcript, Max, Nov 23) */
+.duo7.gen.capside .dl7 { grid-template-rows: minmax(0, 1fr) auto minmax(0, 1fr); row-gap: 4px; }
+.duo7.gen.capside .dl7:first-child { grid-template-columns: auto min-content; grid-template-areas: ". dev" "pill dev" "cap dev"; }
+.duo7.gen.capside .dl7 + .dl7 { grid-template-columns: min-content auto; grid-template-areas: "dev ." "dev pill" "dev cap"; }
+.duo7.gen.capside .dl7 > .sf7 { align-self: start; }
+.duo7.gen.capside .dl7 > span { justify-self: center; }
+.duo7.gen.capside .dl7 > .sf7 { width: 80px; min-width: 0; font-size: 12px; line-height: 15px; margin: 0; -webkit-line-clamp: 5; hyphens: manual; text-align: center; }
+/* a long label gets smaller text but keeps the box height of a short one (Max, Nov 24: in Play next in queue
+   type the phone under a long label sat a little higher, and the phones moved up or down from option to
+   option). A label is its trimmed cap height (Roboto .711 em, motion.css text-box) plus .42 em above and
+   below, so smaller text made a shorter box; these paddings make up the difference in the regular size. */
+.duo7.gen .dl7 > span.long { font-size: calc(var(--duopill) * .9 / var(--dsc, 1.7)); padding-block: calc(var(--duopill) / var(--dsc, 1.7) * .4556); }
+.duo7.gen .dl7 > span.xlong { font-size: calc(var(--duopill) * .8 / var(--dsc, 1.7)); padding-block: calc(var(--duopill) / var(--dsc, 1.7) * .4911); }
+.duo7.gen .dl7 > span.ask { font-size: calc(var(--duopill) * .9 / var(--dsc, 1.7)); line-height: 1.55; white-space: nowrap; overflow: visible; max-width: none; background: #1a73e8; }
+.ask7 { box-sizing: border-box; border-radius: 12px; border: 2px dashed #555; background: rgba(255,255,255,.03); display: grid; place-items: center; padding: 6px; }
+/* the outline of a faded half phone fades at the same end, over the same length (--fade7) */
+.ask7.asktop7 { -webkit-mask-image: linear-gradient(#000 calc(100% - 26px), transparent); mask-image: linear-gradient(#000 calc(100% - 26px), transparent); }
+.ask7.askbot7 { -webkit-mask-image: linear-gradient(transparent, #000 26px); mask-image: linear-gradient(transparent, #000 26px); }
+.ask7 > span { font-size: calc(var(--duopill) * .9 / var(--dsc, 1.7)); font-weight: 600; color: #fff; background: #1a73e8; border-radius: .7em; padding: .42em .75em; text-align: center; line-height: 1.25; }
+.duo7.gen .dl7 > span.ask:empty { display: none; }
+.ctl .opt.nudge7 { animation: nudge7 .9s var(--ease) 2; }
+@keyframes nudge7 { 50% { border-color: var(--m-primary, #3ea6ff); box-shadow: 0 0 0 2px rgba(62,166,255,.35); } }
+.sf7 { font-size: 11px; line-height: 13px; color: #ddd; text-align: center; text-wrap: balance; overflow-wrap: break-word; hyphens: auto; min-height: 13px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 4; -webkit-box-orient: vertical; width: 100%; min-width: 110px; margin-top: 2px; }
+/* a comparison told in words (textScen): a plain card the size of a phone */
+/* a side that is words only, no phone (Post buttons layout) */
+.dev.txt7 { border: 0; background: transparent; box-shadow: none; overflow: visible; }
+.dev.txt7 .say7 { position: absolute; inset: 0; display: grid; align-content: center; justify-items: center; gap: 6px; text-align: center; color: #fff; font-size: 9px; line-height: 1.3; text-wrap: balance; }
+.dev.txt7 .say7 b { font-size: 11px; font-weight: 600; }
+.dev.txt7 .say7 span { color: #e8e8e8; }
+.dev.card7 { border: 1px solid #3a3a3a; border-radius: 10px; background: #1b1b1b; }
+.dev.card7 .tx7 { position: absolute; inset: 0; padding: 10px 8px; display: grid; align-content: start; gap: 7px; font-size: 8px; line-height: 1.3; color: #ddd; }
+.dev.card7 .tx7 b { font-size: 9.5px; color: #fff; margin-bottom: 2px; }
+.dev.card7 .tx7 div { position: relative; padding-left: 8px; }
+.dev.card7 .tx7 div::before { content: ""; position: absolute; left: 0; top: .5em; width: 3px; height: 3px; border-radius: 50%; background: #aaa; }
+.duo7.gen > .dl7 > .sf7:empty { display: none; } /* no caption: the phones get its room */
+.dev.buzz { animation: buzz 40ms linear 3; } /* 120 ms, the same as navigator.vibrate(120) */
+@keyframes buzz { 0%,100% { transform: translate(0,0) rotate(0); } 25% { transform: translate(-3.5px,1px) rotate(-1.2deg); } 50% { transform: translate(3px,-1px) rotate(1deg); } 75% { transform: translate(-2px,-.8px) rotate(-.6deg); } }
+.vib7 { position: absolute; left: 7px; top: 7px; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; z-index: 40; pointer-events: none; animation: vibin .18s var(--ease); transition: opacity .3s; }
+.vib7 svg { width: 18px; height: 18px; fill: #fff; }
+.vib7.on { background: var(--m-primary, #3ea6ff); }
+.vib7.on svg { fill: #062e6f; animation: buzz 40ms linear 3; }
+.vib7.off { background: #3a3a3a; }
+.vib7.off svg { fill: #aaa; }
+.vib7.off::after { content: ""; position: absolute; left: 4px; right: 4px; top: 50%; height: 2px; background: #ff6b6b; rotate: -45deg; border-radius: 1px; }
+.vib7.out { opacity: 0; }
+@keyframes vibin { from { scale: .4; opacity: 0; } to { scale: 1; opacity: 1; } }
+.waves { position: absolute; top: 50%; width: 14px; height: 40px; transform: translateY(-50%); opacity: 0; }
+.waves.l { left: -20px; border-left: 2px solid var(--m-primary); border-radius: 50%; }
+.waves.r { right: -20px; border-right: 2px solid var(--m-primary); border-radius: 50%; }
+.waves.go { animation: waves .3s var(--ease) 1; }
+@keyframes waves { 0% { opacity: 0; } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-50%) scale(1.4); } }
+
+
+/* Shorts demos (demos.js): the pause sign of a paused Short, the gesture hint's nudging arrow */
+.psign7 { position: absolute; left: 50%; top: 29%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; background: rgba(0,0,0,.45); display: grid; place-items: center; opacity: 0; scale: .8; transition: opacity .18s var(--ease), scale .18s var(--ease); pointer-events: none; z-index: 2; }
+.psign7.on { opacity: 1; scale: 1; }
+.psign7 svg { width: 36px; height: 36px; fill: #fff; }
+.shint7 { display: inline-flex; align-items: center; gap: 6px; }
+.sharrow7 { display: inline-grid; animation: sharrow7 .9s var(--ease) infinite; }
+.sharrow7 svg { width: 14px; height: 14px; fill: currentColor; }
+@keyframes sharrow7 { 0%, 100% { translate: 0 2px; } 50% { translate: 0 -3px; } }
+/* a Short's Like button turning on (double-tap to like demo) */
+.pbtn.liked7 { background: #f1f1f1 !important; animation: liked7 .36s var(--ease); }
+.pbtn.liked7 svg, .pbtn.liked7 svg path { fill: #0f0f0f !important; stroke: none !important; }
+@keyframes liked7 { 0% { scale: 1; } 45% { scale: 1.25; } 100% { scale: 1; } }

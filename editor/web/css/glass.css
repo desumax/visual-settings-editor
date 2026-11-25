@@ -1,0 +1,183 @@
+/* The Glass design: role lists (chrome, card, ctl, thumb, dlg, fill, lock, press) and tiers that only change --gx-* variables.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* ---------- Glass UI design (Max, Nov 23) ----------
+   Liquid Glass, design 1 of ten (glass-designs/glass-lab.html?d=liquid), drawn from that lab's recipe:
+   clear glass over a colourful backdrop that bends what is behind it at its edges (the lens, layout.js
+   liquidSync), no frost, a thin bright rim (a hairline plus a lit top edge), a dark tint on chrome so labels
+   read, translucent coloured thumbs. Built from ROLES named as in the lab; change a role, not an element:
+     chrome = the top bar's round buttons, the screen pill, Original/Morphe, the snackbar
+     card   = every setting is its own card (radius 22, 8px apart); menu cards; tutorial panes
+     ctl    = clear controls: tabs, Hide/Show and switch tracks, option pills, the slider track, small buttons
+     thumb  = what is chosen: a translucent tone (on, off, blue, white) with a bright rim and a soft shadow
+     dlg    = dialogs and the screen menu (radius 30)
+     fill   = the slider's fill; lock = the cover with the gold lock; press = what gives under the finger
+   Backdrop: the darker original (Max, Nov 23 evening: not the lab's busy art): four soft colour glows on
+   near black, drawn at the phone's size (--g-art-w/-h, layout.js glassArtPlace). What hides the list (the
+   sticky preview area, the app's menu, the editor behind a back swipe) paints the same glows at the same
+   place, so the two meet without a seam and nothing has to blur.
+   Cost (Max, Nov 23 evening: a Snapdragon 8 Gen 5 got the slow warning): nothing large samples what is
+   behind it while the list scrolls; cards, tracks and locks are plain paint. Tiers only change what
+   liquidSync bends and the --gx-* fallbacks:
+     2 Full  = lens on the top bar, tabs, dialogs, menu and snackbar, and on up to LENS_CAP chosen thumbs;
+     1 Light = lens on the top bar, tabs, dialogs, menu and snackbar;
+     0 Flat  = no backdrop-filter at all: the same paint, dialogs and menu near opaque.
+   Locks and the search field stay near opaque in every tier. */
+.phone.theme-glass {
+  /* how strong the glass reads: every rim, lit edge and light spot is multiplied by it, and the lens
+     (layout.js GLASS_K) bends and lifts colour by the same share (Max, Nov 24 evening: 30% less) */
+  --g-k: .7;
+  --g-chrome: rgba(18,18,26,.38);
+  --g-chrome-edge: inset 0 0 0 1px rgba(255,255,255,calc(.22 * var(--g-k))), inset 0 1px 0 rgba(255,255,255,calc(.55 * var(--g-k))), inset 0 -1px 0 rgba(255,255,255,calc(.12 * var(--g-k))), 0 8px 24px rgba(0,0,0,.35);
+  --g-card: rgba(255,255,255,.035);
+  --g-card-edge: inset 0 0 0 1px rgba(255,255,255,calc(.16 * var(--g-k))), inset 0 1px 0 rgba(255,255,255,calc(.35 * var(--g-k)));
+  --g-ctl: rgba(255,255,255,.06);
+  --g-ctl-edge: inset 0 0 0 1px rgba(255,255,255,calc(.2 * var(--g-k))), inset 0 1px 0 rgba(255,255,255,calc(.4 * var(--g-k)));
+  --g-thumb-edge: inset 0 0 0 1px rgba(255,255,255,calc(.3 * var(--g-k))), inset 0 1px 0 rgba(255,255,255,calc(.6 * var(--g-k))), 0 4px 12px rgba(0,0,0,.3);
+  --g-on: rgba(43,92,52,.72); --g-off: rgba(92,43,43,.72); --g-blue: rgba(30,90,168,.78); --g-white: rgba(255,255,255,.82); --g-def: rgba(70,72,84,.62);
+  --g-fill: rgba(62,166,255,.8);
+  /* the slider knob: light bent by a clear pill (Max: "refract more light"): a hot spot under the top edge,
+     the bright lens band at both ends, light gathered along the bottom edge, a blue glow from the fill,
+     a crisp rim; painted, so it costs the same in every tier */
+  --g-knob-paint-top: radial-gradient(70% 38% at 50% 10%, rgba(255,255,255,calc(.85 * var(--g-k))), rgba(255,255,255,calc(0 * var(--g-k))) 72%), radial-gradient(80% 50% at 50% 104%, rgba(205,232,255,calc(.6 * var(--g-k))), rgba(205,232,255,calc(0 * var(--g-k))) 70%), linear-gradient(90deg, rgba(255,255,255,calc(.4 * var(--g-k))), rgba(255,255,255,calc(0 * var(--g-k))) 26%, rgba(255,255,255,calc(0 * var(--g-k))) 74%, rgba(255,255,255,calc(.4 * var(--g-k))));
+  --g-knob-tint: rgba(190,220,255,.16);
+  /* What the clear knob shows of the track under it (Max, Nov 24: the blue looked flat behind the pill
+     instead of bending into it): the 8px track is magnified to a bulge in the middle of the lens, the
+     blue running into it with a curved front, and the rim on the blue side picks up the blue. The fill
+     always ends under the knob's middle (--pf), so the left half of the lens is blue at every value. */
+  --g-knob-lens: radial-gradient(ellipse 33% 32% at 26% 50%, rgba(130,205,255,1) 0, rgba(70,170,255,.95) 62%, rgba(62,166,255,.75) 88%, rgba(62,166,255,0) 100%),
+    linear-gradient(rgba(62,166,255,0) 34%, var(--g-fill) 34% 66%, rgba(62,166,255,0) 66%) left center / 40% 100% no-repeat,
+    radial-gradient(ellipse 44% 30% at 62% 50%, rgba(255,255,255,.13) 0 70%, rgba(255,255,255,0) 100%),
+    linear-gradient(rgba(255,255,255,0) 34%, rgba(255,255,255,.09) 34% 66%, rgba(255,255,255,0) 66%) right center / 50% 100% no-repeat;
+  --g-knob-edge: inset 5px 0 6px -3px rgba(62,166,255,calc(.7 * var(--g-k))), inset 0 0 0 1px rgba(255,255,255,calc(.62 * var(--g-k))), inset 0 1px 1px rgba(255,255,255,calc(.95 * var(--g-k))), inset 0 -2px 3px rgba(190,225,255,calc(.45 * var(--g-k))), inset 0 0 7px rgba(120,190,255,calc(.4 * var(--g-k))), 0 0 10px rgba(62,166,255,.35), 0 4px 12px rgba(0,0,0,.35);
+  --g-dlg: rgba(22,22,30,.4);
+  --g-dlg-edge: inset 0 0 0 1px rgba(255,255,255,calc(.24 * var(--g-k))), inset 0 1.5px 0 rgba(255,255,255,calc(.55 * var(--g-k))), 0 20px 50px rgba(0,0,0,.5);
+  --g-press: rgba(255,255,255,.16); --g-line: rgba(255,255,255,.1);
+  --g-menu-veil: rgba(0,0,0,.15);
+  /* the backdrop: glows sized to the phone in px, so every copy of it lines up (glassArtPlace, layout.js) */
+  --g-bg: #07090f;
+  --g-bg-img: radial-gradient(120% 55% at 0% 0%, rgba(72,112,255,.46), transparent 62%), radial-gradient(90% 50% at 100% 28%, rgba(0,186,176,.32), transparent 62%), radial-gradient(110% 60% at 22% 100%, rgba(150,78,255,.36), transparent 64%), radial-gradient(80% 45% at 100% 92%, rgba(255,110,150,.2), transparent 60%);
+  /* Flat: nothing bends, so what floats over the list is near opaque */
+  --gx-dlg: rgba(24,22,36,.95); --gx-menu: rgba(24,22,36,.95); --gx-snack: rgba(24,22,36,.92); --gx-float-fx: none; --gx-dlg-fx: none; --gx-knob-fx: none;
+  --m-bg: #0a0c14; --m-surface: #0a0c14; --m-c-lowest: rgba(0,0,0,.25); --m-c: rgba(255,255,255,.035); --m-c-high: rgba(255,255,255,.09); --m-c-highest: rgba(255,255,255,.14);
+  --m-on: #f4f6fc; --m-on-var: rgba(236,240,252,.74); --m-outline: rgba(255,255,255,.32); --m-outline-var: rgba(255,255,255,.16);
+  --m-primary: #9fcaff; --m-on-primary: #05213f; --m-primary-c: rgba(120,170,255,.22); --m-on-primary-c: #dcebff; --m-secondary-c: rgba(255,255,255,.12);
+  --lk-grey: rgba(28,28,38,.9); --lk-veil: rgba(28,28,38,.84); --r-l: 22px; --r-li: 24px;
+  background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 0; background-repeat: no-repeat;
+}
+.phone.theme-glass .app { --g-art-y: calc(var(--g-art-top, 0px) + var(--abh, 56px)); }
+.phone.theme-glass .app.barhidden { --g-art-y: var(--g-art-top, 0px); }
+/* Light and Full: dialogs, the menu and the snackbar are clear glass with the lens (blur where SVG lenses are missing) */
+.phone.theme-glass:is([data-gt="1"], [data-gt="2"]) {
+  --gx-dlg: var(--g-dlg); --gx-menu: rgba(22,22,30,.5); --gx-snack: var(--g-chrome); --gx-float-fx: blur(1.75px) saturate(1.42); --gx-dlg-fx: blur(4.2px) saturate(1.42);
+  --gx-knob-fx: saturate(1.63) brightness(1.21); } /* the knob lifts the colour under it: per pixel, no neighbours read, so cheap */
+
+/* the backdrop, painted again where the list must hide. The sticky preview carries it on a layer of its own,
+   one bar taller than itself, that slides by the bar's height as the bar hides: a composited move, nothing
+   is painted again, and the layer is only as big as the preview area */
+.theme-glass .stick { background: none; box-shadow: none; overflow: clip; }
+.theme-glass .stick::before { content: ""; position: absolute; left: 0; top: 0; z-index: -1; width: 100%; height: calc(100% + var(--abh, 56px)); pointer-events: none;
+  background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-repeat: no-repeat;
+  background-position: calc(-1 * var(--g-art-x, 0px)) calc(-1 * var(--g-art-top, 0px));
+  translate: 0 calc(-1 * var(--abh, 56px)); transition: translate 260ms var(--ease); }
+.theme-glass .app.barhidden .stick::before { translate: 0 0; }
+html.inapp .phone.theme-glass #picker, html.inapp.peekback .phone.theme-glass .editor { background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 calc(-1 * var(--g-art-y, 0px)); background-repeat: no-repeat; }
+/* the screen menu is 15% darker than the editor, so its cards and words stand out (Max, Nov 24 evening):
+   a black veil over its backdrop (in the app) or its glass (on the web) */
+html.inapp .phone.theme-glass #picker { background-image: linear-gradient(var(--g-menu-veil), var(--g-menu-veil)), var(--g-bg-img); background-size: 100% 100%, var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 0, 0 calc(-1 * var(--g-art-y, 0px)); }
+.theme-glass .status, .theme-glass .appbar { background: transparent; }
+
+/* role: chrome */
+.theme-glass .appbar > .iconbtn, .theme-glass .secpill, .theme-glass .seg { background-color: var(--g-chrome); box-shadow: var(--g-chrome-edge); }
+.theme-glass .appbar > .iconbtn:hover, .theme-glass .secpill:hover { background-color: rgba(40,40,56,.5); }
+.theme-glass .seg { --seg-on: var(--g-blue); padding: 3px; }
+.theme-glass .seg::before { top: 3px; bottom: 3px; left: 3px; width: calc(50% - 3px); box-shadow: var(--g-thumb-edge); }
+.theme-glass .seg:has(#btnOrig[aria-pressed="true"])::before { background: rgba(160,32,32,.78); }
+.theme-glass .snack { background: var(--gx-snack); color: var(--m-on); border-radius: 18px; box-shadow: var(--g-chrome-edge); -webkit-backdrop-filter: var(--gx-float-fx); backdrop-filter: var(--gx-float-fx); }
+.theme-glass .snack button { color: var(--m-primary); }
+.theme-glass .snack code { color: #b9c0d0; }
+
+/* role: card */
+.theme-glass .group { background: none; margin: 0 10px 2px; overflow: visible; }
+.theme-glass .group > :is(.row, .unit, .zgrid, .shared) { background-color: var(--g-card); border-radius: 22px; margin-bottom: 2px; overflow: hidden; } /* close together, only a hair apart (Max, Nov 23 evening) */
+.theme-glass .group > .row { box-shadow: var(--g-card-edge); }
+.theme-glass .group > :is(.unit, .zgrid, .shared) { position: relative; isolation: isolate; } /* isolate: the rim stays under the sticky preview and the menus */
+.theme-glass .group > :is(.unit, .zgrid, .shared)::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: var(--g-card-edge); pointer-events: none; z-index: 6; } /* the rim over the rows inside */
+.theme-glass .group > .row, .theme-glass .group > .shared, .theme-glass .group > .unit > .row:first-child, .theme-glass .group > .zgrid, .theme-glass .group > * + .zgrid, .theme-glass .zgrid + * { border-top: 0; }
+.theme-glass .group > .row.sel::before, .theme-glass .group > .unit > .row.sel:first-child::before { top: 14px; bottom: 14px; }
+.theme-glass .kids .row, .theme-glass .shared > .row + .row, .theme-glass .zcol .row + .row, .theme-glass .zcol .unit + .row, .theme-glass .zcol .unit + .unit > .row:first-child, .theme-glass .zcol .row + .unit > .row:first-child { border-top-color: var(--g-line); }
+.theme-glass .zgrid > .row.zprev { border-left-color: var(--g-line); }
+.theme-glass .pick { background-color: var(--g-card); box-shadow: var(--g-card-edge); border-radius: 18px; }
+.theme-glass .pick[aria-current="true"] { background-color: rgba(255,255,255,.14); box-shadow: var(--g-thumb-edge); }
+.theme-glass .tut .tlist, .theme-glass .tut .tbar7, .theme-glass .tut .tres, .theme-glass .tut .tstyle { background: rgba(255,255,255,.07); box-shadow: var(--g-card-edge); }
+.theme-glass .tut .tpick, .theme-glass .tut .tdlg { background: rgba(22,26,40,.94); box-shadow: var(--g-dlg-edge); }
+
+/* role: ctl */
+.theme-glass .seg3, .theme-glass .lt7, .theme-glass .tab7, .theme-glass .kidbtn, .theme-glass .ctl .opt, .theme-glass .ordreset, .theme-glass .offnew, .theme-glass .row .kind, .theme-glass .pick .pi, .theme-glass .sw, .theme-glass .tut .tseg, .theme-glass .tut .tseg3, .theme-glass .tut .ttabs span, .theme-glass .tut .tb, .theme-glass .dbtn:not(.primary), .theme-glass .dlg .choice button {
+  background-color: var(--g-ctl); box-shadow: var(--g-ctl-edge); }
+.theme-glass .ctl .opt { border-color: transparent; }
+/* the screen menu cards' icon: the glass ring is a circle round the icon with room inside it (it hugged
+   the 23 px icon, so the icon's corners touched or crossed the ring and it looked off centre) */
+.theme-glass #pickGrid .pg.pgroups.pvis:not(.nx) .gcard .pi { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background-color: var(--g-ctl); }
+.theme-glass #pickGrid .pg.pgroups.pvis:not(.nx) .gcard .pi svg { width: 22px; height: 22px; } /* an even size: whole pixels each side in the 36 px pill */
+.theme-glass .tab7 { border-radius: 999px; padding: 0 14px; }
+.theme-glass .sw { border-color: transparent; }
+.theme-glass .goto, .theme-glass .searchbar { box-shadow: var(--g-ctl-edge); }
+.theme-glass .searchbar { background: rgba(26,24,40,.94); }
+
+/* role: thumb */
+.theme-glass .seg3-th, .theme-glass .lt7 > i, .theme-glass .glayer > i, .theme-glass .ctl .opt[aria-pressed="true"], .theme-glass .tab7[aria-selected="true"], .theme-glass .sw[aria-checked="true"], .theme-glass .dbtn.primary, .theme-glass .tut .tseg::before, .theme-glass .tut .tseg3 b.on, .theme-glass .tut .ttabs span.on, .theme-glass .row.sel .kind {
+  box-shadow: var(--g-thumb-edge); }
+.theme-glass .seg3-th, .theme-glass .seg3:not(.th) button[aria-checked="true"] { background-color: var(--g-blue); }
+.theme-glass .seg3 button[aria-checked="true"] { color: #fff; }
+.theme-glass .lt7 > i, .theme-glass .lt7[data-tone="pos"] > i, .theme-glass .ctl .opt[aria-pressed="true"], .theme-glass .sw[aria-checked="true"] { background-color: var(--g-on); }
+.theme-glass .lt7[data-tone="neg"] > i, .theme-glass .ctl .opt[aria-pressed="true"].neg { background-color: var(--g-off); }
+.theme-glass .ctl .opt[aria-pressed="true"]:is(.def, .offw) { background-color: var(--g-def); }
+.theme-glass .tab7[aria-selected="true"], .theme-glass .tut .ttabs span.on { background-color: var(--g-white); color: #111; }
+.theme-glass .dbtn.primary { background-color: var(--g-blue); color: #fff; }
+.theme-glass .sw::after { box-shadow: inset 0 0 0 1px rgba(255,255,255,calc(.4 * var(--g-k))), 0 2px 6px rgba(0,0,0,.3); }
+.theme-glass .row.sel .kind { background-color: rgba(150,195,255,.3); }
+.theme-glass .ctl.optgrid.gliding > .opt[aria-pressed="true"] { background-color: var(--g-ctl); box-shadow: var(--g-ctl-edge); }
+
+/* role: dlg */
+.theme-glass .dlg { background: var(--gx-dlg); border-radius: 30px; box-shadow: var(--g-dlg-edge); -webkit-backdrop-filter: var(--gx-dlg-fx); backdrop-filter: var(--gx-dlg-fx); }
+html .phone.theme-glass #picker { background: linear-gradient(var(--g-menu-veil), var(--g-menu-veil)) var(--gx-menu); border-radius: 30px; box-shadow: var(--g-dlg-edge); -webkit-backdrop-filter: var(--gx-dlg-fx); backdrop-filter: var(--gx-dlg-fx); }
+html.inapp .phone.theme-glass #picker { border-radius: 0; -webkit-backdrop-filter: none; backdrop-filter: none; }
+.theme-glass .dlg ul { background: var(--g-card); box-shadow: var(--g-card-edge); }
+.theme-glass .scrimfull { background: rgba(0,0,0,.28); }
+.theme-glass .dlgscrim { --scrim: rgba(0,0,0,.4); }
+
+/* role: fill and the slider (lab: an 8px clear track, a blue fill, a 34x24 glass pill that grows while held) */
+.theme-glass .ctl input[type=range] { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; }
+.theme-glass .ctl input[type=range]::-webkit-slider-runnable-track { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--g-fill) calc((100% - 34px) * var(--pf, 0) + 3px), transparent calc((100% - 34px) * var(--pf, 0) + 3px) calc((100% - 34px) * var(--pf, 0) + 31px), var(--g-ctl) calc((100% - 34px) * var(--pf, 0) + 31px)); box-shadow: var(--g-ctl-edge); }
+/* (the track is left out under the knob: the knob draws that part itself, bent by its lens) */
+.theme-glass .ctl input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 34px; height: 24px; margin-top: -8px; border-radius: 12px; border: 0;
+  background: var(--g-knob-paint-top), var(--g-knob-lens), var(--g-knob-tint); box-shadow: var(--g-knob-edge);
+  -webkit-backdrop-filter: var(--gx-knob-fx); backdrop-filter: var(--gx-knob-fx); transition: transform .18s var(--ease); }
+html:not(.touchwait) .theme-glass .ctl input[type=range]:active::-webkit-slider-thumb { transform: scale(1.22); }
+.theme-glass .ctl input[type=range]::-moz-range-track { height: 8px; border-radius: 4px; background: var(--g-ctl); box-shadow: var(--g-ctl-edge); }
+.theme-glass .ctl input[type=range]::-moz-range-progress { height: 8px; border-radius: 4px; background: var(--g-fill); }
+.theme-glass .ctl input[type=range]::-moz-range-thumb { width: 34px; height: 24px; border-radius: 12px; border: 0; background: var(--g-knob-paint-top), var(--g-knob-lens), var(--g-knob-tint); box-shadow: var(--g-knob-edge); transition: transform .18s var(--ease); }
+html:not(.touchwait) .theme-glass .ctl input[type=range]:active::-moz-range-thumb { transform: scale(1.22); }
+
+/* role: lock (plain paint: a cover never samples what is behind it) */
+.theme-glass .lk7:not(.go), .theme-glass .lk7.go .lkh { box-shadow: inset 0 0 0 1px rgba(255,255,255,calc(.16 * var(--g-k))), inset 0 1px 0 rgba(255,255,255,calc(.3 * var(--g-k))); }
+.theme-glass .ctl > .lk7 .lkk { fill: #252a3a; }
+.theme-glass .tut .ok { background-image: linear-gradient(90deg, var(--m-brand-1), var(--m-brand-2)); box-shadow: var(--g-thumb-edge); }
+
+/* role: press */
+.theme-glass :is(.ctl .opt, .tab7, .seg3 button, .seg button, .secpill, .kidbtn, .ordreset, .offnew, .goto, .dbtn, .pick, .iconbtn) { transition: transform var(--spring-dur) var(--spring), background-color .16s var(--ease), color .3s var(--ease); }
+html:not(.touchwait) .theme-glass :is(.ctl .opt, .tab7, .seg3 button, .seg button, .secpill, .kidbtn, .ordreset, .offnew, .goto, .dbtn, .pick, .iconbtn):not(.lift):not(.lifted):active { transform: scale(.96); }
+html:not(.touchwait) .theme-glass :is(.ctl .opt, .tab7, .kidbtn, .ordreset, .offnew, .pick):not([aria-pressed="true"]):not([aria-selected="true"]):not([aria-current="true"]):active { background-color: var(--g-press); }
+html:not(.touchwait) .theme-glass .lt7:active { background-color: var(--g-press); }
+html:not(.touchwait) .theme-glass :is(.ctl .opt[aria-pressed="true"], .tab7[aria-selected="true"], .goto, .dbtn):active { filter: brightness(1.18); }
+html:not(.touchwait) .theme-glass .lt7:active > i { filter: brightness(1.15); }
+html:not(.touchwait) .theme-glass .group > .row:active, html:not(.touchwait) .theme-glass .row:active { background-color: rgba(255,255,255,.06); }
+
+/* per element: only what a role can't say */
+.theme-glass .themerow { border-top-color: var(--g-line); }
+.theme-glass .row.sel { background: linear-gradient(90deg, rgba(150,195,255,.2), rgba(150,195,255,.06)); }
+.theme-glass .tut .tseg, .theme-glass .tut .tseg3, .theme-glass .tut .ttabs span:not(.on) { background-color: rgba(255,255,255,.08); }
+.theme-glass .stagebox { box-shadow: 0 0 0 1px rgba(255,255,255,calc(.14 * var(--g-k))), 0 8px 24px rgba(0,0,0,.4); }
+.theme-glass .tut { background: rgba(8,10,18,.84); } /* a full-screen cover: no blur in any tier */
+.theme-glass .tut .tlist.sel { background-color: rgba(150,195,255,.18); }
+/* ---------- end of Glass ---------- */

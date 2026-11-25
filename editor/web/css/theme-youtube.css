@@ -1,0 +1,104 @@
+/* The default design: YouTube's own settings look, its switch and dialogs, tablet layout.
+   Part of index.html's styles; files load in the order index.html lists them, and later files win. */
+/* ---------- default theme: YouTube's own settings look ----------
+   The editor lives inside YouTube's settings, so by default it matches YouTube (flat list,
+   #0f0f0f surfaces, Roboto, blue accent). Morphe Manager's Material 3 look is an experimental
+   toggle at the end of the screen menu (.phone.theme-m3 keeps the variables above). */
+.phone.theme-yt {
+  --m-bg: #0f0f0f; --m-surface: #0f0f0f; --m-c-lowest: #000; --m-c: #0f0f0f; --m-c-high: #272727; --m-c-highest: #3f3f3f;
+  --m-on: #f1f1f1; --m-on-var: #aaaaaa; --m-outline: #717171; --m-outline-var: #303030;
+  --m-primary: #3ea6ff; --m-on-primary: #0f0f0f; --m-primary-c: #263850; --m-on-primary-c: #d6eaff; --m-secondary-c: #272727;
+  --m-warning: #f0b44c; --m-success: #8fd18a; --m-error: #ff8a80;
+  --r-l: 12px; --r-li: 12px; --r-m: 8px;
+}
+.theme-yt .appbar { padding: 6px 8px 6px 4px; }
+.theme-yt .secpill { background: transparent; padding: 0 6px 0 4px; gap: 4px; }
+.theme-yt .secpill:hover { background: rgba(255,255,255,.08); }
+.theme-yt .secpill .lbl { font-size: 18px; font-weight: 500; }
+.theme-yt .secpill svg:not(.chev) { fill: #f1f1f1; } /* no title, so the screen icon shows */
+.theme-yt .picker { background: var(--m-c-high, #212121); border-radius: 12px; }
+.theme-yt .pick { border-radius: 8px; }
+.theme-yt .pick .pi { background: transparent; width: 28px; }
+.theme-yt .pick .pi svg { fill: #f1f1f1; }
+.theme-yt .pick[aria-current="true"] { background: rgba(255,255,255,.1); }
+.theme-yt .group { margin: 0; border-radius: 0; background: transparent; }
+.theme-yt .row { padding: 12px 16px; }
+/* a thin line between settings, as in the Morphe and Glass designs (Max, Nov 23 PM: YouTube has none, but cards read better apart) */
+.theme-yt .row + .row, .theme-yt .unit + .row, .theme-yt .unit + .unit > .row:first-child, .theme-yt .row + .unit > .row:first-child { border-top: 1px solid rgba(255,255,255,.09); }
+.theme-yt .shared + .row, .theme-yt .row + .shared, .theme-yt .unit + .shared, .theme-yt .shared + .shared, .theme-yt .shared + .unit > .row:first-child { border-top: 1px solid rgba(255,255,255,.09); }
+.theme-yt .kids .row { border-top: 0; }
+.theme-yt .kids .row { padding-left: 34px; }
+.theme-yt .row .ttl { font-size: 16px; font-weight: 400; }
+.theme-yt .row .sum { font-size: 13.5px; }
+.theme-yt .row.sel { background: rgba(255,255,255,.08); }
+.theme-yt .row.sel::before { background: #3ea6ff; }
+.theme-yt .row .state { background: transparent; padding: 0; font-size: 13px; font-weight: 500; color: #aaa; }
+.theme-yt .row .state.on { background: transparent; color: #f1f1f1; }
+.theme-yt .row .state.off { background: transparent; color: #aaa; }
+.theme-yt .tag { background: #272727; color: #aaa; }
+.theme-yt .sechead { color: #f1f1f1; font-size: 15px; font-weight: 500; padding: 18px 16px 6px; }
+.theme-yt .gtitle { color: #aaa; text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 500; }
+.theme-yt .goto { background: rgba(62,166,255,.16); color: #3ea6ff; padding: 0 9px 0 11px; height: 28px; border-radius: 999px; }
+.theme-yt .kidbtn { background: #272727; color: #f1f1f1; }
+.theme-yt .kids .row::after { background: #303030; }
+.theme-yt .resetbtn { color: #3ea6ff; }
+.theme-yt .opt { border-radius: 8px; }
+.theme-yt .searchbar { background: #272727; border-radius: 20px; }
+/* YouTube-style switch */
+.theme-yt .sw { width: 36px; height: 20px; border: 0; border-radius: 10px; background: #717171; margin: 6px 4px; overflow: visible; }
+.theme-yt .sw::after { left: -4px; top: -2px; width: 24px; height: 24px; background: #ececec none; box-shadow: 0 1px 3px rgba(0,0,0,.5); }
+.theme-yt .sw[aria-checked="true"] { background: rgba(76,199,100,.45); }
+.theme-yt .sw[aria-checked="true"]::after { left: 16px; top: -2px; width: 24px; height: 24px; background: var(--ring-on) none; }
+/* menu toggle for the experimental design */
+.themerow { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; padding: 10px 12px; margin-top: 4px; border-top: 1px solid rgba(255,255,255,.1); cursor: pointer; border-radius: 0 0 8px 8px; }
+.themerow .tt { flex: 1; font-size: 14px; font-weight: 500; }
+.themerow .tt small { display: block; font-size: 11.5px; color: var(--m-on-var); font-weight: 400; margin-top: 1px; }
+/* picker: always at least two columns on phones */
+.picker .grid { grid-template-columns: repeat(auto-fill, minmax(min(170px, calc(50% - 2px)), 1fr)) !important; }
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* tablet portrait: wide previews on top, settings in two columns below */
+@container ed (min-width: 600px) {
+  .content.stacked { grid-template-columns: minmax(0, 1fr); max-width: 980px; margin: 0 auto; }
+  .content.stacked .stagebox { max-width: 720px; margin: 0 auto; }
+  .content.stacked .stick { border-radius: 0; margin-top: 0; padding-top: 4px; top: 0; }
+  /* two newspaper-style columns: each card sits right under the one above it in its column, so a tall
+     card (a parent with its sub-options open) no longer leaves a hole beside it the way grid rows did */
+  .content.stacked .group { display: block; column-count: 2; column-gap: 12px; column-fill: balance; }
+  .content.stacked .group > * { break-inside: avoid; }
+  /* captions and the wide preview-linked blocks span both columns */
+  .content.stacked .group > .subhead, .content.stacked .group > .zgrid { column-span: all; }
+  .content.stacked .shared + .row, .content.stacked .row + .shared, .content.stacked .unit + .shared, .content.stacked .shared + .shared, .content.stacked .row + .row, .content.stacked .unit + .row, .content.stacked .unit + .unit > .row:first-child, .content.stacked .row + .unit > .row:first-child { border-top: 0; }
+}
+
+/* round 6 */
+.c.flash::after { content: ""; position: absolute; inset: -2px; border-radius: 6px; background: rgba(76,199,100,.5); pointer-events: none; animation: cflash 480ms var(--ease) forwards; z-index: 21; }
+.c.flash.twice::after { animation-iteration-count: 2; animation-fill-mode: none; opacity: 0; }
+.c.off.flash::after, .c.ghost.flash::after { background: rgba(255,0,51,.5); }
+@keyframes cflash { from { opacity: 1; } to { opacity: 0; } }
+.row { touch-action: manipulation; }
+.plaincard { grid-column: 1 / -1; margin-top: 6px; border-radius: 10px; border: 1px dashed rgba(255,255,255,.18); padding: 6px; }
+.plaincard .ph { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--m-on-var); padding: 2px 6px 4px; }
+.plaincard .ph svg { width: 14px; height: 14px; fill: currentColor; }
+.plaincard .pg { position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, calc(50% - 2px)), 1fr)); gap: 4px; }
+.plaincard .pick .pi { opacity: .7; }
+.dlgwhere { font-size: 13px; color: var(--m-on-var); margin: 6px 0 10px; line-height: 1.45; }
+.dlglist { background: var(--m-c-high); border-radius: 12px; overflow: hidden; text-align: left; }
+.dlglist .row { cursor: default; }
+/* YouTube look: dialogs follow the YouTube app (dark grey sheet, left-aligned text, blue text buttons on the right) */
+.theme-yt .dlg { background: #212121; border-radius: 12px; padding: 22px 22px 10px; max-width: 340px; box-shadow: 0 8px 28px rgba(0,0,0,.6); }
+.theme-yt .dlg h2 { text-align: left; font-size: 18px; font-weight: 500; color: #f1f1f1; margin-bottom: 6px; }
+.theme-yt .dlg p, .theme-yt .dlgwhere { text-align: left; color: #aaa; font-size: 14px; }
+.theme-yt .dlg .di { margin: 0 0 10px; }
+.theme-yt .dlg .di svg { fill: #f1f1f1; }
+.theme-yt .dlg ul { background: transparent; padding: 0 0 0 2px; color: #f1f1f1; }
+.theme-yt .dlg .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 4px; margin: 8px -10px 0 0; }
+.theme-yt .dbtn.neg, .theme-yt .dbtn.primary.neg { color: #ff6b6b; background: transparent; }
+.theme-yt .dbtn, .theme-yt .dbtn.primary, .theme-yt .dbtn.tonal { height: 36px; padding: 0 14px; border-radius: 18px; background: transparent; color: #3ea6ff; font-weight: 500; font-size: 14px; }
+.theme-yt .dbtn:hover { background: rgba(62,166,255,.12); }
+.theme-yt .dlglist { background: transparent; margin: 4px -22px 0; border-top: 1px solid rgba(255,255,255,.1); border-bottom: 1px solid rgba(255,255,255,.1); border-radius: 0; }
+.goto.more { opacity: .9; }
+.dlglist .kidbtn { display: none; }
+.stage.measure .c.off, .stage.measure .c.off:not(.ghost):not(.charging):not(.intray):not(.leaving) { display: revert !important; }
+.subhead { padding: 14px 16px 2px; font-size: 12px; font-weight: 500; color: #aaa; letter-spacing: .02em; }
+.sechead .nolive { font-weight: 400; color: var(--m-on-var); opacity: .75; font-size: 12px; }
+.theme-yt .sechead .nolive { color: #888; }

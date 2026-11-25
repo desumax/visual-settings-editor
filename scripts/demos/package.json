@@ -1,0 +1,7 @@
+{
+  "private": true,
+  "description": "Generates the README images and GIFs (see README.md)",
+  "devDependencies": {
+    "playwright": "1.61.1"
+  }
+}

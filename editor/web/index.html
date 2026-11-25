@@ -1,0 +1,126 @@
+<title>Morphe Visual Settings</title>
+<script>
+/* Old WebView guard (plain ES5, runs before anything else). The editor needs Chromium 138 or newer
+   (Max, Nov 24): size animations to and from auto (interpolate-size, 129), first-appearance fades
+   (@starting-style, 117), :has() and container queries (105), individual transform properties (104).
+   138 is the last version Android 8 and 9 get, so every phone whose WebView updates through Google
+   Play has it; only a WebView frozen at its factory version is older, and the editor would draw
+   broken there. The app checks the WebView's version itself before it loads this page
+   (WebEditorDialog.MIN_CHROMIUM); this guard covers a WebView that hides its version. Then the app shows the regular Morphe
+   settings list for this visit instead of a broken page, with the toast "Redesign unsupported on
+   this device" (the app shows the toast: this page is gone by then). In a plain browser the same
+   words are shown as a banner. */
+(function () {
+  var MIN = 138, ok = false;
+  try {
+    var m = /\bChrome\/(\d+)/.exec(navigator.userAgent || "");
+    // a Chromium that names its version (every Android WebView): the version; any other browser: the features
+    ok = m ? +m[1] >= MIN : !!(window.CSS && CSS.supports && CSS.supports("interpolate-size", "allow-keywords") && CSS.supports("selector(:has(a))") && CSS.supports("container-type", "inline-size"));
+  } catch (e) { ok = false; }
+  if (ok) return;
+  window.MORPHE_OLD_WEBVIEW = true;
+  // the app shows the regular list for this visit and keeps the setting on (it works again after a
+  // WebView update); older app builds only have disableEditor
+  try { if (window.MorpheApp && (MorpheApp.fallback || MorpheApp.disableEditor)) { if (MorpheApp.fallback) MorpheApp.fallback(); else MorpheApp.disableEditor(); return; } } catch (e) { /* the bridge is optional */ }
+  document.addEventListener("DOMContentLoaded", function () {
+    var d = document.createElement("div");
+    d.setAttribute("style", "position:fixed;left:0;right:0;top:0;z-index:99999;padding:12px 16px;background:#5c2b2b;color:#fff;font:14px/1.4 sans-serif");
+    d.textContent = "Redesign unsupported on this device. It needs Android System WebView (or a browser) on Chromium 138 or newer.";
+    document.body.appendChild(d);
+  });
+})();
+</script>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;600;700&family=Roboto+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/base.css">
+<link rel="stylesheet" href="css/preview.css">
+<link rel="stylesheet" href="css/list.css">
+<link rel="stylesheet" href="css/workbench.css">
+<link rel="stylesheet" href="css/theme-youtube.css">
+<link rel="stylesheet" href="css/glass.css">
+<link rel="stylesheet" href="css/motion.css">
+
+<div class="bench">
+  <div class="devwrap" id="devwrap">
+    <div class="phone theme-yt" id="phone">
+      <div class="status"><span id="clock">9:41</span><span class="dots"><span>5G</span><i></i></span></div>
+      <div class="app" id="app">
+        <div class="appbar">
+          <button class="iconbtn" id="btnBack" aria-label="Leave visual settings"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg></button>
+          <button class="secpill" id="secPill" aria-haspopup="true" aria-expanded="false" aria-label="Screens"><svg viewBox="0 0 24 24" id="secIcon"><path d=""/></svg><span class="lbl" id="secLabel">Player controls</span><svg class="chev" viewBox="0 0 24 24"><path d="M16.59 8.59 12 13.17 7.41 8.59 6 10l6 6 6-6z"/></svg></button>
+          <button class="iconbtn" id="btnSearch" aria-label="Search settings" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg></button>
+          <button class="iconbtn" id="btnReset" aria-label="Reset settings"><svg viewBox="0 0 24 24"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg></button>
+          <div class="searchbar" id="searchBar" role="search"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.79l-.28-.27A6.47 6.47 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg><input id="q" type="search" placeholder="Search all settings" aria-label="Search all settings" autocomplete="off" tabindex="-1"><button class="iconbtn" id="qClose" aria-label="Close search" tabindex="-1"><svg viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></button></div>
+          <div class="seg" role="group" aria-label="Compare">
+            <button id="btnOrig" aria-pressed="false">Original</button>
+            <button id="btnMod" aria-pressed="true">Morphe</button>
+          </div>
+        </div>
+        <div class="scrimfull" id="pickScrim"></div>
+        <div class="picker" id="picker" role="menu" aria-label="Screens"><div class="grid" id="pickGrid"></div></div>
+        <div class="editor">
+          <div class="scroller" id="scroller">
+            <div class="content" id="content">
+              <div class="stick" id="stick">
+                <div class="stagebox"><div class="stage" id="stage"></div><div class="canvas" id="canvas"></div></div><div class="ringlayer" id="ringLayer" aria-hidden="true"></div>
+                <div class="tabs7" id="tabs" role="tablist" aria-label="Tabs"></div>
+              </div>
+              <div class="list" id="list"></div>
+            </div>
+          </div>
+        </div>
+        <div class="snack" id="snack" role="status"><div class="m" id="snackMsg"></div><button id="snackUndo">Undo</button></div>
+        <div class="dlgscrim" id="dlg"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="dlgTitle" id="dlgBox"></div></div>
+        <div class="restarting" id="restarting"><div class="logo"></div></div>
+        <div class="tut" id="tut" aria-live="polite"></div>
+      </div>
+    </div>
+  </div>
+
+  <aside class="inspector" id="inspector">
+    <div class="card devices">
+      <h2>Device</h2>
+      <div class="btnrow" id="devBtns"></div>
+      <div class="btnrow devonly"><a class="btn" style="display:inline-flex;align-items:center;text-decoration:none;color:inherit" href="appview.html" title="The page the app's editor loads: card menu, full screen, no frame">App view</a></div>
+      <label class="scale" title="Glass design only. Auto picks the level this device can afford, as the app does; the others force one level to see it on this computer.">Glass level <select id="glassForce"><option value="">Auto</option><option value="0">Flat</option><option value="1">Light</option><option value="2">Full</option><option value="w">Low-end device</option><option value="x">Unsupported Android</option></select></label>
+      <label class="scale" title="How every chosen option, toggle and tab moves its colour (the five glide iterations). Saved in this browser.">Glide style <select id="glideStyle"></select></label>
+      <label class="scale">UI scale <input type="range" id="uiScale" min="75" max="125" step="5" value="100"><output id="uiScaleOut">100%</output></label>
+    </div>
+    <div class="card">
+      <h2>How it works</h2>
+      <div class="howto">
+        <div><b>Tap</b> a component to select it. Animated settings play their demo.</div>
+        <div><b>Hold</b> it to switch the setting. Do it again to switch it back.</div>
+        <div><b>Hidden components</b> collapse, as they do in the real app. Tap a hidden setting's row to see it for a moment without changing it.</div>
+        <div><b>Sub-options</b> sit under the setting they depend on and appear only while it is on. The arrow next to its title folds them away.</div>
+        <div><b>Search</b> (top bar) finds any setting and takes you to it, even a sub-option that is still locked.</div>
+        <div><b>Reset</b> puts the current screen back to Morphe's defaults.</div>
+        <div><b>Original</b> shows stock YouTube. <b>Morphe</b> shows your settings. UI design, near the end of the screen menu, switches the editor's look: Original, Morphe or Glass.</div>
+      </div>
+      <div class="btnrow"><button class="btn" id="replayTut">Replay first-run tutorial</button></div>
+    </div>
+    <div class="card">
+      <h2>YouTube version</h2>
+      <p>The preview follows the YouTube build you patch. Layouts and defaults change with it, for example the action bar on 21.36+ and the miniplayer types on 21.29+. The real editor reads this from the app itself.</p>
+      <select id="ytVer" class="vsel" aria-label="YouTube version"></select>
+    </div>
+    <div class="card" id="selCard"></div>
+    <div class="card" id="covCard"></div>
+    <div class="card" id="chgCard"></div>
+  </aside>
+</div>
+
+<script src="js/core.js"></script>
+<script src="js/iconstyles.js"></script>
+<script src="js/scenes.js"></script>
+<script src="js/scenarios.js"></script>
+<script src="js/demos.js"></script>
+<script src="js/scenario-kit.js"></script>
+<script src="js/list.js"></script>
+<script src="js/interactions.js"></script>
+<script src="js/select.js"></script>
+<script src="js/press.js"></script>
+<script src="js/layout.js"></script>
+<script src="js/tutorial.js"></script>
+<script src="js/boot.js"></script>

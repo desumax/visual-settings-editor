@@ -622,9 +622,17 @@ scen("channel", "channel_search", (box, on) => {
   const rise = host => requestAnimationFrame(() => requestAnimationFrame(() => host.querySelectorAll(".rw7").forEach(r => { r.style.opacity = "1"; r.style.transform = "none"; })));
   at(1550, () => {
     if (!on) {
-      // YouTube's results page: videos from all of YouTube, other channels among them
-      body.style.transition = "opacity .16s"; body.style.opacity = "0";
-      later(() => { body.innerHTML = [[4, "Stove review 2026", 1], [5, "Camping stoves ranked", 2], [6, "Wood stove in a van", 3], [1, "Stove install, part 1", 0]].map(([a, n, c], i) => row(a, n, c, i * 60)).join(""); body.style.opacity = "1"; rise(body); }, 170);
+      // YouTube's results page takes the whole screen: the channel page is left behind (Max, Nov 25: the
+      // results showed inside the channel page, under its banner), filter chips, then videos from all of
+      // YouTube, other channels first
+      const pg = dev.querySelector(".pg7"), rest = [...pg.children].filter(c => c !== top);
+      rest.forEach(c => { c.style.transition = "opacity .16s"; c.style.opacity = "0"; });
+      later(() => {
+        rest.forEach(c => c.remove());
+        const card = (art, name, ch, d) => `<div class="rw7" style="display:grid;gap:2px;opacity:0;transform:translateY(5px);transition:opacity .22s ${d}ms,transform .3s var(--ease) ${d}ms"><div style="height:30px;border-radius:3px;background:${ART[art]}"></div><div style="display:flex;gap:3px;align-items:center;min-width:0"><i style="width:7px;height:7px;border-radius:50%;background:${AV[ch]};flex:none"></i><span style="display:grid;min-width:0"><span style="font-size:6.5px;color:#f1f1f1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span><span style="font-size:5.5px;color:#aaa;white-space:nowrap">${["Fjord &amp; Timber", "Pocket Camp", "Tapes", "Nico Outdoors"][ch]}</span></span></div></div>`;
+        pg.insertAdjacentHTML("beforeend", `<div style="display:flex;gap:2px;font-size:5.5px;white-space:nowrap;overflow:hidden">${["All", "Shorts", "Videos", "Unwatched"].map((t, i) => `<span style="padding:1px 3px;border-radius:5px;${i ? "background:rgba(255,255,255,.1)" : "background:#f1f1f1;color:#0f0f0f"}">${t}</span>`).join("")}</div><div class="res7" style="display:grid;gap:5px">${[[4, "Stove review 2026", 1], [5, "Camping stoves ranked", 2], [6, "Wood stove in a van", 3]].map(([a, n, c], i) => card(a, n, c, i * 70)).join("")}</div>`);
+        rise(pg);
+      }, 170);
       return;
     }
     // Morphe's sheet slides up over a dimmed page with this channel's videos only

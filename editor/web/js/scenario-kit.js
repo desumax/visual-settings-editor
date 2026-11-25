@@ -311,13 +311,18 @@ scen("feed", "open_channel_of_live_avatar", (box, on) => {
   at(850, () => { f.classList.remove("show"); dev.querySelector(".pg7").innerHTML = on ? top7("Pocket Science", ["search", "more"]) + `<div style="height:16px;border-radius:2px;background:${ART[5]}"></div><div style="display:flex;gap:4px;align-items:center"><span style="width:14px;height:14px;border-radius:50%;background:${AV[5]}"></span><b style="font-size:7px">Pocket Science</b></div>${row7(1, "Live now")}${row7(2, "Why ice is slippery")}` : player7(5, `<span style="position:absolute;left:3px;top:3px;background:#cc0000;font-size:5px;font-weight:700;padding:0 3px;border-radius:2px">LIVE</span>`) + chat7([[1, "ola", "wow!!"], [2, "mia", "green!"], [3, "ken", "😍"]]); });
   return on ? "The avatar opens the channel" : "The avatar opens the live stream (stock)";
 });
+// the middle of an element in the phone's own px (its drawing is scaled on screen)
+const rowMid = (dev, el) => { const d = dev.getBoundingClientRect(), r = el.getBoundingClientRect(), z = d.width / dev.clientWidth; return (r.top - d.top + r.height / 2) / z; };
 scen("feed", "playlist_long_press_drag", (box, on) => {
   box.innerHTML = device("port", pageRows(top7("Road trip mix", ["search", "more"]) + `<div class="pl7" style="display:grid;gap:4px;position:relative">${[1, 2, 3, 4].map(i => `<div class="pi7" style="transition:transform .3s">${row7(i, ["Night train to Bodø", "Lo-fi beats", "Fjord drive", "Coffee jazz"][i - 1])}</div>`).join("")}</div>`));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), it = dev.querySelectorAll(".pi7"); const W = dev.clientWidth, H = dev.clientHeight;
-  at(250, () => holdAt(f, W * .5, H * .15));
+  // the finger holds the first row and moves exactly as far as the row does (Max, Nov 25: it ended a row
+  // above the row it carried): both come from the rows' own places, measured in the phone
+  const pitch = it[1].offsetTop - it[0].offsetTop, y0 = rowMid(dev, it[0]);
+  at(250, () => holdAt(f, W * .5, y0));
   at(1000, () => { if (!on) { f.classList.remove("hold", "show"); sheet7(dev, sheetRows([["clock", "Save to Watch later"], ["close", "Remove from playlist"]])); return; } it[0].style.transform = "scale(1.05)"; it[0].style.background = "#333"; });
-  at(1300, () => { if (!on) return; fingerTo(f, W * .5, H * .37, 600); it[0].style.transform = "translateY(42px) scale(1.05)"; it[1].style.transform = "translateY(-21px)"; it[2].style.transform = "translateY(-21px)"; });
-  at(2000, () => { if (!on) return; f.classList.remove("hold", "show"); it[0].style.transform = "translateY(42px)"; it[0].style.background = ""; });
+  at(1300, () => { if (!on) return; fingerTo(f, W * .5, y0 + 2 * pitch, 600); const mv = (f.style.transition.match(/top ([^,]+)/) || [0, `${600 * scStretch}ms var(--ease)`])[1]; it.forEach(e => { e.style.transition = "transform " + mv; }); /* the rows move with the finger's own timing */ it[0].style.transform = `translateY(${2 * pitch}px) scale(1.05)`; it[1].style.transform = `translateY(${-pitch}px)`; it[2].style.transform = `translateY(${-pitch}px)`; });
+  at(2000, () => { if (!on) return; f.classList.remove("hold", "show"); it[0].style.transform = `translateY(${2 * pitch}px)`; it[0].style.background = ""; });
   return ""; // no sentences (Max, Nov 25): the drag and the menu say it
 });
 scen("feed", "playlist_wide_drag_handles", (box, on) => {
@@ -1438,10 +1443,10 @@ const MANUAL_PARENT = {
   // with the swap on, Create lives in the top bar (its own toggle there); this one only acts on the bottom bar
   morphe_hide_create_button: { key: "morphe_swap_create_with_notifications_button", mode: "not" },
   morphe_hide_toolbar_notification_button: { key: "morphe_swap_create_with_notifications_button", mode: "not" },
-  // with the glass bar on, the style only decides Default vs Translucent, which glass already overrides
-  morphe_navigation_bar_style: { key: "morphe_navigation_bar_glass", mode: "not" },
 };
-const NOT_PARENT = { morphe_navigation_bar_glass: "morphe_navigation_bar_style" }; // avoid a loop with the line above
+// Navigation bar style is its own card above Glass navigation bar (Max, Nov 25): nested in the glass card,
+// its Opaque made the glass bar unavailable and took the glass bar and Narrow navigation buttons with it
+const NOT_PARENT = {};
 // Two settings that are alternatives, not a setting and its sub-option: the second stays its own row,
 // greyed out (with its lock) while the first is on. Enhanced Ambient mode takes the place of Ambient mode,
 // so nesting "Ambient mode" under "Enhanced Ambient mode" read as one of Enhanced's options (Max, Nov 23 PM).
@@ -1488,6 +1493,11 @@ function buildKids() {
   for (const k in PARENT_OF) { let r = PARENT_OF[k], g = 0; while (PARENT_OF[r] && g++ < 6) r = PARENT_OF[r]; PARENT_OF[k] = r; }
   for (const k in PARENT_OF) (KIDS[PARENT_OF[k]] = KIDS[PARENT_OF[k]] || []).push(k);
 }
+function availBlockedByParent(k) {
+  const up = new Set(); let d = DIRECT_PARENT[k], g = 0; while (d && g++ < 8) { up.add(d); d = DIRECT_PARENT[d]; } if (PARENT_OF[k]) up.add(PARENT_OF[k]);
+  const keys = unmetClauses(k).flatMap(c => [...c.matchAll(/[SD]\("([^"]+)"\)/g)].map(m => m[1]));
+  return !keys.length || keys.some(x => up.has(x)) || !keys.some(x => PREF[x] && inVersion(x));
+}
 function kidVisible(k, depth = 0, from = null) {
   const m = MANUAL_PARENT[k];
   if (m && m.always) return true;
@@ -1495,7 +1505,10 @@ function kidVisible(k, depth = 0, from = null) {
   // a parent that is unavailable only because of the sub-option asking does not take that sub-option with
   // it: Navigation bar style sits in the glass bar's card, and its Opaque makes the glass bar unavailable,
   // which hid the style itself, so it could not be set back (Max, Nov 25)
-  if (!classicParentsOk(k) || (!availOk(k) && !(from && availKeys(k).includes(from)))) return false;
+  if (!classicParentsOk(k)) return false;
+  // unavailable because of a setting beside it, not above it (the glass bar while Navigation bar style is
+  // Opaque): the card stays, locked, and leads to that setting; only a parent's state folds a card away
+  if (!availOk(k) && !(from && availKeys(k).includes(from)) && availBlockedByParent(k)) return false;
   // a sub-sub-option also hides with its own parent
   const d = DIRECT_PARENT[k];
   return !d || !PARENT_OF[d] || depth > 6 || kidVisible(d, depth + 1, k);

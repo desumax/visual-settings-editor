@@ -1427,6 +1427,68 @@ const CHECKS = [
     },
   },
   {
+    name: "nav-style-own-card-opaque-hides-nothing",
+    report: "Nov 25 (16:12): with Navigation bar style on Opaque, Narrow navigation buttons and Glass navigation bar hid; Navigation bar style should be its own card above Glass navigation bar",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const k = "morphe_navigation_bar_style";
+        setPicker(false); quickSection(sectionOf(k)); await new Promise(r => setTimeout(r, 500)); select(k, "list"); await new Promise(r => setTimeout(r, 500));
+        document.querySelector(`[data-set="${k}"][data-val="OPAQUE"]`).click(); await new Promise(r => setTimeout(r, 1200));
+        const row = x => document.querySelector(`#list .row[data-k="${x}"]`);
+        const vis = x => { const e = row(x); return !!e && !e.classList.contains("hide") && e.offsetHeight > 0; };
+        const top = x => row(x) ? row(x).getBoundingClientRect().top : NaN;
+        return { parent: DIRECT_PARENT[k] || "", glass: vis("morphe_navigation_bar_glass"), narrow: vis("morphe_narrow_navigation_buttons"), style: vis(k), above: top(k) < top("morphe_navigation_bar_glass") };
+      });
+      ok(r.parent !== "morphe_navigation_bar_glass", "Navigation bar style is still inside the Glass navigation bar card");
+      ok(r.style && r.glass && r.narrow, `with Opaque: style ${r.style}, glass ${r.glass}, narrow ${r.narrow} (all shown)`);
+      ok(r.above, "Navigation bar style is not above Glass navigation bar");
+      await ctx.close();
+    },
+  },
+  {
+    name: "channel-search-off-leaves-the-channel",
+    report: "Nov 25 (16:12): Search within channel: the Off animation was not correct (YouTube's results showed inside the channel page)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const k = "morphe_channel_search";
+        setPicker(false); quickSection(sectionOf(k)); await new Promise(r => setTimeout(r, 400)); select(k, "list");
+        await new Promise(r => setTimeout(r, 2900));
+        const off = document.querySelector("#canvas .dev");
+        return { banner: !!off && [...off.querySelectorAll("b")].some(b => /Fjord/.test(b.textContent) && +getComputedStyle(b.closest("div")).opacity > .5), results: !!off && !!off.querySelector(".res7") };
+      });
+      ok(r.results, "the Off phone never shows YouTube's results page");
+      ok(!r.banner, "the Off phone still shows the channel page under the results");
+      await ctx.close();
+    },
+  },
+  {
+    name: "playlist-drag-finger-on-the-row",
+    report: "Nov 25 (16:12): Long press to reorder playlist videos: on the On side the finger was not on the row it dragged",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const k = "morphe_playlist_long_press_drag";
+        setPicker(false); quickSection(sectionOf(k)); await new Promise(r => setTimeout(r, 400)); select(k, "list");
+        const worst = [];
+        for (let t = 0; t < 2600; t += 60) {
+          await new Promise(r => setTimeout(r, 60));
+          const d = document.querySelectorAll("#canvas .dev")[1]; if (!d) continue;
+          const f = d.parentElement.querySelector("#scFinger.hold, .finger.hold") || document.querySelectorAll("#canvas #scFinger")[1];
+          const row = d.querySelector(".pi7"); if (!f || !row || !f.classList.contains("hold") || row.style.background !== "rgb(51, 51, 51)") continue;
+          const fr = f.getBoundingClientRect(), rr = row.getBoundingClientRect(), z = d.getBoundingClientRect().width / d.clientWidth;
+          const tip = fr.top; // the finger box is 0 x 0 at the touch point
+          worst.push(Math.abs(tip - (rr.top + rr.height / 2)) / z);
+        }
+        return { n: worst.length, max: worst.length ? Math.max(...worst) : 0 };
+      });
+      ok(r.n > 3, `drag frames seen: ${r.n}`);
+      ok(r.max < 9, `the finger is ${r.max.toFixed(1)} px off the dragged row`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

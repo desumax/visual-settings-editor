@@ -95,11 +95,20 @@ if (INAPP) {
     if (GLIDE_REDUCED.matches || !r || r.width < 8) return;
     if (ed._grow) ed._grow.cancel();
     root.classList.add("cardgrow");
-    const [from, to] = cardFrames(ed, r), rad = parseFloat(radius) || 20;
-    // the card's corners at the card's size: in the growing screen's own px they are rad / scale
-    const s0 = parseFloat(/scale\(([\d.]+)\)/.exec(from.transform)?.[1]) || .3;
+    // Max, Nov 26 evening: the top two cards began their growth at the top edge of the menu, not at their
+    // own. The screen started at the card's width but at its own tall shape, centred on the card: far taller
+    // than the card, so over the top cards it ran past the menu's top (and past the bottom over the lowest).
+    // It now starts as the card exactly: scaled to the card's width, centred on it, and cut to the card's
+    // height and corners (clip-path, in the screen's own px), then opens out to the whole screen.
+    const b = ed.getBoundingClientRect(), k = b.width / (ed.offsetWidth || 1) || 1, w = ed.offsetWidth || 1, h = ed.offsetHeight || 1;
+    const s0 = Math.max(.12, Math.min(1, r.width / k / w)), rad = parseFloat(radius) || 20;
+    const dx = (r.left + r.width / 2 - b.left - b.width / 2) / k, dy = (r.top + r.height / 2 - b.top - b.height / 2) / k;
+    const cut = Math.max(0, (h - r.height / k / s0) / 2), round = (rad / s0).toFixed(1);
     ed.style.transformOrigin = "50% 50%";
-    const a = ed._grow = ed.animate([{ ...from, borderRadius: (rad / s0).toFixed(1) + "px", opacity: 0 }, { offset: .22, opacity: 1 }, { ...to, borderRadius: "0px", opacity: 1 }],
+    const a = ed._grow = ed.animate([
+      { transform: `translate(${dx.toFixed(1)}px, ${dy.toFixed(1)}px) scale(${s0.toFixed(3)})`, clipPath: `inset(${cut.toFixed(1)}px 0px ${cut.toFixed(1)}px 0px round ${round}px)`, opacity: 0 },
+      { offset: .22, opacity: 1 },
+      { transform: "translate(0px, 0px) scale(1)", clipPath: "inset(0px 0px 0px 0px round 0px)", opacity: 1 }],
       { duration: DLG_OPEN_MS + 30, easing: cssVar("--spring-soft") || "ease-out" });
     // Max, Nov 26 (every card: "animates open and then pops/flashes"). The new screen is drawn in the same
     // moment, so the first frame came late and the growth was already halfway (46% -> 82% in one frame):

@@ -1185,7 +1185,7 @@ const CHECKS = [
       const gid = await p.evaluate(() => groupOf("nav").id);
       const card = await p.$(`#pickGrid [data-group="${gid}"]`); await card.tap(); await p.waitForTimeout(40);
       const r = await p.evaluate(() => { const e = document.querySelector(".editor"), a = e.getAnimations().find(x => !x.animationName && !x.transitionProperty); return a ? { kf: JSON.stringify(a.effect.getKeyframes()[0]), dur: a.effect.getTiming().duration } : null; });
-      ok(r && /scale/.test(r.kf) && /border-?[Rr]adius/.test(r.kf), `the screen did not grow from its card: ${JSON.stringify(r)}`);
+      ok(r && /scale/.test(r.kf) && /border-?[Rr]adius|inset\(.*round/.test(r.kf), `the screen did not grow from its card: ${JSON.stringify(r)}`);
       await p.waitForTimeout(800);
       const easing = await p.evaluate(async () => { let e = null; const orig = Element.prototype.animate; Element.prototype.animate = function (k, o) { if (this.id === "picker") e = o && o.easing; return orig.call(this, k, o); }; $("btnBack").click(); await new Promise(r => setTimeout(r, 50)); Element.prototype.animate = orig; return e; });
       const peak = easing && Math.max(...(easing.match(/[\d.]+/g) || []).map(Number));
@@ -1630,6 +1630,35 @@ const CHECKS = [
       ok(pr !== undefined && pr >= 0, "setup: holding still did not show the hold");
       ok(pr < .12, `the hold line shows already ${Math.round(pr * 100)}% of the way in on its first frame (it pops in when a swipe begins slowly)`);
       await ctx.close();
+    },
+  },
+  {
+    name: "menu-card-grows-from-its-own-edges",
+    report: "Nov 26 evening: the top two cards began their pop-in at the top edge of the main menu instead of the card's own top edge",
+    async run() {
+      for (const grouped of [true, false]) {
+        const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+        if (!grouped) { await p.evaluate(() => { grouped = false; renderBar(); }); await sleep(600); }
+        const n = await p.evaluate(() => document.querySelectorAll("#pickGrid .pick").length), bad = [];
+        for (let i = 0; i < n; i += grouped ? 1 : 3) {
+          if (!(await p.evaluate(() => pickerOpen))) { await p.evaluate(() => setPicker(true)); await sleep(800); }
+          const c = await p.evaluate(i => { const e = document.querySelectorAll("#pickGrid .pick")[i]; e.scrollIntoView({ block: "nearest" }); const r = e.getBoundingClientRect();
+            return { x: r.x + r.width / 2, y: r.y + r.height / 2, r: [r.left, r.top, r.right, r.bottom], name: (e.dataset.group || e.dataset.sec) }; }, i);
+          if (c.r[1] < 60 || c.r[3] > 900) continue; // (scrolled under the bar: not tappable as it is)
+          await p.touchscreen.tap(c.x, c.y); await sleep(20);
+          // the growth's first frame (it waits there for the new screen to be drawn)
+          const g = await p.evaluate(() => { const ed = document.querySelector(".editor"), a = ed.getAnimations().find(x => x === ed._grow); if (!a) return null;
+            a.pause(); a.currentTime = 0; const b = ed.getBoundingClientRect(), k = b.height / ed.offsetHeight, cs = getComputedStyle(ed).clipPath;
+            const v = ((/inset\(([^)]*?)(?: round|\))/.exec(cs) || [])[1] || "0").trim().split(/\s+/).map(parseFloat), q = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
+            a.play(); return [b.left + q[3] * k, b.top + q[0] * k, b.right - q[1] * k, b.bottom - q[2] * k]; });
+          await sleep(900);
+          if (!g) { bad.push(`${c.name}: no growth`); continue; }
+          const off = Math.max(...g.map((v, j) => Math.abs(v - c.r[j])));
+          if (off > 3) bad.push(`${c.name}: starts ${Math.round(off)}px off the card (top ${Math.round(g[1])} vs ${Math.round(c.r[1])}, bottom ${Math.round(g[3])} vs ${Math.round(c.r[3])})`);
+        }
+        await ctx.close();
+        ok(!bad.length, (grouped ? "grouped menu: " : "plain menu: ") + bad.join("; "));
+      }
     },
   },
   {

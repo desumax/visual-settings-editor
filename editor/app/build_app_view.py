@@ -25,7 +25,7 @@ STUB = """<script>
 window.MorpheApp = {
   preview: true, // no live values here: the page keeps the preview's catalogue and defaults
   state: () => JSON.stringify({ values: {}, version: "" }),
-  set: () => {}, ready: () => {}, vibrate: ms => { try { navigator.vibrate && Navigator.prototype.vibrate.call(navigator, ms); } catch (e) {} },
+  set: () => {}, ready: () => setTimeout(() => window.morpheEnter && window.morpheEnter(), 0), vibrate: ms => { try { navigator.vibrate && Navigator.prototype.vibrate.call(navigator, ms); } catch (e) {} },
   close: () => parent.postMessage({ appview: "close" }, "*"),
   restart: () => parent.postMessage({ appview: "restart" }, "*"),
   disableEditor: () => parent.postMessage({ appview: "disable" }, "*"),

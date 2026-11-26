@@ -237,24 +237,27 @@ final class WebEditorDialog extends Dialog {
         if (revealed || destroyed) return;
         revealed = true;
         android.util.Log.i("MorpheVisualEditor", "ready after " + (SystemClock.uptimeMillis() - openedAt) + " ms");
-        // One motion: the editor rises 3% of the screen and fades in, on a hardware layer, with
-        // Material's emphasized-decelerate curve. Then the window turns dark and the list hides.
-        root.setTranslationY(root.getHeight() * 0.03f);
-        root.animate().alpha(1f).translationY(0f).setDuration(220)
-                .setInterpolator(new android.view.animation.PathInterpolator(0.2f, 0f, 0f, 1f))
-                .withLayer()
-                .withEndAction(() -> {
-                    if (destroyed) return;
-                    Window w = getWindow();
-                    if (w != null) {
-                        w.setBackgroundDrawable(new ColorDrawable(0xFF0F0F0F));
-                        w.setStatusBarColor(0xFF0F0F0F);
-                        w.setNavigationBarColor(0xFF0F0F0F);
-                    }
-                    hideList();
-                })
-                .start();
+        // Max, Nov 26: the fade and lift of the whole WebView here hitched. The window is shown at once
+        // (the page is drawn but out of sight) and the page grows itself in on its compositor: the
+        // leave motion played backwards (app-post.js morpheEnter, 170 ms). Then the window turns dark
+        // and the list hides, as before.
+        root.setTranslationY(0f);
+        root.setAlpha(1f);
+        web.evaluateJavascript("window.morpheEnter && window.morpheEnter()", null);
+        root.postDelayed(() -> {
+            if (destroyed) return;
+            Window w = getWindow();
+            if (w != null) {
+                w.setBackgroundDrawable(new ColorDrawable(0xFF0F0F0F));
+                w.setStatusBarColor(0xFF0F0F0F);
+                w.setNavigationBarColor(0xFF0F0F0F);
+            }
+            hideList();
+        }, ENTER_MS + 30);
     }
+
+    /** Length of the page's own entering motion (app-post.js LEAVE_MS). */
+    private static final long ENTER_MS = 170;
 
     // ------------------------------------------------------------------ files
 

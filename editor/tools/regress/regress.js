@@ -1489,6 +1489,34 @@ const CHECKS = [
     },
   },
   {
+    name: "entering-is-leaving-reversed",
+    report: "Nov 26: leaving the redesign is smooth, make it 15% faster; entering was clunky with a hitch: make it the same animation in reverse, equally smooth",
+    async run() {
+      const ctx = await browser.newContext({ viewport: { width: 412, height: 896 }, hasTouch: true, isMobile: true });
+      const p = await ctx.newPage();
+      await p.route(/fonts\.(googleapis|gstatic)\.com/, r => r.abort());
+      await p.addInitScript(() => {
+        try { localStorage.setItem("morphe-visual-editor-v1-tutorial", "1"); } catch (e) { /* none */ }
+        window.__anims = []; const real = Element.prototype.animate;
+        Element.prototype.animate = function (kf, o) { if (this.id === "app") window.__anims.push({ kf: JSON.parse(JSON.stringify(kf)), d: typeof o === "number" ? o : o && o.duration, e: o && o.easing }); return real.call(this, kf, o); };
+      });
+      await p.goto(BASE + "app/index.html"); await sleep(1500);
+      const r = await p.evaluate(async () => {
+        const enter = window.__anims[0] || null;
+        window.MorpheApp = Object.assign(window.MorpheApp || {}, { close() {} });
+        morpheBack(); await new Promise(r => setTimeout(r, 400));
+        return { enter, leave: window.__anims[window.__anims.length - 1] || null, n: window.__anims.length };
+      });
+      ok(r.enter && r.leave && r.n >= 2, `entering or leaving did not animate the editor: ${JSON.stringify(r)}`);
+      const a = r.enter.kf, b = r.leave.kf, last = b[b.length - 1];
+      ok(a[0].opacity === 0 && /scale\(\.9\)|scale\(0\.9\)/.test(a[0].transform) && a[0].borderRadius === last.borderRadius, `entering does not start where leaving ends: ${JSON.stringify(a[0])} vs ${JSON.stringify(last)}`);
+      ok(+a[a.length - 1].opacity === 1 && /scale\(1\)/.test(a[a.length - 1].transform), `entering does not end on the editor: ${JSON.stringify(a[a.length - 1])}`);
+      ok(r.leave.d === 170 && r.enter.d === r.leave.d, `durations: leave ${r.leave.d} ms (170, 15% faster than 200), enter ${r.enter.d} ms (the same)`);
+      ok(r.enter.e === "cubic-bezier(0, 0, .6, 1)" && r.leave.e === "cubic-bezier(.4, 0, 1, 1)", `curves are not mirrored: enter ${r.enter.e}, leave ${r.leave.e}`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

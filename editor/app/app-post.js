@@ -114,13 +114,28 @@ if (INAPP) {
   // over a dark screen (WebEditorDialog.leaveSettings). A Back swipe on the menu page (leavePeek below)
   // follows the finger the same way before it lets go.
   const phone = $("app"); // (#phone and #devwrap are pinned with transform: none !important in app.css)
+  // Max, Nov 26: leaving is smooth, 15% faster (200 -> 170 ms); entering is the same motion played backwards
+  // (it was the app fading and lifting the whole WebView, which hitched). Both run on the page's compositor.
+  const LEAVE_MS = 170, AWAY = { transform: "scale(.9)", opacity: 0, borderRadius: "28px" };
   const leaveOut = done => {
     if (GLIDE_REDUCED.matches) return done();
     const cur = getComputedStyle(phone).transform, from = cur && cur !== "none" ? cur : "scale(1)";
     phone.style.transformOrigin = "50% 50%";
-    const a = phone.animate([{ transform: from, opacity: 1, borderRadius: getComputedStyle(phone).borderRadius }, { transform: "scale(.9)", opacity: 0, borderRadius: "28px" }], { duration: 200, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" });
+    const a = phone.animate([{ transform: from, opacity: 1, borderRadius: getComputedStyle(phone).borderRadius }, AWAY], { duration: LEAVE_MS, easing: "cubic-bezier(.4, 0, 1, 1)", fill: "forwards" });
     a.onfinish = done;
   };
+  // Entering: the page waits drawn but out of sight (AWAY) until the app shows its window
+  // (WebEditorDialog.reveal calls morpheEnter), then grows in: leaveOut reversed, same length, the
+  // mirrored curve. An app that never calls it (older build) gets it after 600 ms.
+  let entered = GLIDE_REDUCED.matches;
+  if (!entered) { phone.style.transformOrigin = "50% 50%"; Object.assign(phone.style, AWAY); }
+  window.morpheEnter = () => {
+    if (entered) return; entered = true;
+    const a = phone.animate([AWAY, { transform: "scale(1)", opacity: 1, borderRadius: "0px" }], { duration: LEAVE_MS, easing: "cubic-bezier(0, 0, .6, 1)" });
+    phone.style.transform = phone.style.opacity = phone.style.borderRadius = "";
+    a.onfinish = a.oncancel = () => { phone.style.transformOrigin = ""; };
+  };
+  setTimeout(() => window.morpheEnter(), 600);
   const leave = () => {
     if (pendingRestart().length) { leaveBack(); return restartDialog(); }
     leaveOut(() => { try { MorpheApp.close(); } catch (e) { /* ignore */ } });

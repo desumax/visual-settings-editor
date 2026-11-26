@@ -64,8 +64,11 @@
   --lk-grey: rgba(28,28,38,.9); --lk-veil: rgba(28,28,38,.84); --r-l: 22px; --r-li: 24px;
   background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 0; background-repeat: no-repeat;
 }
-.phone.theme-glass .app { --g-art-y: calc(var(--g-art-top, 0px) + var(--abh, 56px)); }
-.phone.theme-glass .app.barhidden { --g-art-y: var(--g-art-top, 0px); }
+/* only the two boxes that paint the backdrop get its place: set on .app, every one of its ~650 elements took the
+   new value and was styled again each time the top bar hid or came back, in the middle of a swipe (Nov 26) */
+@property --g-art-y { syntax: "<length>"; inherits: false; initial-value: 0px; } /* (not passed down to the list either) */
+.phone.theme-glass .app > :is(#picker, .editor) { --g-art-y: calc(var(--g-art-top, 0px) + var(--abh, 56px)); }
+.phone.theme-glass .app.barhidden > :is(#picker, .editor) { --g-art-y: var(--g-art-top, 0px); }
 /* Light and Full: dialogs, the menu and the snackbar are clear glass with the lens (blur where SVG lenses are missing) */
 .phone.theme-glass:is([data-gt="1"], [data-gt="2"]) {
   --gx-dlg: var(--g-dlg); --gx-menu: rgba(22,22,30,.5); --gx-snack: var(--g-chrome); --gx-float-fx: blur(1.75px) saturate(1.42); --gx-dlg-fx: blur(4.2px) saturate(1.42);
@@ -80,7 +83,7 @@
   background-position: calc(-1 * var(--g-art-x, 0px)) calc(-1 * var(--g-art-top, 0px));
   translate: 0 calc(-1 * var(--abh, 56px)); transition: translate 260ms var(--ease); }
 .theme-glass .app.barhidden .stick::before { translate: 0 0; }
-html.inapp .phone.theme-glass #picker, html.inapp.peekback .phone.theme-glass .editor { background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 calc(-1 * var(--g-art-y, 0px)); background-repeat: no-repeat; }
+html.inapp .phone.theme-glass #picker, html.inapp:is(.peekback, .cardgrow) .phone.theme-glass .editor { background-color: var(--g-bg); background-image: var(--g-bg-img); background-size: var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 calc(-1 * var(--g-art-y, 0px)); background-repeat: no-repeat; }
 /* the screen menu is 15% darker than the editor, so its cards and words stand out (Max, Nov 24 evening):
    a black veil over its backdrop (in the app) or its glass (on the web) */
 html.inapp .phone.theme-glass #picker { background-image: linear-gradient(var(--g-menu-veil), var(--g-menu-veil)), var(--g-bg-img); background-size: 100% 100%, var(--g-art-w, 100%) var(--g-art-h, 100%); background-position: 0 0, 0 calc(-1 * var(--g-art-y, 0px)); }

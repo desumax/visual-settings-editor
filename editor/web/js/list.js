@@ -2305,24 +2305,14 @@ window.addEventListener("resize", () => { if (barStays()) $("app").classList.rem
   window.caretCheck = caretCheck;
   document.addEventListener("focusin", caretCheck);
   document.addEventListener("focusout", e => e.target.classList && e.target.classList.remove("caretoff"));
-  $("scroller").addEventListener("scroll", () => {
-    caretCheck();
-    const sc = $("scroller"), y = sc.scrollTop, app = $("app"), d = y - lastY; lastY = y;
+  // The bar follows the way you scroll: d px of your own scrolling (down positive). Shared by the finger
+  // (rubberBand hands over each of its moves, interactions.js) and wheels or trackpads (the scroll events).
+  const barFollow = d => {
+    const sc = $("scroller"), y = sc.scrollTop, app = $("app");
     if (window.vEditing) return;
-    barCheck();
     if (app.classList.contains("searching") || pickerOpen || barStays()) { app.classList.remove("barhidden"); acc = 0; return; }
     // only your own scrolling moves the bar: jumps to a setting (and holds) leave it where it is
     if (performance.now() < progScrollUntil || press) { acc = 0; return; }
-    // Showing or hiding the bar resizes the scroller. Near the end of the list that moves the scroll
-    // position by itself, which used to read as scrolling the other way and flip the bar back: the
-    // preview then bounced up and down on its own. Scrolls during the bar's own move are ignored,
-    // and the bar only hides when the list has room to scroll past it.
-    if (performance.now() < barMoveUntil) { acc = 0; return; }
-    // On a touch screen the list moves under the finger (and its fling) through rubberBand, which marks those
-    // scrolls. Any other scroll is the page adjusting itself: a card above growing or shrinking (scroll
-    // anchoring), the end of the list coming closer as the bar resizes the list. Those read as scrolling
-    // the other way and flipped the bar (Max, Nov 25, Miscellaneous: it showed and hid again on every swipe).
-    if (sc.__touchOwn && !(performance.now() < (sc.__userScroll || 0))) { acc = 0; return; }
     acc = Math.sign(d) === Math.sign(acc) ? acc + d : d;
     const bar = document.querySelector(".appbar"), hid = app.classList.contains("barhidden");
     if (bar && !hid) app.style.setProperty("--abh", bar.offsetHeight + "px");
@@ -2333,6 +2323,23 @@ window.addEventListener("resize", () => { if (barStays()) $("app").classList.rem
     else if (acc > 24 && room > abh + 24 && sc.scrollHeight - sc.clientHeight - abh > abh + 24) want = true;
     else if (acc < -24) want = false;
     if (want !== hid) { app.classList.toggle("barhidden", want); acc = 0; barMoveUntil = performance.now() + 320; }
+  };
+  // On a touch screen the list moves under the finger (and its fling) through rubberBand, which tells the bar
+  // each move it makes, in the moment it makes it. Max saw the bar hide and come back on one swipe (Nov 25,
+  // Miscellaneous; again Nov 26): the scroll events it read also carried the page's own adjustments (a card
+  // above growing or shrinking, the end of the list coming closer) and those read as scrolling the other way.
+  $("scroller").__ownMove = barFollow;
+  $("scroller").addEventListener("scroll", () => {
+    caretCheck();
+    const sc = $("scroller"), y = sc.scrollTop, d = y - lastY; lastY = y;
+    if (window.vEditing) return;
+    barCheck();
+    if (sc.__touchOwn) return; // the finger's moves come through __ownMove
+    // Wheels and trackpads: the scroll events are all there is. Showing or hiding the bar resizes the
+    // scroller; near the end of the list that moves the scroll position by itself, which read as scrolling
+    // the other way and flipped the bar back, so scrolls during the bar's own move are ignored.
+    if (performance.now() < barMoveUntil) { acc = 0; return; }
+    barFollow(d);
   }, { passive: true });
 }
 $("dlg").addEventListener("click", e => { if (e.target.id === "dlg") closeDialog(); });

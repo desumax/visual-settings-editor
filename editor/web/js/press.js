@@ -28,11 +28,13 @@ function down(e) {
   if (!canToggle(k)) { press = { el, k, from, x: e.clientX, y: e.clientY, long: false }; return; }
   // A finger that lands to scroll the list must not light up the hold (Max, Nov 24: the hold ring flashed
   // on every fling). With touch the ring shows only once the finger has stayed put a moment; it then
-  // starts that far into its run (--press-lead), so the hold still completes at LONG.
+  // runs the rest of the hold from nothing (--press-dur), so it still completes at LONG. (It used to start a
+  // quarter of the way in: a swipe that began slowly popped a quarter of the hold line, and of a hidden part
+  // in the preview, into view and out again, the flashing Max saw while scrolling, Nov 26.)
   const lead = e.pointerType === "touch" ? PRESS_LEAD : 0;
   const show = () => {
     if (!press || press.el !== el) return;
-    el.style.setProperty("--press-lead", -lead + "ms"); el.classList.add("pressing");
+    el.style.setProperty("--press-dur", LONG - lead + "ms"); el.classList.add("pressing");
     if (from === "stage" && el.classList.contains("off")) { (ghostTimers.get(k) || []).forEach(clearTimeout); ghostTimers.delete(k); el.classList.remove("ghost-out"); el.classList.add("charging"); }
   };
   press = { el, k, from, x: e.clientX, y: e.clientY, long: false };

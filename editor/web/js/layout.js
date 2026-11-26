@@ -97,12 +97,23 @@ function glassSlowWarn() {
 // The darker original glows (index.html --g-bg-img), drawn at the phone's own size in px: the phone paints
 // them from its top left corner; whatever hides the list paints the same glows shifted by its own place
 // (--g-art-x/-top here; --g-art-y adds the top bar in index.html), so the copies meet without a seam.
+// Where el sits inside anc (its padding box), in layout px: offsets ignore transforms, so a box that is
+// scaling or sliding (a screen growing from its card, the page coming in, a screen switch) is measured where
+// it will rest. Scrolled boxes on the way count their scroll. null when anc is not around el.
+function layoutPos(el, anc) {
+  const abs = e => { let x = 0, y = 0; for (; e; ) { x += e.offsetLeft; y += e.offsetTop; const p = e.offsetParent; if (p) { x += p.clientLeft - p.scrollLeft; y += p.clientTop - p.scrollTop; } e = p; } return { x, y }; };
+  if (!el || !anc || !anc.contains(el)) return null;
+  const a = abs(el), b = abs(anc); return { x: a.x - b.x - anc.clientLeft, y: a.y - b.y - anc.clientTop };
+}
+// Places are taken from the layout (layoutPos), not from the screen: measured while the screen was still
+// growing out of its menu card (scaled to 46%, off to one side) the preview's copy was put 210 px to the
+// side and stayed there until the next resize, a hard-edged green block behind the tabs (Max, Nov 26,
+// SponsorBlock). A layout place is the same whatever moves or scales on the way.
 function glassArtPlace() {
   const ph = $("phone"), app = $("app"), st = $("stick"); if (!ph || !app || theme !== "glass") return;
-  const pr = ph.getBoundingClientRect(), k = pr.width / (ph.offsetWidth || 1) || 1, top = pr.top + ph.clientTop * k, left = pr.left + ph.clientLeft * k;
   ph.style.setProperty("--g-art-w", ph.clientWidth + "px"); ph.style.setProperty("--g-art-h", ph.clientHeight + "px");
-  ph.style.setProperty("--g-art-top", Math.round((app.getBoundingClientRect().top - top) / k) + "px");
-  if (st && st.offsetWidth) ph.style.setProperty("--g-art-x", Math.round((st.getBoundingClientRect().left - left) / k) + "px");
+  const a = layoutPos(app, ph); if (a) ph.style.setProperty("--g-art-top", Math.round(a.y) + "px");
+  const p = st && st.offsetWidth && layoutPos(st, ph); if (p) ph.style.setProperty("--g-art-x", Math.round(p.x) + "px");
 }
 if (window.ResizeObserver) { const ro = new ResizeObserver(() => glassArtPlace()); ro.observe($("phone")); ro.observe($("stick")); }
 // ---------- Liquid Glass lens (Max, Nov 23: glass design 1) ----------
@@ -182,7 +193,10 @@ function liquidSync() {
   lensRaf = 0;
   const ph = $("phone"), tier = theme === "glass" && lensOK ? +(ph.dataset.gt || 0) : 0;
   if (!tier) { lensOn.forEach(lensClear); lensOn = new Set(); return; }
-  const vh = innerHeight, vw = innerWidth, want = [], seen = new Set();
+  const vh = innerHeight, vw = innerWidth, want = [], seen = new Set(), keep = new Set();
+  // the top bar slid away while scrolling keeps its glass: taking it off and baking it again on every hide
+  // and show was work in the middle of a swipe, and the bar came back without its glass for a moment
+  const barAway = $("app").classList.contains("barhidden");
   // the list's thumbs count only where the list can be seen: inside the scroller, below the sticky preview
   // (the window's bounds let a hidden thumb take one of the LENS_CAP places)
   const scr = $("scroller"), sc = scr.getBoundingClientRect(), stk = $("stick"), lt = Math.max(sc.top, stk && stk.offsetHeight ? stk.getBoundingClientRect().bottom : sc.top), lb = sc.bottom;
@@ -192,6 +206,7 @@ function liquidSync() {
     let n = 0;
     ph.querySelectorAll(R.sel).forEach(e => {
       if (seen.has(e) || (R.cap && n >= LENS_CAP)) return; seen.add(e);
+      if (barAway && lensOn.has(e) && e.closest(".appbar")) { keep.add(e); return; }
       const b = e.getBoundingClientRect(); if (b.width < 4 || b.height < 4 || b.bottom < 0 || b.top > vh || b.right < 0 || b.left > vw) return;
       if (R.cap && scr.contains(e) && (b.bottom <= lt || b.top >= lb)) return;
       if (e.checkVisibility && !e.checkVisibility({ checkOpacity: true, checkVisibilityCSS: true, opacityProperty: true, visibilityProperty: true })) return; // a closed menu or dialog
@@ -200,7 +215,7 @@ function liquidSync() {
       want.push([e, e.offsetWidth || b.width, e.offsetHeight || b.height, r, LENS[R.L + (tier === 2 && LENS[R.L + "Full"] ? "Full" : "")]]);
     });
   }
-  const next = new Set();
+  const next = new Set(keep);
   want.forEach(([e, w, h, r, L]) => { const v = `url(#${lensFilter(w, h, r, L)})`; if (e.style.backdropFilter !== v) { e.style.backdropFilter = v; e.style.webkitBackdropFilter = v; } next.add(e); });
   lensOn.forEach(e => { if (!next.has(e)) lensClear(e); }); lensOn = next;
 }

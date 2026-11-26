@@ -22,7 +22,7 @@
 .row.sel { background: rgba(164,201,255,.12); }
 .row.sel::before { content: ""; position: absolute; left: 0; top: 8px; bottom: 8px; width: 3px; border-radius: 0 3px 3px 0; background: var(--m-primary); }
 .row.dis .kind, .row.dis .ttl, .row.dis .sum:not(.need), .row.dis .ctl, .row.dis .state, .row.dis .sw { opacity: var(--disabled); }
-.row.pressing::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; background: var(--yt-red); animation: bar .48s linear var(--press-lead, 0ms) forwards; }
+.row.pressing::after { content: ""; position: absolute; left: 0; bottom: 0; height: 2px; background: var(--yt-red); animation: bar var(--press-dur, .48s) linear forwards; }
 @keyframes bar { from { width: 0; } to { width: 100%; } }
 .row.unlock { animation: unlock 1.1s var(--ease); }
 .row.unlock .kind { animation: unlockicon 1.1s var(--ease); }

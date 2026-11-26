@@ -101,7 +101,17 @@ if (INAPP) {
     ed.style.transformOrigin = "50% 50%";
     const a = ed._grow = ed.animate([{ ...from, borderRadius: (rad / s0).toFixed(1) + "px", opacity: 0 }, { offset: .22, opacity: 1 }, { ...to, borderRadius: "0px", opacity: 1 }],
       { duration: DLG_OPEN_MS + 30, easing: cssVar("--spring-soft") || "ease-out" });
-    const end = () => { if (ed._grow !== a) return; ed._grow = null; ed.style.transformOrigin = ""; root.classList.remove("cardgrow"); };
+    // Max, Nov 26 (every card: "animates open and then pops/flashes"). The new screen is drawn in the same
+    // moment, so the first frame came late and the growth was already halfway (46% -> 82% in one frame):
+    // it now waits, as the card, until the first frame is drawn and starts from there.
+    a.pause(); requestAnimationFrame(() => requestAnimationFrame(() => { if (ed._grow === a) a.play(); }));
+    // And at the end the menu under it (closed, but held in place while the screen grew) faded out over
+    // the screen for 200 ms. It goes at once instead, the way the Back swipe puts it away (peekreset).
+    const end = () => {
+      if (ed._grow !== a) return; ed._grow = null; ed.style.transformOrigin = "";
+      root.classList.add("peekreset"); root.classList.remove("cardgrow");
+      requestAnimationFrame(() => requestAnimationFrame(() => { if (!ed._grow) root.classList.remove("peekreset"); }));
+    };
     a.onfinish = end; a.oncancel = end;
   }
   // Every caller that closed the dropdown (a card, search, the scrim) now leaves the menu page.

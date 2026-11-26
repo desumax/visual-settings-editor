@@ -1517,6 +1517,122 @@ const CHECKS = [
     },
   },
   {
+    name: "menu-card-opens-without-a-flash",
+    report: "Nov 26: every card on the main menu animates open and then pops/flashes",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      for (const g of ["g_playback", "g_feed"]) {
+        if (!(await p.evaluate(() => pickerOpen))) { await p.evaluate(() => setPicker(true)); await sleep(800); }
+        const xy = await p.evaluate(g => { const r = document.querySelector(`#pickGrid [data-group="${g}"]`).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, g);
+        await p.evaluate(() => { const ed = document.querySelector(".editor"), pk = $("picker"), out = window.__cg = [], t0 = performance.now();
+          const f = () => { if (performance.now() - t0 > 1200) return; const es = getComputedStyle(ed), m = /matrix\(([\d.]+)/.exec(es.transform);
+            out.push({ grow: document.documentElement.classList.contains("cardgrow"), op: +es.opacity, sc: m ? +m[1] : 1, pk: +getComputedStyle(pk).opacity, open: pk.classList.contains("open") }); requestAnimationFrame(f); };
+          requestAnimationFrame(f); });
+        await p.touchscreen.tap(xy[0], xy[1]); await sleep(1300);
+        const fr = await p.evaluate(() => window.__cg), i = fr.findIndex(x => x.grow && x.op > .05);
+        ok(i >= 0, `${g}: the screen did not grow out of its card`);
+        ok(fr[i].sc < .6, `${g}: the first frame of the growth already shows the screen at ${Math.round(fr[i].sc * 100)}% of its size (it jumped past the card)`);
+        const after = fr.slice(i).filter(x => !x.grow && !x.open);
+        ok(after.length, `${g}: the growth never ended`);
+        const flash = after.find(x => x.pk > .02);
+        ok(!flash, `${g}: once the screen had grown, the menu showed over it again (opacity ${flash && flash.pk.toFixed(2)}) and faded out`);
+      }
+      await ctx.close();
+    },
+  },
+  {
+    name: "glass-backdrop-stays-behind-the-preview",
+    report: "Nov 26: opening SponsorBlock showed a hard-edged green block behind the tabs, gone after Behaviour and back",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      await p.evaluate(() => uiPick("glass")); await sleep(1200);
+      for (const g of ["g_playback", "g_feed", "g_player"]) {
+        if (!(await p.evaluate(() => pickerOpen))) { await p.evaluate(() => setPicker(true)); await sleep(800); }
+        const xy = await p.evaluate(g => { const r = document.querySelector(`#pickGrid [data-group="${g}"]`).getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }, g);
+        await p.touchscreen.tap(xy[0], xy[1]); await sleep(1000);
+        const r = await p.evaluate(() => { const ph = $("phone"), pr = ph.getBoundingClientRect(), k = pr.width / ph.offsetWidth;
+          return { got: getComputedStyle(ph).getPropertyValue("--g-art-x").trim(), want: Math.round(($("stick").getBoundingClientRect().left - pr.left) / k - ph.clientLeft) }; });
+        ok(Math.abs(parseFloat(r.got) - r.want) <= 1, `${g}: the preview's copy of the glass backdrop is placed for ${r.got}, but the preview sits at ${r.want}px`);
+      }
+      await ctx.close();
+    },
+  },
+  {
+    name: "top-bar-and-list-follow-only-the-finger",
+    report: "Nov 25/26: scrolling down or up hid and showed the top bar on one swipe; the list stuttered and text doubled up",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      await p.evaluate(() => { quickSection("sponsorblock"); setPicker(false); }); await sleep(1500);
+      await p.evaluate(() => { $("scroller").scrollTop = 600; }); await sleep(300);
+      const cdp = await ctx.newCDPSession(p);
+      const tp = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: 300, y }] });
+      // a swipe down; halfway, a card above the screen grows and the page keeps what you read in place (as
+      // scroll anchoring does: the card's growth is added to the scroll position in the same frame)
+      await p.evaluate(() => { const sc = $("scroller"), top = sc.getBoundingClientRect().top + sc.clientHeight / 2;
+        const ref = [...document.querySelectorAll("#list [data-row]")].find(r => r.getBoundingClientRect().top > top);
+        const out = window.__sw = { shows: 0, back: 0, ref, last: ref.getBoundingClientRect().top, hid: $("app").classList.contains("barhidden") };
+        const f = () => { const y = ref.getBoundingClientRect().top, h = $("app").classList.contains("barhidden"); if (y > out.last + 2) out.back = Math.max(out.back, y - out.last); if (out.hid && !h) out.shows++; out.last = y; out.hid = h; if (!out.stop) requestAnimationFrame(f); }; requestAnimationFrame(f); });
+      await tp("touchStart", 800);
+      for (let i = 1; i <= 24; i++) {
+        await tp("touchMove", 800 - i * 12); await sleep(16);
+        if (i === 12) await p.evaluate(() => { const sc = $("scroller"), st = sc.getBoundingClientRect().top + $("stick").offsetHeight;
+          const above = [...document.querySelectorAll("#list [data-row]")].filter(r => r.getBoundingClientRect().bottom < st - 20).pop(); above.style.paddingBottom = "90px"; sc.scrollTop += 90; });
+      }
+      await sleep(60); const s = await p.evaluate(() => { window.__sw.stop = true; const o = window.__sw; return { shows: o.shows, back: o.back, hid: $("app").classList.contains("barhidden") }; });
+      await tp("touchEnd"); await sleep(600);
+      ok(s.hid, "setup: the top bar did not hide on the swipe down");
+      ok(!s.shows, "the top bar came back during a swipe down (the page's own adjustment read as scrolling up)");
+      ok(s.back < 3, `the list jumped back ${Math.round(s.back)}px under the finger during a swipe down`);
+      // a finger that rolls back a little as it lifts: the list does not fling back the other way
+      await tp("touchStart", 800); for (let i = 1; i <= 15; i++) { await tp("touchMove", 800 - i * 18); await sleep(16); }
+      await sleep(90); const y0 = await p.evaluate(() => $("scroller").scrollTop);
+      for (let i = 1; i <= 4; i++) { await tp("touchMove", 530 + i * 3); await sleep(8); }
+      const y1 = await p.evaluate(() => $("scroller").scrollTop); await tp("touchEnd"); await sleep(700);
+      const y2 = await p.evaluate(() => $("scroller").scrollTop);
+      ok(y1 - y2 < 2, `after a finger rolled back ${Math.round(y0 - y1)}px as it lifted, the list flung back another ${Math.round(y1 - y2)}px`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "hiding-the-top-bar-restyles-little",
+    report: "Nov 26: stutters while scrolling; every top bar hide or show restyled the whole page (~650 elements) mid-swipe",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      await p.evaluate(() => uiPick("glass")); await sleep(1000);
+      await p.evaluate(() => { quickSection("sponsorblock"); setPicker(false); }); await sleep(1500);
+      const cdp = await ctx.newCDPSession(p), ev = []; cdp.on("Tracing.dataCollected", d => ev.push(...d.value));
+      const done = new Promise(r => cdp.once("Tracing.tracingComplete", r));
+      await cdp.send("Tracing.start", { categories: "devtools.timeline", transferMode: "ReportEvents" });
+      await p.evaluate(() => { for (let i = 0; i < 4; i++) { void document.body.offsetHeight; $("app").classList.toggle("barhidden"); getComputedStyle($("list")).color; void document.body.offsetHeight; } });
+      await cdp.send("Tracing.end"); await done;
+      const n = Math.max(0, ...ev.filter(e => e.name === "UpdateLayoutTree").map(e => (e.args && e.args.elementCount) || 0));
+      ok(n < 200, `hiding or showing the top bar restyled ${n} elements`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "swipe-start-shows-no-hold-flash",
+    report: "Nov 26: ghost text flashing while scrolling (a swipe that began slowly popped a quarter of the hold, and of a hidden part in the preview, into view)",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      await p.evaluate(() => { quickSection("sponsorblock"); setPicker(false); }); await sleep(1500);
+      const xy = await p.evaluate(() => { const r = document.querySelector('#list [data-row="morphe_sb_compact_skip_button"]'); r.scrollIntoView({ block: "center" }); const q = r.getBoundingClientRect(); return [q.x + q.width * .3, q.y + q.height / 2]; });
+      await sleep(300);
+      // how far the hold has run in the first frame it shows
+      await p.evaluate(() => { const r = document.querySelector('#list [data-row="morphe_sb_compact_skip_button"]');
+        new MutationObserver((ms, o) => { if (!r.classList.contains("pressing")) return; o.disconnect();
+          requestAnimationFrame(() => { const a = r.getAnimations({ subtree: true }).find(x => x.animationName === "bar"); window.__hold = a ? a.effect.getComputedTiming().progress : -1; }); }).observe(r, { attributes: true, attributeFilter: ["class"] }); });
+      const cdp = await ctx.newCDPSession(p);
+      const tp = (type, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x: xy[0], y }] });
+      await tp("touchStart", xy[1]); await sleep(250);
+      const pr = await p.evaluate(() => window.__hold);
+      await tp("touchEnd"); await sleep(300);
+      ok(pr !== undefined && pr >= 0, "setup: holding still did not show the hold");
+      ok(pr < .12, `the hold line shows already ${Math.round(pr * 100)}% of the way in on its first frame (it pops in when a swipe begins slowly)`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

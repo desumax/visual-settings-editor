@@ -440,8 +440,16 @@ function rubberBand(sc, topEl, botEl) {
   const put = (el, y) => { el.style.translate = y ? `0 ${y}px` : ""; };
   const stopBounce = () => { if (bounce) { bounce.cancel(); bounce = null; } };
   const stopFling = () => { if (flingRaf) { cancelAnimationFrame(flingRaf); flingRaf = 0; } };
-  // (marked as the finger's own scroll: the top bar follows only these on a touch screen, list.js)
-  const scrollTo = y => { selfUntil = performance.now() + 120; sc.__userScroll = selfUntil; sc.scrollTop = y; };
+  // Every move the finger (or its fling) makes is handed to sc.__ownMove with how far the list really went:
+  // on a touch screen the top bar follows only these (list.js barFollow). Whatever else moves the list (the
+  // page keeping a card in place while one above it changes size, a jump to a setting) never moves the bar.
+  const scrollTo = y => { selfUntil = performance.now() + 120; const b = sc.scrollTop; sc.scrollTop = y; const d = sc.scrollTop - b; if (d && sc.__ownMove) sc.__ownMove(d); return d; };
+  // How far something else moved the list since the finger (or the fling) last put it at `at`. The page
+  // keeps the card being read in place when a card above it changes size (scroll anchoring): the finger
+  // used to put the list back where it was every frame, so it jumped back and forth (text doubled up,
+  // and the jump read as scrolling the other way, which brought the top bar back; Max, Nov 26). Now the
+  // finger and the fling carry on from where the page put it.
+  const shifted = at => at == null ? 0 : sc.scrollTop - at;
   // back to rest on a critically damped spring from offset y (px) with velocity v (px/s)
   const settle = (el, y, v = 0) => {
     stopBounce(); put(el, 0);
@@ -456,10 +464,11 @@ function rubberBand(sc, topEl, botEl) {
   const fling = v => {
     stopFling();
     const plan = flingPlan(v); if (!(plan.dur > 16) || Math.abs(plan.dist) < 1) return;
-    const s0 = sc.scrollTop, t0 = performance.now(); let at = s0;
+    let s0 = sc.scrollTop, at = s0; const t0 = performance.now();
     const step = now => {
       flingRaf = 0;
-      if (Math.abs(sc.scrollTop - at) > 1) return; // something else scrolled the list: it wins
+      // a jump to a setting wins over the fling; the page adjusting itself only moves where it goes on from
+      const ext = shifted(at); if (Math.abs(ext) > 1) { if (performance.now() < progScrollUntil) return; s0 += ext; }
       const x = Math.min(1, (now - t0) / plan.dur), i = Math.min(FLING_NB - 1, Math.floor(x * FLING_NB)), d = FLING_POS[i + 1] - FLING_POS[i];
       const y = s0 + plan.dist * (FLING_POS[i] + d * (x * FLING_NB - i)), vel = d * FLING_NB * plan.dist / plan.dur * 1000, R = room();
       if (y <= 0 || y >= R) { scrollTo(y <= 0 ? 0 : R); if (x < 1) hitEnd(y <= 0, vel); return; }
@@ -476,7 +485,7 @@ function rubberBand(sc, topEl, botEl) {
     eatEnd(); stopFling(); stopBounce(); put(topEl, 0); put(botEl, 0);
     if (e.touches.length !== 1 || innerY(e.target) || (e.target.closest && e.target.closest(".wheel:not(.off)"))) { pull = null; return; } // a value wheel turns under the finger instead
     const t = e.touches[0];
-    pull = { x: t.clientX, y: t.clientY, s0: sc.scrollTop, on: false, pts: [], caught, over: 0 };
+    pull = { x: t.clientX, y: t.clientY, s0: sc.scrollTop, on: false, pts: [], caught, over: 0, at: null };
   }, { passive: true });
   sc.addEventListener("touchmove", e => {
     if (!pull) return;
@@ -486,15 +495,20 @@ function rubberBand(sc, topEl, botEl) {
       if (Math.abs(dy) < 8) return;
       pull.on = true; pull.y += Math.sign(dy) * 8;
       document.documentElement.classList.add("touchwait"); // no press looks while the list moves (as when the browser scrolled)
+      // nor a hold: its line under a row, or a hidden part of the preview showing as it charges, lit up for a
+      // moment on swipes that began slowly (the hold only let go 10 px in, two px after the list moved)
+      if (typeof cancelPress === "function") cancelPress();
     }
     if (e.cancelable) e.preventDefault();
     const now = performance.now(); pull.pts.push([now, t.clientY]);
     while (pull.pts.length > 2 && now - pull.pts[0][0] > 100) pull.pts.shift();
+    if (!pull.over) { const ext = shifted(pull.at); if (Math.abs(ext) > .5) pull.s0 += ext; }
     const R = room(), s = pull.s0 - (t.clientY - pull.y) * SCROLL_K, rub = !RUBBER_REDUCED.matches;
     put(topEl, 0); put(botEl, 0); pull.over = 0;
     if (s < 0 && rub) { scrollTo(0); pull.over = rubber(-s / SCROLL_K); pull.el = topEl; put(topEl, pull.over); }
     else if (s > R && rub) { scrollTo(R); pull.over = -rubber((s - R) / SCROLL_K); pull.el = botEl; put(botEl, pull.over); }
     else scrollTo(Math.max(0, Math.min(R, s)));
+    pull.at = sc.scrollTop;
   }, { passive: false });
   // the click a lifted finger may still bring: a tap that stops a fling only stops it (as on the phone's own
   // lists), and a finger that moved the list taps nothing
@@ -514,6 +528,10 @@ function rubberBand(sc, topEl, botEl) {
     const n = pts.length, mt = pts.reduce((a, q) => a + q[0], 0) / n, my = pts.reduce((a, q) => a + q[1], 0) / n;
     let num = 0, den = 0; pts.forEach(([t, y]) => { num += (t - mt) * (y - my); den += (t - mt) ** 2; });
     const vf = den ? Math.max(-8000, Math.min(8000, num / den * 1000)) : 0; // px/s, as Android's maximum fling
+    // a finger that rolls back a little as it lifts is not a fling the other way: a slow one against the
+    // way the list was pulled is dropped (it sent the list back a few px and flipped the top bar)
+    const pulled = sc.scrollTop - p.s0;
+    if (Math.abs(pulled) > 24 && Math.sign(-vf) !== Math.sign(pulled) && Math.abs(vf) < 1200) return;
     if (Math.abs(vf) >= 50) fling(-vf * SCROLL_K);
   };
   sc.addEventListener("touchend", end); sc.addEventListener("touchcancel", end);

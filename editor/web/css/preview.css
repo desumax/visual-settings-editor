@@ -46,13 +46,13 @@
 .c.intray { opacity: .55; outline: 1.5px dashed rgba(255,255,255,.5); outline-offset: 1px; border-radius: 8px; }
 .c.intray > * { visibility: visible !important; }
 .c.intray.ghost { opacity: 1 !important; }
-.c.off.charging > * { visibility: visible !important; animation: chargein .48s linear var(--press-lead, 0ms) forwards; }
+.c.off.charging > * { visibility: visible !important; animation: chargein var(--press-dur, .48s) linear forwards; }
 .c.ghost.charging > * { animation: none; }
 .c.ghost.charging { animation: none; }
 @keyframes chargein { from { opacity: 0; } to { opacity: .6; } }
 .c.reveal { animation: revealk .34s var(--ease); }
 @keyframes revealk { from { opacity: .6; } to { opacity: 1; } }
-.c.pressing::after { content: ""; position: absolute; inset: -4px; border-radius: 10px; border: 2px solid var(--yt-red); animation: press .48s linear var(--press-lead, 0ms) forwards; pointer-events: none; }
+.c.pressing::after { content: ""; position: absolute; inset: -4px; border-radius: 10px; border: 2px solid var(--yt-red); animation: press var(--press-dur, .48s) linear forwards; pointer-events: none; }
 @keyframes press { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .c.flash { animation: flash .5s var(--ease); transform-origin: var(--pop, center); }
 /* the ring hugs what the element draws (see fitRing) */

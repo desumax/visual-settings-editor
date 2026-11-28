@@ -339,6 +339,25 @@ function stockOf(k) {
 }
 const V = k => (mode === "orig" ? stockOf(k) : prefValues[k]); // the hot read: straight from the values, not through the guard
 function shown(k) { const v = V(k); return isHideKey(k) ? !v : !!v; }
+// Settings Morphe gives no parent although the part one hides sits inside the part another hides, so
+// with that one hidden the other can never show (read from Morphe's filters). The editor locks them under
+// it like a sub-setting (Max, Nov 28: Subscribe button did nothing while Channel and Subscribe button was
+// hidden). Only pairs where the outer setting removes every place the inner part can appear:
+//   Subscribe button (|compact_channel_bar_animated_buttons.e) sits in the channel element that Channel
+//   and Subscribe button removes (|compact_channel_bar.e), and that element is a compact_channel_bar,
+//   which Hide channel bar removes everywhere (LayoutComponentsFilter matches the path).
+const COVERED_BY = {
+  morphe_hide_channel_profile_subscribe_button: "morphe_hide_channel_profile_button",
+  morphe_hide_channel_profile_button: "morphe_hide_channel_bar",
+};
+function addCoveredParents(prefs) {
+  const by = Object.fromEntries(prefs.map(p => [p.key, p]));
+  for (const [k, outer] of Object.entries(COVERED_BY)) {
+    const p = by[k]; if (!p || !by[outer]) continue;
+    p.parents = p.parents || [];
+    if (!p.parents.some(x => x.key === outer)) p.parents.push({ key: outer, mode: "not", covered: true });
+  }
+}
 function parentsOk(k) { return classicParentsOk(k) && availOk(k); }
 function classicParentsOk(k) {
   const p = PREF[k]; if (!p || !p.parents || !p.parents.length) return true;

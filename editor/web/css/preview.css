@@ -4,7 +4,11 @@
 .stage { position: relative; overflow: hidden; overflow: clip; background: #000; user-select: none; -webkit-user-select: none; touch-action: manipulation; color: #f1f1f1; }
 .c { position: relative; cursor: pointer; transition: opacity var(--dur) var(--ease), transform var(--dur) var(--ease); pointer-events: auto; }
 .stage .fixed7 { opacity: .4; filter: grayscale(1); pointer-events: none !important; } /* nothing on this screen changes it */
-.c.sel { outline: 2px solid var(--ring-on); outline-offset: 2px; border-radius: 6px; z-index: 20; }
+.c.sel { outline: 2px solid var(--ring-on); outline-offset: 2px; z-index: 20; }
+/* every ring follows the corners of what it surrounds: a part that draws itself keeps its own (.rown), any
+   other takes --ring-r, the corners of the biggest thing it holds (ringRadius; Max, Nov 28: a round button
+   had a rounded-square ring). The flash glow and the hold line use the same corners. */
+.c:is(.sel, .ghost):not(.rown) { border-radius: var(--ring-r, 6px); }
 /* a selected part against the frame's edge has its ring on the ring layer above the frame instead */
 .c.selx.sel, .c.fit.selx::before { outline-color: transparent !important; }
 .ringlayer { position: absolute; inset: 0; pointer-events: none; z-index: 60; }
@@ -52,12 +56,12 @@
 @keyframes chargein { from { opacity: 0; } to { opacity: .6; } }
 .c.reveal { animation: revealk .34s var(--ease); }
 @keyframes revealk { from { opacity: .6; } to { opacity: 1; } }
-.c.pressing::after { content: ""; position: absolute; inset: -4px; border-radius: 10px; border: 2px solid var(--yt-red); animation: press var(--press-dur, .48s) linear forwards; pointer-events: none; }
+.c.pressing::after { content: ""; position: absolute; inset: -4px; border-radius: calc(var(--ring-r, 6px) + 4px); border: 2px solid var(--yt-red); animation: press var(--press-dur, .48s) linear forwards; pointer-events: none; }
 @keyframes press { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 .c.flash { animation: flash .5s var(--ease); transform-origin: var(--pop, center); }
 /* the ring hugs what the element draws (see fitRing) */
 .c.fit.sel, .c.fit.ghost { outline: none !important; }
-.c.fit.sel::before, .c.fit.ghost::before { content: ""; position: absolute; left: var(--fl); top: var(--ft); right: var(--fr); bottom: var(--fb); outline: 2px solid var(--ring-on); outline-offset: 2px; border-radius: 6px; pointer-events: none; z-index: 21; }
+.c.fit.sel::before, .c.fit.ghost::before { content: ""; position: absolute; left: var(--fl); top: var(--ft); right: var(--fr); bottom: var(--fb); outline: 2px solid var(--ring-on); outline-offset: 2px; border-radius: var(--ring-r, 6px); pointer-events: none; z-index: 21; }
 .c.fit.ghost::before { outline: 1.5px dashed var(--yt-red); outline-offset: 1px; }
 .stage .c.fit.ghost.sel { animation: none; }
 .stage .c.fit.ghost.sel:not(.leaving):not(.charging):not(.flash)::before { animation: ghostpulse 1.8s ease-in-out .5s infinite; }
@@ -117,9 +121,16 @@
 .demo-label.bad { background: rgba(120,0,0,.85); }
 
 /* scenario canvas: standard black stage for animations of settings the live preview cannot show */
-.canvas { position: absolute; inset: 0; background: #000; z-index: 45; opacity: 0; transition: opacity var(--dur) var(--ease); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 26px 0 2px; overflow: hidden; pointer-events: none; }
+/* the comparison hangs from the top of the preview, not its middle: the room left over goes below the
+   phones, where a half phone fades out anyway, and the phones keep their place when the preview area is
+   still opening or closing as a round starts (Max, Nov 28: the phones sat lower with black above them, and
+   moved between the first and second round of Remove viewer discretion dialog) */
+.canvas { position: absolute; inset: 0; background: #000; z-index: 45; opacity: 0; transition: opacity var(--dur) var(--ease); display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 4px; padding: 26px 0 2px; overflow: hidden; pointer-events: none; }
+/* a story that turns a phone keeps the middle: the turning phone sweeps past its box at both ends, and the
+   pair is laid out again for the new shape anyway */
+.canvas.turns7 { justify-content: center; }
 .canvas.show { opacity: 1; pointer-events: auto; }
-.canvas.nocap { padding-top: 2px; }
+.canvas.nocap { padding-top: 4px; } /* the Off / On labels now sit at the top: a little room so a first frame never cuts them */
 .canvas .cap { position: absolute; top: 8px; left: 10px; right: 10px; display: flex; justify-content: space-between; align-items: center; gap: 8px; font-size: 11.5px; color: #ddd; }
 .canvas .cap b { color: #fff; font-weight: 500; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .canvas .cap .st { flex: none; font-size: 10.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; background: #2b2b2b; }

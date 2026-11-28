@@ -7,7 +7,8 @@
 const ico7 = (n, s = 8, c = "") => I(n, "ico", `style="width:${s}px;height:${s}px;flex:none;${c ? "fill:" + c : ""}"`);
 const top7 = (title = "YouTube", icons = ["cast", "bell", "search"]) => `<div style="display:flex;align-items:center;gap:5px;height:12px"><b style="font-size:7.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${title}</b>${icons.map(n => ico7(n)).join("")}</div>`;
 const row7 = (i, t, extra = "", sub = "") => `<div style="display:flex;gap:4px;align-items:center"><div style="width:30px;height:17px;border-radius:2px;background:${ART[i % ART.length]};flex:none;position:relative">${extra}</div><div style="min-width:0;flex:1"><div style="font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</div>${sub ? `<div style="font-size:5.5px;color:#aaa;line-height:1.15">${sub}</div>` : bar7(60, "#2a2a2a", 3)}</div></div>`;
-const big7 = (i, t, extra = "") => `<div><div style="height:38px;border-radius:3px;background:${ART[i % ART.length]};position:relative">${extra}</div><div style="display:flex;gap:3px;margin-top:3px;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:${AV[i % AV.length]};flex:none"></span><span style="font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span></div></div>`;
+// h: the thumbnail's height (CSS); a story about something drawn on the thumbnail passes a real 16:9 one
+const big7 = (i, t, extra = "", h = "height:38px") => `<div><div class="th7" style="${h};border-radius:3px;background:${ART[i % ART.length]};position:relative">${extra}</div><div style="display:flex;gap:3px;margin-top:3px;align-items:center"><span style="width:9px;height:9px;border-radius:50%;background:${AV[i % AV.length]};flex:none"></span><span style="font-size:6.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span></div></div>`;
 // A menu row's words wrap onto a second line when the phone is too narrow for them, as Android menus do:
 // on one line they ran out past the phone's edge and were cut mid-word ("Allow ads on this cha").
 const item7 = (icon, t, cls = "") => `<div class="${cls}" style="display:flex;gap:5px;align-items:center;padding:2px 0;line-height:1.15">${ico7(icon)}<span style="min-width:0;overflow-wrap:break-word">${t}</span></div>`;
@@ -1694,18 +1695,22 @@ scen("watch", "ryd_estimated_like", (box, on) => {
 // (NEXT_TO_VIEW_COUNT), stacked at the middle of the right edge under the Watch later button (MIDDLE_RIGHT), or
 // stacked at the top left (TOP_LEFT). One picture for its three settings.
 const FEED_POS = ["NEXT_TO_VIEW_COUNT", "MIDDLE_RIGHT", "TOP_LEFT"];
+// The badge is 10% smaller than the stock badges' text was drawn here and its contents sit in its middle,
+// top to bottom and side to side (Max, Nov 28): one line height, the same room above and below, the like
+// bar inside that room. The thumbnail is a real one, 16:9 and the full width of the screen as in the app's
+// feed, so the badge's place reads clearly.
 function feedLikeBadge({ count, ratio, pos }) {
   if (!count && !ratio) return "";
-  const bar = ratio ? `<i style="display:block;height:1.5px;margin-top:1px;border-radius:1px;background:linear-gradient(90deg,#f1f1f1 96%,#ff4e45 96%)"></i>` : "";
-  const c = count ? `<span style="display:flex;gap:1.5px;align-items:center">${ico7("like", 5.5, "#fff")}48K</span>` : "", r = ratio ? `<span>96%</span>` : "";
-  const box7 = "background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600;color:#fff;line-height:1.2";
-  if (pos === "NEXT_TO_VIEW_COUNT") return `<div class="fb7" style="position:absolute;left:3px;bottom:3px;${box7};display:grid"><div style="display:flex;gap:3px;align-items:center"><span>1.2M views</span><span style="width:.5px;align-self:stretch;background:#888"></span>${c}${r}</div>${bar}</div>`;
+  const bar = ratio ? `<i style="display:block;height:1.35px;margin-top:.9px;border-radius:1px;background:linear-gradient(90deg,#f1f1f1 96%,#ff4e45 96%)"></i>` : "";
+  const c = count ? `<span style="display:flex;gap:1.35px;align-items:center">${ico7("like", 4.95, "#fff")}<span>48K</span></span>` : "", r = ratio ? `<span>96%</span>` : "";
+  const box7 = "background:rgba(0,0,0,.75);border-radius:2px;padding:1.2px 2.3px;font-size:4.5px;font-weight:600;color:#fff;line-height:1;align-content:center";
+  if (pos === "NEXT_TO_VIEW_COUNT") return `<div class="fb7" style="position:absolute;left:3px;bottom:3px;${box7};display:grid"><div style="display:flex;gap:2px;align-items:center;justify-content:center"><span>1.2M views</span><span style="width:.5px;height:4.5px;background:#888"></span>${c}${r}</div>${bar}</div>`;
   // stacked: the like bar spans the badge right under the ratio (it had no width in the centred grid, so
   // the badge only showed an empty strip at its bottom, Max, Nov 25), and at MIDDLE_RIGHT the badge ends
   // under the Watch later button and above the duration badge (FeedEngagementCountsPatch: top =
-  // max(minTop, middle - height / 2), which is about 12 px on this thumbnail) instead of covering either
-  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:12.5px" : "left:3px;top:3px";
-  return `<div class="fb7" style="position:absolute;${at7};${box7};font-size:4.6px;line-height:1.05;display:grid;justify-items:center;gap:.5px;padding-bottom:1px">${c}${r}${bar.replace("margin-top:1px", "margin-top:0;justify-self:stretch")}</div>`;
+  // max(minTop, middle - height / 2)) instead of covering either
+  const at7 = pos === "MIDDLE_RIGHT" ? "right:3px;top:50%;translate:0 -50%" : "left:3px;top:3px";
+  return `<div class="fb7" style="position:absolute;${at7};${box7};font-size:4.15px;display:grid;justify-items:center;gap:.6px">${c}${r}${bar.replace("margin-top:.9px", "margin-top:0;justify-self:stretch")}</div>`;
 }
 function feedLikeScen(key, plan) {
   AWAY.add("morphe_" + key);
@@ -1715,8 +1720,8 @@ function feedLikeScen(key, plan) {
     const o = plan(v), d = `<span style="position:absolute;right:3px;top:3px;width:9px;height:9px;border-radius:50%;background:rgba(0,0,0,.6);display:grid;place-items:center">${ico7("clock", 6, "#fff")}</span>`;
     // the stock badges: views at the bottom left (or none where the like row takes its place), the duration at the bottom right
     const base = `${o.pos === "NEXT_TO_VIEW_COUNT" && (o.count || o.ratio) ? "" : `<span class="ctx7" style="position:absolute;left:3px;bottom:3px;background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600">1.2M views</span>`}<span style="position:absolute;right:3px;bottom:3px;background:rgba(0,0,0,.75);border-radius:2px;padding:1px 2.5px;font-size:5px;font-weight:600">12:04</span>${d}`;
-    box.innerHTML = device("port", pageRows(feed7(big7(3, "Building a tiny cabin", base) + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats"))));
-    const dev = box.querySelector(".dev"), th = dev.querySelector("div[style*='height:38px']"); // big7's thumbnail
+    box.innerHTML = device("port", pageRows(feed7(big7(3, "Building a tiny cabin", base, "aspect-ratio:16/9;margin:0 -6px;border-radius:0") + row7(2, "Night train to Bodø") + row7(4, "Lo-fi beats"))));
+    const dev = box.querySelector(".dev"), th = dev.querySelector(".th7"); // big7's thumbnail
     // the badge comes in once the counts are fetched, as in the app
     const badge = feedLikeBadge(o);
     if (badge && th) at(400, () => { th.insertAdjacentHTML("beforeend", badge); const b = th.querySelector(".fb7"); b.classList.add("chg7"); b.animate([{ opacity: 0, scale: .8 }, { opacity: 1, scale: 1 }], { duration: 260, easing: "ease-out" }); if (o.pos === "NEXT_TO_VIEW_COUNT") th.querySelectorAll(":scope > span").forEach(s => { if (/views/.test(s.textContent)) s.remove(); }); });

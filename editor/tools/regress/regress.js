@@ -1704,6 +1704,141 @@ const CHECKS = [
     },
   },
   {
+    name: "outlines-follow-the-parts-shape",
+    report: "Nov 28: Action bar: the green outline doesn't curve to the element, rounded elements get a rounded-square outline; for all UI elements",
+    async run() {
+      const { p, ctx } = await open();
+      // the ring's corner radius against the shape it surrounds: half the height for a pill or a round button
+      const ring = k => p.evaluate(async k => {
+        setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 900));
+        const e = document.querySelector(`#stage [data-k="${k}"]`); if (!e) return null;
+        const fit = e.classList.contains("fit"), st = getComputedStyle(e, fit ? "::before" : null), r = e.getBoundingClientRect();
+        const h = fit ? r.height - parseFloat(e.style.getPropertyValue("--ft")) - parseFloat(e.style.getPropertyValue("--fb")) : r.height;
+        const w = fit ? r.width - parseFloat(e.style.getPropertyValue("--fl")) - parseFloat(e.style.getPropertyValue("--fr")) : r.width;
+        return { rad: parseFloat(st.borderTopLeftRadius), half: Math.min(w, h) / 2, glow: getComputedStyle(e, "::after").borderTopLeftRadius };
+      }, k);
+      const want = { morphe_hide_channel_bar: "the channel pill", morphe_hide_channel_profile_subscribe_button: "the Subscribe pill", morphe_hide_like_dislike_button: "the Like and Dislike pill", morphe_hide_cast_button: "the round Cast button", morphe_hide_autoplay_button: "the Autoplay switch" };
+      const bad = [];
+      for (const [k, what] of Object.entries(want)) {
+        const r = await ring(k);
+        if (!r) { bad.push(`${k}: not in the preview`); continue; }
+        if (r.rad < r.half * .85) bad.push(`${what} (${k}): ring corners ${r.rad}px on a ${(r.half * 2).toFixed(0)}px tall shape`);
+      }
+      ok(!bad.length, "the outline doesn't follow the part's shape:\n       " + bad.join("\n       "));
+      await ctx.close();
+    },
+  },
+  {
+    name: "hidden-parent-locks-what-it-contains",
+    report: "Nov 28: Action bar > Subscribe button does not work when Channel and Subscribe button is hidden; Join button appears as if it were in the Action bar; Channel bar being hidden just hides the profile picture",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_hide_channel_profile_subscribe_button"); await new Promise(r => setTimeout(r, 700));
+        const out = {};
+        setPref("morphe_hide_channel_profile_button", true); commit();
+        out.subLocked = !parentsOk("morphe_hide_channel_profile_subscribe_button");
+        setPref("morphe_hide_channel_profile_button", false); setPref("morphe_hide_channel_bar", true); commit();
+        out.profLocked = !parentsOk("morphe_hide_channel_profile_button");
+        // Hide channel bar removes the whole channel element: avatar, name and Subscribe
+        const sub = document.querySelector('#stage [data-k="morphe_hide_channel_profile_subscribe_button"]');
+        out.subShown = !!(sub && sub.getClientRects().length);
+        setPref("morphe_hide_channel_bar", false); setPref("morphe_hide_join_membership_button", false); commit();
+        const join = document.querySelector('#stage [data-k="morphe_hide_join_membership_button"]');
+        out.joinInChannel = !!(join && join.closest('[data-k="morphe_hide_channel_profile_button"]') && join.closest('[data-k="morphe_hide_channel_profile_subscribe_button"]'));
+        return out;
+      });
+      ok(r.subLocked, "Subscribe button is not locked while Channel and Subscribe button is hidden");
+      ok(r.profLocked, "Channel and Subscribe button is not locked while Channel bar is hidden");
+      ok(!r.subShown, "Hide channel bar left the Subscribe button (and name) in the preview");
+      ok(r.joinInChannel, "the Join button is not part of the channel element next to Subscribe");
+      await ctx.close();
+    },
+  },
+  {
+    name: "feed-like-badge-fits-its-thumbnail",
+    report: "Nov 28: Feed thumbnail like position: black pill 10% smaller, elements centred in it, a larger YouTube window so the pill's place reads clearly",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_ryd_feed_counts_position"); await new Promise(r => setTimeout(r, 1600));
+        const b = document.querySelector("#canvas .fb7"); if (!b) return null;
+        const th = b.closest(".th7"), dev = b.closest(".dev"), q = b.getBoundingClientRect(), t = th.getBoundingClientRect(), d = dev.getBoundingClientRect();
+        const dur = [...th.querySelectorAll(":scope > span")].find(s => /12:04/.test(s.textContent)).getBoundingClientRect();
+        const row = b.firstElementChild.getBoundingClientRect(), k = d.width / dev.offsetWidth;
+        return { fs: parseFloat(getComputedStyle(b).fontSize), ratio: t.width / t.height, full: (t.width / k) / dev.clientWidth, over: q.right - dur.left, side: Math.abs((row.left - q.left) - (q.right - row.right)) / k };
+      });
+      ok(r, "no like badge drawn");
+      ok(r.fs <= 4.55, `the badge text is ${r.fs}px (10% smaller than 5px is 4.5px)`);
+      ok(r.ratio > 1.7 && r.full > .99, `the thumbnail is ${r.ratio.toFixed(2)}:1 and ${(r.full * 100).toFixed(0)}% of the screen wide`);
+      ok(r.over < 0, `the badge runs ${r.over.toFixed(1)}px into the duration badge`);
+      ok(r.side < .6, `the badge's contents are ${r.side.toFixed(1)}px off its middle`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "story-hands-sized-per-story",
+    report: "Nov 28: Rolling number animations: finger icon 20% smaller; Open system share sheet: finger icon 10% smaller",
+    async run() {
+      const { p, ctx } = await open();
+      const size = k => p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 700)); const d = document.querySelector("#canvas .dev"); return d ? [parseFloat(d.style.getPropertyValue("--fz7")), ...DEV_SIZE[d.classList.contains("land") ? "land" : "port"]] : null; }, k);
+      for (const [k, f] of [["morphe_disable_rolling_number_animations", .8], ["morphe_open_system_share_sheet", .9]]) {
+        const s = await size(k); ok(s, `${k}: no phone`);
+        const base = Math.min(40, Math.min(s[1], s[2]) * .3);
+        ok(Math.abs(s[0] - base * f) < .2, `${k}: hand ${s[0]}px, want ${(base * f).toFixed(1)}px (${f * 100}% of ${base.toFixed(1)}px)`);
+      }
+      await ctx.close();
+    },
+  },
+  {
+    name: "discretion-dialog-tap-lands-on-its-button",
+    report: "Nov 28: Remove viewer discretion dialog: the area to press is faded, and the finger spawns at the wrong part instead of pressing I understand",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        stopScenario(); setPicker(false); goToSetting("morphe_remove_viewer_discretion_dialog");
+        const t0 = performance.now(); let hit = null;
+        while (performance.now() - t0 < 4000 && !hit) {
+          await new Promise(r => requestAnimationFrame(r));
+          const f = document.querySelector("#canvas .dev #scFinger.tap");
+          if (f) { const dev = f.closest(".dev"), b = dev.querySelector(".ok7").getBoundingClientRect(), q = f.getBoundingClientRect(), d = dev.getBoundingClientRect(), k = d.width / dev.offsetWidth, band = devBand(dev);
+            hit = { inside: q.left >= b.left - 1 && q.left <= b.right + 1 && q.top >= b.top - 1 && q.top <= b.bottom + 1, below: (b.bottom - d.top) / k - band[1] }; }
+        }
+        return hit;
+      });
+      ok(r, "the hand never tapped");
+      ok(r.inside, "the hand tapped outside the I understand button");
+      ok(r.below <= 0, `the I understand button reaches ${r.below.toFixed(0)}px into the faded cut`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "comparisons-keep-their-place-as-the-preview-resizes",
+    report: "Nov 28: Remove viewer discretion dialog: on the second loop the preview moves up when it should stay put; may happen everywhere, bug pass",
+    async run() {
+      const { p, ctx } = await open();
+      await p.evaluate(() => { setPicker(false); quickSection("watch"); }); await new Promise(r => setTimeout(r, 400));
+      const keys = await p.evaluate(() => Object.keys(SCN).filter(k => PREF[k]));
+      const bad = [];
+      for (const k of keys) {
+        const r = await p.evaluate(async k => {
+          stopScenario(); pairMemo = null; playScenario(k); await new Promise(r => setTimeout(r, 120));
+          const top = () => { const d = document.querySelector("#canvas .scbox"); return d ? d.getBoundingClientRect().top : null; };
+          if (scTurns) return null; // a story that turns a phone stays in the middle (its turn sweeps past both ends) and is laid out again mid-story anyway
+          const c = $("canvas"), a = top();
+          // the preview area still opening (or closing) while a round is on screen: the canvas grows
+          c.style.bottom = "-60px"; await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+          const b = top(); c.style.bottom = ""; return a === null ? null : b - a;
+        }, k);
+        if (r !== null && Math.abs(r) > 1) bad.push(`${k}: moved ${r.toFixed(0)}px`);
+      }
+      await p.evaluate(() => stopScenario());
+      ok(keys.length > 100, `setup: only ${keys.length} comparisons found`);
+      ok(!bad.length, `${bad.length} comparison(s) move when the preview's height changes:\n       ` + bad.slice(0, 12).join("\n       "));
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

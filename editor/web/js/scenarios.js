@@ -69,13 +69,16 @@ function devBand(dev) {
 // A story phone's hand is sized from the phone (30% of its short side, at most the live preview's 40px):
 // a fixed 40px hand covered almost half of a portrait phone (Max, Nov 25: Rolling number animations,
 // Open system share sheet, Select text, Drag and drop and others too big).
-const FINGER_K = .3, fingerSize = (w, h) => Math.min(40, Math.min(w, h) * FINGER_K).toFixed(1) + "px";
+// FINGER_SCALE: a story whose hand still reads too big next to what it touches (Max, Nov 28: Rolling
+// number animations 20% smaller, Open system share sheet 10% smaller); every phone of that story uses it.
+const FINGER_K = .3, FINGER_SCALE = { morphe_disable_rolling_number_animations: .8, morphe_open_system_share_sheet: .9 };
+const fingerSize = (w, h, k = FINGER_SCALE[scKey] || 1) => (Math.min(40, Math.min(w, h) * FINGER_K) * k).toFixed(1) + "px";
 function device(orient, inner, extra = "", crop = scKey && CROP7[scKey]) {
   const [w, h] = DEV_SIZE[orient], c = crop === true ? "top" : crop || "";
-  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;--fz7:${fingerSize(w, h)};${extra}"><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
+  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;--fz7:${fingerSize(w, h)};${extra}" data-fk="${FINGER_SCALE[scKey] || 1}"><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
 }
 const playerArea = (i, overlay = "") => `<div class="dv-video" style="background:${ART[i]}">${overlay}</div><div class="dv-below"><i></i><i></i><i></i></div>`;
-function setOrient(dev, orient) { const [w, h] = DEV_SIZE[orient]; dev.classList.remove("port", "land"); dev.classList.add(orient); dev.style.width = w + "px"; dev.style.height = h + "px"; dev.style.setProperty("--fz7", fingerSize(w, h)); }
+function setOrient(dev, orient) { const [w, h] = DEV_SIZE[orient]; dev.classList.remove("port", "land"); dev.classList.add(orient); dev.style.width = w + "px"; dev.style.height = h + "px"; dev.style.setProperty("--fz7", fingerSize(w, h, +dev.dataset.fk || 1)); }
 // in a pair, a phone changing shape re-lays out the pair, and everything glides there (see fitDev)
 function rotate(dev, orient) { const g = dev.closest(".duo7.gen"); if (g) { g._turn = true; g._was = g._was || pairSnap(g); } setOrient(dev, orient); fitDevSoon(orient); }
 // Performance (Max, Nov 22): a phone turning and its caption changing in the same step, or both phones
@@ -98,7 +101,7 @@ function fitScale(w, h) {
   // only a few px of black stay above, below and beside the phones (Max, Nov 23: the phones take the room);
   // a story where a phone turns keeps a little more, for the corners of the phone while it is mid-turn
   const t = scTurns ? 6 : 0;
-  const availW = canvas.clientWidth - 6 - t, availH = canvas.clientHeight - (canvas.querySelector(".cap") ? 30 : 4) - (foot && foot.textContent.trim() ? 24 : 0) - (sit ? sit.offsetHeight + 4 : 0) - 2 - t;
+  const availW = canvas.clientWidth - 6 - t, availH = canvas.clientHeight - (canvas.querySelector(".cap") ? 30 : 6) - (foot && foot.textContent.trim() ? 24 : 0) - (sit ? sit.offsetHeight + 4 : 0) - 2 - t;
   return Math.max(.35, Math.min(3, availW / (w + 2 + t), availH / (h + 2 + t)));
 }
 // The pair is measured, not estimated: an invisible copy with every transition switched off shows
@@ -702,8 +705,15 @@ SCENES.watch = () => {
   const act = (k, icon, label) => C(k, `<div class="chip">${I(icon)}${label}</div>`);
   const likeChip = C("hide_like_dislike_button", `<div class="chip likechip" style="padding:0;gap:0"><span style="display:flex;gap:6px;align-items:center;padding:0 10px 0 12px;border-right:1px solid #444">${I("like")}<span class="rollnum" data-n="48">48K</span></span><span style="padding:0 12px;display:flex;gap:6px;align-items:center">${I("dislike")}${C("ryd_enabled", `<span>${dislike}</span>`, { tag: "span", also: "ryd_dislike_percentage" })}</span></div>`);
   const subBtn = `<div class="chip subbtn" style="background:#f1f1f1;color:#0f0f0f">Subscribe</div>`;
-  const channelChip = C("hide_channel_profile_button", `<div class="chip" style="padding:0 4px 0 4px;gap:6px">${C("hide_channel_bar", av(0, 26), { tag: "span" })}<span style="font-size:12.5px">Fjord & Timber</span>${C("hide_channel_profile_subscribe_button", `<span class="chip subbtn" style="height:26px;background:#f1f1f1;color:#0f0f0f;font-size:12px;padding:0 10px">Subscribe</span>`, { tag: "span" })}</div>`);
-  const joinChip = C("hide_join_membership_button", `<div class="chip" style="background:transparent;border:1px solid #555">Join</div>`);
+  // The channel element (compact_channel_bar): avatar and name, then Join and Subscribe
+  // (compact_channel_bar_animated_buttons). Read from Morphe's filters: Hide channel bar removes every
+  // compact_channel_bar (LayoutComponentsFilter), so the whole element, not only the avatar; Hide channel
+  // and Subscribe button removes it in the action bar or in the channel row above it, Hide Subscribe button
+  // its Join and Subscribe buttons (VideoActionButtonsFilter), Hide Join button its Join button
+  // (compact_channel_bar_inner with "sponsorships"). Join is part of this element, never an action button.
+  const subGroup = (join, sub) => C("hide_channel_profile_subscribe_button", C("hide_join_membership_button", join, { tag: "span", style: "display:inline-flex" }) + sub, { tag: "span", style: "display:inline-flex;align-items:center;gap:6px;flex:none" });
+  const channelEl = (inner, o = {}) => C("hide_channel_bar", C("hide_channel_profile_button", inner, { style: o.inner || "" }), { blk: o.blk, style: o.outer || "" });
+  const channelChip = channelEl(`<div class="chip" style="padding:0 4px 0 4px;gap:6px">${av(0, 26)}<span style="font-size:12.5px">Fjord & Timber</span>${subGroup(`<span class="chip" style="height:26px;background:transparent;border:1px solid #555;font-size:12px;padding:0 10px">Join</span>`, `<span class="chip subbtn" style="height:26px;background:#f1f1f1;color:#0f0f0f;font-size:12px;padding:0 10px">Subscribe</span>`)}</div>`, { outer: "display:flex;flex:none", inner: "display:flex" });
   const rest = [act("hide_comments_button", "comment", "1.2K"), act("hide_share_button", "share", "Share"), act("hide_save_button", "save", "Save"), act("hide_remix_button", "remix", "Remix"), act("hide_thanks_button", "dollar", "Thanks"),
     act("hide_download_button", "dl", "Download"), act("hide_clip_button", "clip", "Clip"), act("hide_ask_button", "spark", "Ask"),
     act("hide_hype_button", "fire", "Hype"), act("hide_shop_button", "shop", "Shop"), act("hide_connect_button", "link", "Connect"), act("hide_promote_button", "speed", "Promote"), act("hide_stop_ads_button", "close", "Stop ads"),
@@ -716,12 +726,12 @@ SCENES.watch = () => {
   // (the compact channel bar: avatar, name and Subscribe in one pill), then like and dislike, then share and
   // save in the server's order, then every item of the minimal layout's menu. One row has no channel row
   // above it; two rows moves that first item into its own row (name beside the avatar, Subscribe at the end).
-  const actions = modern || classic ? channelChip + joinChip + likeChip + rest : likeChip + rest;
+  const actions = modern || classic ? channelChip + likeChip + rest : likeChip + rest;
   const rowStyle = "display:flex;gap:8px;overflow-x:auto;scrollbar-width:none";
   // the channel row above the buttons: with the subscribe button at its end (two rows, minimal), without it
   // when the button leads the row of pills (classic)
-  const classicBar = C("hide_channel_bar", `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px">${av(0, 32)}<div style="flex:1;min-width:0"><span class="t1">${VIDEOS[0].c}</span> <span class="t2">412K</span></div>
-      ${classic ? "" : C("hide_join_membership_button", `<div class="chip" style="background:transparent;border:1px solid #555">Join</div>`) + subBtn}</div>`, { blk: 1 });
+  const classicBar = channelEl(`<div style="display:flex;align-items:center;gap:10px;padding:10px 12px">${av(0, 32)}<div style="flex:1;min-width:0"><span class="t1">${VIDEOS[0].c}</span> <span class="t2">412K</span></div>
+      ${subGroup(`<div class="chip" style="background:transparent;border:1px solid #555">Join</div>`, subBtn)}</div>`, { blk: 1 });
   return `<div style="background:#0f0f0f;height:330px;overflow-y:auto;scrollbar-width:thin;position:relative" class="inner-scroll">
     <div class="finger"></div>
     <div style="height:96px;position:relative">${videoFrame(0)}<div class="seek" style="bottom:0;left:0;right:0;border-radius:0"><div class="played" style="width:30%"></div></div></div>
@@ -1684,7 +1694,7 @@ function playScenario(k, prevValue) {
   const d = defaults[k], choices = entriesFor(k).filter(e => !sameVal(e.value, d));
   const ask = !self && PREF[k].type !== "boolean" && choices.length > 1 && sameVal(V(k), d) && (prevValue === undefined || sameVal(prevValue, d));
   const draw = () => {
-    clock.start("steps"); scKey = k; scPlaying = k + "=" + JSON.stringify(vals) + (askOnly ? "?" : ""); scStretch = stretch; scTold = toldInside(fn) || FOOT_OFF.has(k); scTurns = turnsPhone(fn) || SCN_TURNS.has(k); scCollect = [];
+    clock.start("steps"); scKey = k; scPlaying = k + "=" + JSON.stringify(vals) + (askOnly ? "?" : ""); scStretch = stretch; scTold = toldInside(fn) || FOOT_OFF.has(k); scTurns = turnsPhone(fn) || SCN_TURNS.has(k); canvas.classList.toggle("turns7", scTurns); scCollect = [];
     scDrawing = true;
     let failed = null;
     try { drawSides(); } catch (err) { failed = err; } finally { scDrawing = false; scKey = null; const list = scCollect; scCollect = null; if (!failed) startCollected(list); }

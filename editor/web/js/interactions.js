@@ -180,8 +180,10 @@ function revealInStage(els) {
 // the selected element changes size (a slider, text typed in by an animation).
 const paints = st => st.backgroundColor !== "rgba(0, 0, 0, 0)" || st.backgroundImage !== "none" || parseFloat(st.borderTopWidth) > 0 || parseFloat(st.borderBottomWidth) > 0 || st.boxShadow !== "none";
 function paintedBox(el) {
-  let l = 1e9, t = 1e9, r = -1e9, b = -1e9;
-  const add = q => { if (q.width < .5 || q.height < .5) return; l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom); };
+  let l = 1e9, t = 1e9, r = -1e9, b = -1e9, best = null, bestA = 0, items = 0, icons = 0;
+  const add = q => { if (q.width < .5 || q.height < .5) return; items++; l = Math.min(l, q.left); t = Math.min(t, q.top); r = Math.max(r, q.right); b = Math.max(b, q.bottom); };
+  // the biggest thing drawn inside: its corners are the shape the ring follows (ringRadius)
+  const shape = (q, st) => { const a = q.width * q.height; if (a > bestA) { bestA = a; best = { q, st }; } };
   const walk = n => {
     for (const c of n.childNodes) {
       if (c.nodeType === 3) { if (c.textContent.trim()) { const rg = document.createRange(); rg.selectNodeContents(c); for (const q of rg.getClientRects()) add(q); } continue; }
@@ -189,22 +191,46 @@ function paintedBox(el) {
       const st = getComputedStyle(c);
       if (st.display === "none" || st.visibility === "hidden" || st.opacity === "0") continue;
       const tag = c.tagName.toLowerCase();
-      if (tag === "svg" || tag === "img" || tag === "canvas" || paints(st)) add(c.getBoundingClientRect());
+      if (tag === "svg" || tag === "img" || tag === "canvas" || paints(st)) { const q = c.getBoundingClientRect(); add(q); if (tag !== "svg") shape(q, st); else icons++; }
       if (tag !== "svg" && st.overflow === "visible") walk(c); else if (tag !== "svg") add(c.getBoundingClientRect());
     }
   };
   walk(el);
-  return r > l ? { l, t, r, b } : null;
+  return r > l ? { l, t, r, b, best, icon: icons === 1 && items === 1 } : null;
+}
+// The ring follows the corners of what it surrounds (Max, Nov 28: the outline of a round button was a
+// rounded square; every part): a part that draws itself keeps its own corners (.rown, the outline takes
+// them); a part that only holds what it draws takes the corners of the biggest thing inside, when that
+// fills most of the ring (a pill, a round avatar or button), grown by the room between them; a lone icon
+// is round. Anything
+// else (text, a row of icons) keeps the usual slight rounding. --ring-r is also used by the flash glow
+// and the hold line, so all three share one shape.
+const cornerPx = (st, q) => { const v = st.borderTopLeftRadius, n = parseFloat(v) || 0; return Math.min(String(v).endsWith("%") ? n * Math.min(q.width, q.height) / 100 : n, Math.min(q.width, q.height) / 2); };
+// (a shadow alone, such as the slow pulse of a selected hidden part, gives no corners of its own)
+const fills = st => st.backgroundColor !== "rgba(0, 0, 0, 0)" || st.backgroundImage !== "none" || parseFloat(st.borderTopWidth) > 0 || parseFloat(st.borderBottomWidth) > 0;
+function ringRadius(el, box, u, st) {
+  // its own corners are read with .rown on, so the ring's rounding (.c.sel) is not read back as them
+  if (fills(st)) { el.classList.add("rown"); el.style.setProperty("--ring-r", Math.round(cornerPx(getComputedStyle(el), box)) + "px"); return; }
+  el.classList.remove("rown");
+  // a lone icon (a player button) is a round button, as its touch ripple is
+  if (u && u.icon) { el.style.setProperty("--ring-r", Math.round(Math.min(box.right - box.left, box.bottom - box.top) / 2) + "px"); return; }
+  const q = u && u.best && u.best.q, A = (box.right - box.left) * (box.bottom - box.top);
+  if (!q || !A || q.width * q.height < A * .5) { el.style.removeProperty("--ring-r"); return; }
+  const room = Math.max(0, Math.min(q.left - box.left, q.top - box.top, box.right - q.right, box.bottom - q.bottom));
+  const r = cornerPx(u.best.st, q);
+  el.style.setProperty("--ring-r", Math.round(Math.min(r + room, Math.min(box.right - box.left, box.bottom - box.top) / 2)) + "px");
 }
 function fitRing(el) {
   if (!el.isConnected || el.classList.contains("shade")) { el.classList.remove("fit"); return; }
   const st = getComputedStyle(el);
-  if (st.display === "none" || paints(st)) { if (st.display !== "none") el.classList.remove("fit"); return; }
-  const box = el.getBoundingClientRect(), u = paintedBox(el);
-  if (!u || !box.width) { el.classList.remove("fit"); return; }
+  if (st.display === "none") return;
+  const box = el.getBoundingClientRect();
+  if (paints(st)) { el.classList.remove("fit"); ringRadius(el, box, null, st); return; }
+  const u = paintedBox(el);
+  if (!u || !box.width) { el.classList.remove("fit"); ringRadius(el, box, null, st); return; }
   const P = 3; // breathing room between the content and the ring
   const g = [u.l - box.left, u.t - box.top, box.right - u.r, box.bottom - u.b].map(x => Math.max(0, Math.round(x - P)));
-  if (Math.max(...g) < 8) { el.classList.remove("fit"); return; }
+  if (Math.max(...g) < 8) { el.classList.remove("fit"); ringRadius(el, box, u, st); return; }
   // an unselected ghost's ring that would run into the edge of what clips it stays just inside; a
   // selected part's ring is drawn on the ring layer instead, which may run past the preview's border
   if (!el.classList.contains("sel")) {
@@ -213,6 +239,8 @@ function fitRing(el) {
   }
   ["--fl", "--ft", "--fr", "--fb"].forEach((v, i) => el.style.setProperty(v, g[i] + "px"));
   el.classList.add("fit");
+  // the fitted ring's box: the part's box less the gaps
+  ringRadius(el, { left: box.left + g[0], top: box.top + g[1], right: box.right - g[2], bottom: box.bottom - g[3] }, u, st);
 }
 let ringObs = null;
 function watchRing(el) {

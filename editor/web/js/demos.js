@@ -277,8 +277,8 @@ const argb = (v, fallback) => { const m = /^#([0-9a-f]{2})?([0-9a-f]{6})$/i.exec
 function swipeZones(ms = 900, labels = false) {
   const st = $("stage").firstElementChild; if (!st) return;
   st.querySelectorAll(".zones").forEach(z => z.remove());
-  const zw = Math.max(5, Math.min(50, Number(V("morphe_swipe_zone_width")) || 37));
-  const th = Math.max(10, Math.min(60, Number(V("morphe_swipe_speed_zone_height")) || 30));
+  const zw = slid("morphe_swipe_zone_width");
+  const th = slid("morphe_swipe_speed_zone_height");
   const act = side => V("morphe_swipe_" + side + "_zone");
   const name = side => { const v = act(side); return !v || v === "OFF" ? "Off" : entryLabel("morphe_swipe_" + side + "_zone", v); };
   const top = act("top") && act("top") !== "OFF";
@@ -301,7 +301,7 @@ function swipeZones(ms = 900, labels = false) {
 // setting; the other demos keep it short so they fit their loop)
 function swipeDemo(side, action, prefix = "", still = false, hold = 100) {
   const st = $("stage"), f = finger(), hud = $("hud"); if (!f || !hud) return;
-  const zw = Math.max(5, Math.min(50, Number(V("morphe_swipe_zone_width")) || 37)) / 100;
+  const zw = slid("morphe_swipe_zone_width") / 100;
   const W = st.clientWidth, H = st.firstElementChild.clientHeight, x = side === "top" ? W * .5 : side === "left" ? W * zw / 2 : W * (1 - zw / 2);
   if (!still) {
     swipeZones();
@@ -314,9 +314,9 @@ function swipeDemo(side, action, prefix = "", still = false, hold = 100) {
     const ic = action === "VOLUME" ? "vol" : action === "BRIGHTNESS" ? "bright" : "speed";
     const style = state.morphe_swipe_overlay_style || "HORIZONTAL";
     const circ = style.startsWith("CIRCULAR"), vert = style.startsWith("VERTICAL"), min = style.includes("MINIMAL");
-    const bgA = (Number(V("morphe_swipe_overlay_background_opacity")) || 0) / 100;
+    const bgA = slid("morphe_swipe_overlay_background_opacity") / 100;
     const col = argb(V(action === "VOLUME" ? "morphe_swipe_overlay_progress_volume_color" : action === "BRIGHTNESS" ? "morphe_swipe_overlay_progress_brightness_color" : "morphe_swipe_overlay_progress_speed_color"), "#fff");
-    const ts = Math.max(8, Math.min(30, Number(V("morphe_swipe_text_overlay_size")) || 14)) * .8;
+    const ts = slid("morphe_swipe_text_overlay_size") * .8;
     const txt = `<span class="hv" style="font-size:${ts}px;font-weight:600;color:#fff;font-variant-numeric:tabular-nums;white-space:nowrap">${action === "SPEED" ? "1.0x" : "20"}</span>`;
     let inner;
     // The minimal styles are Morphe's own reductions: the ring keeps a larger icon and loses its number,
@@ -358,7 +358,7 @@ function swipeDemo(side, action, prefix = "", still = false, hold = 100) {
 // needs more swiping per step, so the same swipe covers fewer steps (as in Morphe)
 const SPEED_STEPS = { STEP_005: .05, STEP_010: .1, STEP_025: .25 };
 function speedAt(fr) {
-  const step = SPEED_STEPS[V("morphe_swipe_speed_step")] || .05, sens = Math.max(1, Number(V("morphe_swipe_speed_sensitivity")) || 10);
+  const step = SPEED_STEPS[V("morphe_swipe_speed_step")] || .05, sens = slid("morphe_swipe_speed_sensitivity");
   const n = Math.floor(fr * 10 * (10 / sens) + 1e-6); // ticks this swipe covers
   return Math.min(8, 1 + n * step).toFixed(2).replace(/0$/, "") + "x";
 }
@@ -368,13 +368,13 @@ function speedAt(fr) {
 const VOL_STEPS = { STEPS_5: 5, STEPS_10: 10, STEPS_15: 15, STEPS_20: 20, STEPS_30: 30, STEPS_50: 50 };
 const volSteps = () => VOL_STEPS[V("morphe_swipe_volume_steps")] || 15; // device default: 15 on most phones
 function volAt(fr) {
-  const steps = volSteps(), dist = Math.max(1, Number(V("morphe_swipe_volume_distance")) || 10), start = Math.round(steps * .2);
+  const steps = volSteps(), dist = slid("morphe_swipe_volume_distance"), start = Math.round(steps * .2);
   const n = Math.min(steps, start + Math.floor(fr * (steps - start) * (10 / dist) + 1e-6)); return [n / steps, VE("morphe_volume_boost") ? Math.round(n / steps * 100) + "%" : String(n)]; // Morphe shows the step alone ("4"), or a percentage once Volume boost allows more than 100
 }
-function brightAt(fr) { const sens = Math.max(1, Number(V("morphe_swipe_brightness_sensitivity")) || 1), p = Math.min(100, Math.round(20 + 80 * fr / sens)); return [p / 100, p + (String(V("morphe_swipe_overlay_style")).startsWith("VERTICAL") ? "" : "%")]; } // the vertical bar has no room for the sign (as in Morphe)
+function brightAt(fr) { const sens = slid("morphe_swipe_brightness_sensitivity"), p = Math.min(100, Math.round(20 + 80 * fr / sens)); return [p / 100, p + (String(V("morphe_swipe_overlay_style")).startsWith("VERTICAL") ? "" : "%")]; } // the vertical bar has no room for the sign (as in Morphe)
 const swipeDead = () => Math.max(0, Math.min(.6, (Number(V("morphe_swipe_threshold")) || 0) / 300));
 // "Seek swipe sensitivity" (100 by default) scales how far a sideways swipe seeks
-const seekJump = () => { const s = Math.max(0, Math.round(90 * (Number(V("morphe_swipe_seek_sensitivity")) || 100) / 100)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
+const seekJump = () => { const s = Math.max(0, Math.round(90 * slid("morphe_swipe_seek_sensitivity") / 100)); return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`; };
 const speedSide = () => ["left", "right", "top"].find(x => V("morphe_swipe_" + x + "_zone") === "SPEED") || "right";
 // the overlay's look, held still on the first zone that has a gesture; dragging its slider redraws it live
 function stillHud() {

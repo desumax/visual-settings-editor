@@ -603,9 +603,13 @@ function controlFor(k) {
     // a range Morphe states in the description ("0-5000 ms", "(5-75)") makes a slider too, so a new
     // setting with one needs no entry here
     const sr = /\(?(\d+)\s*[-–]\s*(\d+)\s*(ms|dp|sp|%)?\)/.exec(String(p.summary || ""));
-    if (r || sr || /opacity|scale|strength|display_area/.test(k)) {
-      const [min, max] = r ? r[1] : sr ? [Number(sr[1]), Number(sr[2])] : [0, 100];
-      return `<div class="ctl side whl">${wheelHTML(k, min, max, 1, v, dis)}<input class="wsrc" type="range" min="${min}" max="${max}" step="1" value="${v}" data-set="${k}" style="--pct:${max > min ? Math.round((v - min) / (max - min) * 1000) / 10 : 0}%;--pf:${max > min ? Math.round((v - min) / (max - min) * 1000) / 1000 : 0}" ${dis} tabindex="-1" aria-hidden="true"><span class="val" data-val-of="${k}">${v}</span></div>`;
+    // Morphe's own range and step (its SeekBarConfig, catalogue "range") win; the guesses below are for a
+    // slider the catalogue does not know yet (Max, Nov 28: correctness pass, caption size went to 300% here
+    // while Morphe stops at 150%)
+    const sb = p.range;
+    if (sb || r || sr || /opacity|scale|strength|display_area/.test(k)) {
+      const [min, max] = sb ? [sb.min, sb.max] : r ? r[1] : sr ? [Number(sr[1]), Number(sr[2])] : [0, 100], step = sb && sb.step > 0 ? sb.step : 1;
+      return `<div class="ctl side whl">${wheelHTML(k, min, max, step, v, dis)}<input class="wsrc" type="range" min="${min}" max="${max}" step="${step}" value="${v}" data-set="${k}" style="--pct:${max > min ? Math.round((v - min) / (max - min) * 1000) / 10 : 0}%;--pf:${max > min ? Math.round((v - min) / (max - min) * 1000) / 1000 : 0}" ${dis} tabindex="-1" aria-hidden="true"><span class="val" data-val-of="${k}">${v}</span></div>`;
     }
     // a number without a stated range: the same wheel, open-ended upward (and below 0 only if it already is)
     const st = p.type === "float" ? .05 : 1, n = Number(v) || 0;

@@ -1907,6 +1907,80 @@ const CHECKS = [
     },
   },
   {
+    name: "light-strength-is-the-lights-opacity",
+    report: "Nov 28: Light strength doesn't appear to do anything (AmbientLightController: the light's paint alpha is the strength)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_enhanced_ambient_mode_strength"); await new Promise(r => setTimeout(r, 600));
+        const at = v => { setPrefs({ morphe_enhanced_ambient_mode: true, morphe_enhanced_ambient_mode_strength: v }); const d = document.createElement("div"); d.innerHTML = SCENES.ambient(); const l = d.querySelector('[data-k="morphe_enhanced_ambient_mode"] > div'); return l ? Number(l.style.opacity) : null; };
+        return [at(10), at(100)];
+      });
+      ok(r[0] != null, "setup: light layer not found");
+      ok(Math.abs(r[0] - .1) < .01 && Math.abs(r[1] - 1) < .01, `the light's opacity is ${r[0]} at 10% and ${r[1]} at 100% (Morphe: 0.1 and 1)`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "player-overlay-opacity-dims-the-video-not-the-buttons",
+    report: "Nov 28 correctness pass: Player overlay opacity is the dark scrim (CustomPlayerOverlayOpacityPatch), Control buttons background opacity the round backgrounds behind the buttons (HidePlayerOverlayButtonsPatch)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_player_overlay_opacity"); await new Promise(r => setTimeout(r, 600));
+        const alpha = c => { const m = /rgba?\(([^)]+)\)/.exec(c || ""); if (!m) return 0; const a = m[1].split(",").map(Number); return a.length > 3 ? a[3] : 1; };
+        const at = v => { setPrefs(v); renderStage(); const st = document.getElementById("stage"), ctrls = st.querySelector(".ctrls"), btn = st.querySelector('.ctrls [data-k="morphe_hide_cast_button"] .pbtn'), scrim = st.querySelector(".pscrim");
+          return { ctrls: ctrls ? Number(getComputedStyle(ctrls).opacity) : null, btn: btn ? alpha(getComputedStyle(btn).backgroundColor) : null, scrim: scrim ? alpha(getComputedStyle(scrim).backgroundColor) : null }; };
+        return { clear: at({ morphe_player_overlay_opacity: 0, morphe_player_control_buttons_background_opacity: 90, morphe_hide_player_control_buttons_background: false }),
+          full: at({ morphe_player_overlay_opacity: 100, morphe_player_control_buttons_background_opacity: 90 }),
+          hidden: at({ morphe_hide_player_control_buttons_background: true }) };
+      });
+      ok(r.clear.ctrls === 1, `the buttons fade to ${r.clear.ctrls} at overlay opacity 0 (Morphe keeps them, only the scrim goes)`);
+      ok(r.clear.scrim != null && r.clear.scrim < .01 && r.full.scrim > .3, `the scrim is ${r.clear.scrim} at 0% and ${r.full.scrim} at 100%`);
+      ok(r.clear.btn != null && Math.abs(r.clear.btn - .9) < .02, `a control button's round background is ${r.clear.btn} at 90% (Morphe: 0.9)`);
+      ok(r.hidden.btn != null && r.hidden.btn < .01, `with the backgrounds hidden a button still has ${r.hidden.btn}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "sliders-move-over-morphes-range",
+    report: "Nov 28 correctness pass: the wheels and previews used guessed ranges (caption size up to 300%, Morphe stops at 150%); SeekBarConfig ranges and clampToRange are the truth",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), out = {};
+        for (const k of ["morphe_caption_scale", "morphe_enhanced_ambient_mode_strength", "morphe_niconico_comments_font_size", "morphe_swipe_speed_zone_height"]) {
+          setPicker(false); goToSetting(k); await wait(500);
+          const w = document.querySelector(`#list .wheel[data-wheel="${k}"]`); out[k] = w ? [+w.dataset.min, +w.dataset.max, +w.dataset.step] : null;
+        }
+        setPrefs({ morphe_caption_scale: 300 }); const d = document.createElement("div"); d.innerHTML = SCENES.captions();
+        out.capPx = parseFloat(d.querySelector("#capLine").style.fontSize);
+        return out;
+      });
+      const want = { morphe_caption_scale: [30, 150, 5], morphe_enhanced_ambient_mode_strength: [10, 100, 5], morphe_niconico_comments_font_size: [12, 40, 1], morphe_swipe_speed_zone_height: [5, 75, 1] };
+      for (const k in want) ok(r[k] && r[k].join() === want[k].join(), `${k} wheel runs ${r[k]} (Morphe: ${want[k]})`);
+      ok(Math.abs(r.capPx - 21) < .2, `a caption size of 300% draws ${r.capPx}px captions (Morphe clamps to 150%: 21px)`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "material-you-themes-colour-new-content-indicators",
+    report: "Nov 28 correctness pass: Material You (Pure black) looked the same as Pure black; Morphe colours the new content dot and the notification count from the Material You palette (ThemeColorPatch.getIndicatorColor)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_theme_color_dark"); await new Promise(r => setTimeout(r, 600));
+        const at = v => { setPrefs({ morphe_theme_color_dark: v }); const d = document.createElement("div"); d.innerHTML = SCENES.look(); const n = d.querySelector(".ncount7"); const d2 = document.createElement("div"); d2.innerHTML = SCENES.nav(); const dot = d2.querySelector('[data-k="morphe_hide_navigation_new_content_dot"] > span');
+          return [n ? n.style.background : null, dot ? dot.style.background : null]; };
+        return { black: at("PURE_BLACK"), you: at("MATERIAL_YOU_PURE_BLACK") };
+      });
+      ok(r.black[0] && r.you[0], "setup: no notification count on the bell");
+      ok(r.black[0] !== r.you[0], `the count is ${r.you[0]} with Material You (Pure black), the same as Pure black`);
+      ok(r.black[1] && r.black[1] !== r.you[1], `the Subscriptions dot is ${r.you[1]} with Material You (Pure black) and ${r.black[1]} with Pure black`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

@@ -1186,7 +1186,7 @@ scen("playback", "remember_live_stream_position", (box, on) => {
 // speaker, which is not late: Off keeps delaying, so the picture now lags the sound; On drops the delay.
 scen("playback", "video_delay_bluetooth_only", (box, on) => {
   situation("Bluetooth headphones, then the phone speaker");
-  const ms = Number(V("morphe_video_delay")) > 0 ? Number(V("morphe_video_delay")) : 200;
+  const ms = slid("morphe_video_delay") > 0 ? slid("morphe_video_delay") : 200;
   const sync = ok => `${ico7(ok ? "check" : "close", 7, ok ? "#4caf50" : "#ff6b6b")} ${ok ? "In sync" : "Picture lags sound"}`; // short: two lines reached the Delay pill on a small phone (Nov 24 test)
   box.innerHTML = device("port", watch7(`<span class="out7 badge7" style="left:3px;top:3px">${ico7("headset", 6)} Bluetooth</span><span class="dl8 badge7" style="right:3px;top:3px">Delay ${ms} ms</span>` + prog7(35)));
   const dev = box.querySelector(".dev");
@@ -1543,8 +1543,8 @@ const NICO7 = ["8888888", "the stove!!", "cosy", "wow", "need this cabin", "lol"
 // 20 sp is 6 px in a story phone and a 7 s flight is 2.4 s, the pace the stories were drawn at.
 function nicoCfg(portrait, over = {}, force) {
   const P = force || portrait && V("morphe_niconico_comments_portrait") && V("morphe_niconico_comments_separate_portrait");
-  const g = (k, d) => { const v = Number(over[k] ?? V("morphe_niconico_comments_" + (P ? "portrait_" : "") + k)); return Number.isFinite(v) && v > 0 ? v : d; };
-  return { fs: 6 * g("font_size", 20) / 20, ms: Math.round(2400 * g("travel_duration", 7) / 7), area: Math.min(100, g("display_area", 100)), op: Math.min(1, (Number(V("morphe_niconico_comments_opacity")) || 100) / 100) };
+  const g = k => { const key = "morphe_niconico_comments_" + (P ? "portrait_" : "") + k; return slid(key, over[k] ?? V(key)); };
+  return { fs: 6 * g("font_size") / 20, ms: Math.round(2400 * g("travel_duration") / 7), area: g("display_area"), op: slid("morphe_niconico_comments_opacity") / 100 };
 }
 // the layer comments fly in: the top part of the video the display area allows (dashed when it is not all of it)
 const naLayer = (c = nicoCfg(false), css = "") => `<div class="na7" data-fs="${c.fs}" data-ms="${c.ms}" style="position:absolute;left:0;right:0;top:0;height:${c.area}%;overflow:hidden;opacity:${c.op};${c.area < 100 ? "outline:1px dashed rgba(255,255,255,.3);outline-offset:-1px;" : ""}${css}"></div>`;

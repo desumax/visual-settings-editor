@@ -767,7 +767,7 @@ SCENES.miniplayer = () => {
   const round = !VE("morphe_miniplayer_disable_rounded_corners");
   const glass = !!VE("morphe_miniplayer_glass");
   const docked = !!VE("morphe_miniplayer_docked");
-  const op = Number(VE("morphe_miniplayer_opacity") ?? 100) / 100;
+  const op = slid("morphe_miniplayer_opacity", VE("morphe_miniplayer_opacity")) / 100;
   const w = Math.max(130, Math.min(260, Number(VE("morphe_miniplayer_width_dip")) || 192));
   const ttl = (extra = "") => C("miniplayer_hide_title", `<div style="min-width:0;${extra}"><div style="font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(VIDEOS[0].t)}</div><div class="t2" style="font-size:11px">${VIDEOS[0].c}</div></div>`, { style: "flex:1;min-width:0" });
   const ic = (n, s = 20) => I(n, "ico", `style="width:${s}px;height:${s}px"`);
@@ -1323,7 +1323,7 @@ def("shorts", "vis", "hide_shorts_paused_overlay_buttons hide_shorts_save_sound_
   navBar = function (plain) {
     const html = base(plain);
     if (!V("morphe_navigation_bar_glass") || V("morphe_hide_navigation_bar")) return html;
-    const num = (k, d) => { const v = V("morphe_navigation_bar_glass_" + k), n = Number(v); return v === "" || v == null || !isFinite(n) ? d : n; };
+    const num = (k, d) => { const key = "morphe_navigation_bar_glass_" + k, v = V(key); return PREF[key] ? slid(key) : v === "" || v == null || !isFinite(Number(v)) ? d : Number(v); };
     const tpl = document.createElement("template"); tpl.innerHTML = html.trim();
     const bar = tpl.content.firstElementChild; if (!bar) return html;
     // the buttons drawn (a hidden one is drawn collapsed: "off") and the content of the widest: icon and label
@@ -1536,6 +1536,15 @@ function themeColor(dark, get = V) {
   if (THEME_YOU[t]) return youColor(t, dark);
   return (dark ? THEME_FIXED_DARK : THEME_FIXED_LIGHT)[t] || (dark ? "#0f0f0f" : "#ffffff");
 }
+// The new content indicators (the dot on Subscriptions, the count on the notification bell) are YouTube red;
+// a Material You theme, Pure black and White ones included, colours them from its palette instead
+// (ThemeColorPatch.getIndicatorColor: system accent1_100 dark, accent1_200 light, the count in neutral1_900).
+// Null: YouTube's own red.
+function indicatorColor(dark, get = V) {
+  if (typeof mode !== "undefined" && mode === "orig") return null;
+  const t = String(get(dark ? "morphe_theme_color_dark" : "morphe_theme_color_light") || "");
+  return /^MATERIAL_YOU_/.test(t) ? { bg: lchHex(dark ? 90 : 80, 36, YOU_SEED_HUE), ink: lchHex(10, 4, YOU_SEED_HUE) } : null;
+}
 // YouTube's foreground (text and icons) in a theme: its own white / black, or the other theme's colour
 function themeInk(dark, get = V) {
   const t = get(dark ? "morphe_theme_color_dark" : "morphe_theme_color_light");
@@ -1556,7 +1565,7 @@ SCENES.look = () => {
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 12px">
       ${wide ? "" : `<div style="width:24px;height:17px;border-radius:5px;background:#ff0033"></div><b style="font-size:16px;letter-spacing:-.4px">YouTube</b><div style="flex:1"></div>`}
       ${C("searchbar_type", wide ? `<div style="flex:1;display:flex;align-items:center;gap:8px;height:34px;border-radius:17px;background:${soft}.1);padding:0 12px;color:${dark ? "#aaa" : "#606060"};font-size:13px;min-width:250px">${I("search", "ico", 'style="width:18px;height:18px;fill:#aaa"')}Search YouTube</div>` : `<div class="pbtn">${I("search")}</div>`, { style: wide ? "flex:1" : "" })}
-      <div class="pbtn">${I("bell")}</div>
+      <div style="position:relative"><div class="pbtn">${I("bell")}</div><b class="ncount7" style="position:absolute;right:3px;top:4px;min-width:14px;height:14px;padding:0 3px;box-sizing:border-box;border-radius:7px;background:${(indicatorColor(dark) || {}).bg || "#cc0000"};color:${(indicatorColor(dark) || {}).ink || "#fff"};font-size:9px;line-height:14px;font-weight:500;text-align:center;font-family:Roboto,sans-serif">9+</b></div>
     </div>
     ${C("gradient_loading_screen", `<div style="margin:6px 12px;height:110px;border-radius:12px;background:${grad ? (dark ? "linear-gradient(110deg,#222 30%,#3a3a3a 50%,#222 70%)" : "linear-gradient(110deg,#e5e5e5 30%,#f5f5f5 50%,#e5e5e5 70%)") + " 0 0/300% 100%;animation:shimmer 1.4s linear infinite" : soft + ".1)"}"></div>
       <div style="margin:8px 12px;height:12px;width:70%;border-radius:6px;background:${soft}.1)"></div><div style="margin:6px 12px;height:12px;width:45%;border-radius:6px;background:${soft}.1)"></div>`, { blk: 1 })}

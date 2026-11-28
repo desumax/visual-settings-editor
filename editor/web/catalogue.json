@@ -34,7 +34,7 @@
    "experimental": false
   }
  ],
- "generatedBy": "visual-editor/tools/extract_catalogue.py",
+ "generatedBy": "editor/tools/extract_catalogue.py",
  "counts": {
   "preferences": 761,
   "settingsDeclared": 800,
@@ -5116,6 +5116,12 @@
    "patchDescription": "Adds options to hide and change the bottom navigation bar (such as the Shorts button) and the upper navigation toolbar.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/buttons/navigation/NavigationBarPatch.kt",
    "locationConfidence": "file-screen",
+   "range": {
+    "min": 60,
+    "max": 160,
+    "step": 5,
+    "unit": "%"
+   },
    "availability": "(S(\"morphe_navigation_bar_style\") != \"OPAQUE\")",
    "availabilityParents": []
   },
@@ -5152,6 +5158,12 @@
    "patchDescription": "Adds options to hide and change the bottom navigation bar (such as the Shorts button) and the upper navigation toolbar.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/buttons/navigation/NavigationBarPatch.kt",
    "locationConfidence": "file-screen",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "unit": "%"
+   },
    "availability": "(S(\"morphe_navigation_bar_style\") != \"OPAQUE\")",
    "availabilityParents": []
   },
@@ -5564,6 +5576,13 @@
    "patchDescription": null,
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/theme/SplashAnimationPatch.kt",
    "locationConfidence": "variable",
+   "range": {
+    "min": 1000,
+    "max": 3000,
+    "step": 200,
+    "unit": "s",
+    "divisor": 1000
+   },
    "when": "((V(21,30)))",
    "availability": "((U(\"isRive\")))",
    "availabilityParents": []
@@ -8087,7 +8106,13 @@
    "patch": null,
    "patchDescription": null,
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/misc/settings/SettingsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 14,
+    "step": 1,
+    "unit": ""
+   }
   },
   {
    "key": "morphe_spoof_device_dimensions",
@@ -11294,7 +11319,13 @@
    "patch": "Hide video action buttons",
    "patchDescription": "Adds options to hide video action buttons in fullscreen and portrait modes.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/buttons/action/HideVideoActionButtonsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 32,
+    "step": 1,
+    "unit": "dp"
+   }
   },
   {
    "key": "morphe_bypass_ambient_mode_restrictions",
@@ -11431,7 +11462,13 @@
    "patch": "Ambient mode",
    "patchDescription": "Adds Enhanced Ambient mode and options to force Ambient mode on, bypass its power saving restrictions, and disable it entirely or in fullscreen.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/hide/ambientmode/AmbientModePatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 5,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_enhanced_ambient_mode_dim_duration",
@@ -11463,7 +11500,13 @@
    "patch": "Ambient mode",
    "patchDescription": "Adds Enhanced Ambient mode and options to force Ambient mode on, bypass its power saving restrictions, and disable it entirely or in fullscreen.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/hide/ambientmode/AmbientModePatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 10,
+    "step": 1,
+    "unit": "s"
+   }
   },
   {
    "key": "morphe_enhanced_ambient_mode_dim_while_scrolling",
@@ -11547,7 +11590,14 @@
    "patch": "Ambient mode",
    "patchDescription": "Adds Enhanced Ambient mode and options to force Ambient mode on, bypass its power saving restrictions, and disable it entirely or in fullscreen.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/hide/ambientmode/AmbientModePatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 30,
+    "step": 1,
+    "unit": "s",
+    "divisor": 10
+   }
   },
   {
    "key": "morphe_enhanced_ambient_mode_strength",
@@ -11575,7 +11625,13 @@
    "patch": "Ambient mode",
    "patchDescription": "Adds Enhanced Ambient mode and options to force Ambient mode on, bypass its power saving restrictions, and disable it entirely or in fullscreen.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/hide/ambientmode/AmbientModePatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 100,
+    "step": 5,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_auto_captions_style",
@@ -11690,7 +11746,13 @@
    "patch": null,
    "patchDescription": null,
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/captions/CaptionViewportPatch.kt",
-   "locationConfidence": "variable"
+   "locationConfidence": "variable",
+   "range": {
+    "min": 30,
+    "max": 150,
+    "step": 5,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_captions_advanced",
@@ -14761,7 +14823,13 @@
    "patch": "Translate live chat",
    "patchDescription": "Adds an option to translate live chat and live chat replay messages.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/livechat/LiveChatTranslatePatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 20,
+    "max": 500,
+    "step": 20,
+    "unit": ""
+   }
   },
   {
    "key": "morphe_live_chat_translate_provider",
@@ -15285,6 +15353,12 @@
    "patchDescription": "Adds options to change the in-app minimized player. Patching 21.28.208 and lower has more miniplayer types to choose from.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/miniplayer/MiniplayerPatch.kt",
    "locationConfidence": "variable",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "unit": "%"
+   },
    "when": "((!V(21,29)))",
    "availability": "((S(\"morphe_miniplayer_type\")) === \"MODERN_1\")",
    "availabilityParents": [
@@ -15563,7 +15637,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 100,
+    "step": 10,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_niconico_comments_ended_premieres",
@@ -15619,7 +15699,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 12,
+    "max": 40,
+    "step": 1,
+    "unit": "sp"
+   }
   },
   {
    "key": "morphe_niconico_comments_hide_crowded",
@@ -15731,7 +15817,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 100,
+    "step": 10,
+    "unit": ""
+   }
   },
   {
    "key": "morphe_niconico_comments_max_refresh_rate",
@@ -15759,7 +15851,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 30,
+    "max": 150,
+    "step": 30,
+    "unit": "Hz"
+   }
   },
   {
    "key": "morphe_niconico_comments_opacity",
@@ -15787,7 +15885,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 100,
+    "step": 10,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_niconico_comments_pip",
@@ -15879,7 +15983,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 100,
+    "step": 10,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_niconico_comments_portrait_font_size",
@@ -15915,7 +16025,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 12,
+    "max": 40,
+    "step": 1,
+    "unit": "sp"
+   }
   },
   {
    "key": "morphe_niconico_comments_portrait_travel_duration",
@@ -15951,7 +16067,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 3,
+    "max": 15,
+    "step": 1,
+    "unit": "s"
+   }
   },
   {
    "key": "morphe_niconico_comments_separate_portrait",
@@ -16071,7 +16193,13 @@
    "patch": "Niconico comments",
    "patchDescription": "Adds an option to show live chat and chat replay as comments that scroll across the video.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/niconicocomments/NiconicoCommentsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 3,
+    "max": 15,
+    "step": 1,
+    "unit": "s"
+   }
   },
   {
    "key": "morphe_disable_notification_media_seekbar",
@@ -16688,7 +16816,13 @@
    "patch": "Hide player overlay buttons",
    "patchDescription": "Adds options to hide the Cast button, the player Autoplay, Captions, Previous & Next buttons, and to hide or change the opacity of the player control buttons background.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/buttons/overlay/HidePlayerOverlayButtonsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_player_overlay_opacity",
@@ -16711,7 +16845,13 @@
    "patch": "Custom player overlay opacity",
    "patchDescription": "Adds an option to change the opacity of the video player background when player controls are visible.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/layout/player/overlay/CustomPlayerOverlayOpacityPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_playlist_panel_button",
@@ -19558,6 +19698,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 1,
+    "max": 10,
+    "step": 1,
+    "unit": ""
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") === \"BRIGHTNESS\" || S(\"morphe_swipe_right_zone\") === \"BRIGHTNESS\" || S(\"morphe_swipe_top_zone\") === \"BRIGHTNESS\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -19747,6 +19893,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 100,
+    "step": 1,
+    "unit": "%"
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") != \"OFF\" || S(\"morphe_swipe_right_zone\") != \"OFF\" || S(\"morphe_swipe_top_zone\") != \"OFF\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -20091,7 +20243,13 @@
    "patch": "Swipe controls",
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 50,
+    "max": 300,
+    "step": 10,
+    "unit": "%"
+   }
   },
   {
    "key": "morphe_swipe_speed_sensitivity",
@@ -20117,6 +20275,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 1,
+    "max": 50,
+    "step": 1,
+    "unit": ""
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") === \"SPEED\" || S(\"morphe_swipe_right_zone\") === \"SPEED\" || S(\"morphe_swipe_top_zone\") === \"SPEED\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -20193,6 +20357,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 5,
+    "max": 75,
+    "step": 1,
+    "unit": "%"
+   },
    "availability": "(S(\"morphe_swipe_top_zone\") != \"OFF\")",
    "availabilityParents": [
     "morphe_swipe_top_zone"
@@ -20222,6 +20392,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 1,
+    "max": 30,
+    "step": 1,
+    "unit": "sp"
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") != \"OFF\" || S(\"morphe_swipe_right_zone\") != \"OFF\" || S(\"morphe_swipe_top_zone\") != \"OFF\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -20325,6 +20501,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 1,
+    "max": 50,
+    "step": 1,
+    "unit": ""
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") === \"VOLUME\" || S(\"morphe_swipe_right_zone\") === \"VOLUME\" || S(\"morphe_swipe_top_zone\") === \"VOLUME\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -20440,6 +20622,12 @@
    "patchDescription": "Adds options to enable and configure volume and brightness swipe controls.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/interaction/swipecontrols/SwipeControlsPatch.kt",
    "locationConfidence": "exact",
+   "range": {
+    "min": 5,
+    "max": 50,
+    "step": 1,
+    "unit": "%"
+   },
    "availability": "(S(\"morphe_swipe_left_zone\") != \"OFF\" || S(\"morphe_swipe_right_zone\") != \"OFF\")",
    "availabilityParents": [
     "morphe_swipe_left_zone",
@@ -21353,7 +21541,13 @@
    "patch": "Video delay",
    "patchDescription": "Adds an option to delay the video, to keep it in sync with laggy Bluetooth audio.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/video/delay/VideoDelayPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 0,
+    "max": 5000,
+    "step": 25,
+    "unit": "ms"
+   }
   },
   {
    "key": "morphe_video_delay_bluetooth_only",
@@ -21933,7 +22127,14 @@
    "patch": "Voice over translation",
    "patchDescription": "Adds additional voice over languages using text-to-speech synchronized to the video playback.",
    "sourceFile": "patches/src/main/kotlin/app/morphe/patches/youtube/video/voiceovertranslation/VoiceOverTranslationPatch.kt",
-   "locationConfidence": "exact"
+   "locationConfidence": "exact",
+   "range": {
+    "min": 10,
+    "max": 25,
+    "step": 1,
+    "unit": "x",
+    "divisor": 10
+   }
   },
   {
    "key": "morphe_vot_mymemory_email",

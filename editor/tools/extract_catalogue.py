@@ -192,6 +192,31 @@ def load_settings():
 
 SETTINGS, FIELD_TO_KEY, RENAMES = load_settings()
 
+# Sliders: Morphe registers each one's range with SeekBarPreference.register(new SeekBarConfig(SETTING,
+# min, max, step, unit[, divisor[, labels]])), and clampToRange keeps every read inside it. The editor's
+# wheel and every preview that reads the value use this range, so they move the way Morphe does.
+def load_seekbars():
+    out = {}
+    for f in (ROOT / "extensions").rglob("*.java"):
+        if f.relative_to(ROOT / "extensions").parts[0] not in ("shared", "shared-youtube", "youtube"): continue
+        text = f.read_text(errors="ignore")
+        if "SeekBarConfig(" not in text: continue
+        for m in re.finditer(r'new\s+SeekBarConfig\(\s*(?:\w+\.)?(\w+)\s*,\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*([^,]+?)\s*,\s*"([^"]*)"\s*(?:,\s*([^,)]+?)\s*)?[,)]', strip_comments(text)):
+            field, *nums, unit, div = m.groups()
+            vals = []
+            for n in nums + [div or "1"]:
+                n = CONSTS.get(n.split(".")[-1], n)
+                try: vals.append(int(str(n).rstrip("lL").replace("_", "")))
+                except ValueError: vals.append(None)
+            key = FIELD_TO_KEY.get(field)
+            if not key or None in vals[:3]: continue
+            r = {"min": vals[0], "max": vals[1], "step": vals[2] or 1, "unit": unit}
+            if vals[3] and vals[3] != 1: r["divisor"] = vals[3]
+            out[key] = r
+    return out
+
+SEEKBARS = load_seekbars()
+
 # --------------------------------------------------------------- availability rules
 # Setting.Availability classes decide when Morphe greys a preference out. Their isAvailable()
 # bodies are translated into small JS expressions over S("key") (current value) and V(maj, min)
@@ -575,6 +600,7 @@ for key, p in PREFS.items():
     }
     if entries:
         item["entries"] = [{"label": l, "value": v} for l, v in zip(entries, values or entries)]
+    if key in SEEKBARS: item["range"] = SEEKBARS[key]
     # version guards: the preference exists when any of its registrations' guards holds
     whens = [x["when"] for x in p["occurrences"]]
     if any(whens):

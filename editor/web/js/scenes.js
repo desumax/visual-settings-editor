@@ -20,12 +20,17 @@ function videoFrame(i = 0, extra = "") {
 // bottom row, segments on the seekbar, the skip button), so what is set under Player controls shows there
 // too (Max, round 136: one shared live preview). playerWith(add) draws it; add = { buttons, segs, time, over }.
 let playerAdd = null;
+const PLAYER_SCRIM = .42; // the darkness of YouTube's player scrim while the controls show (Player overlay opacity 100)
 function playerWith(add) { playerAdd = add; try { return SCENES.player(); } finally { playerAdd = null; } }
 SCENES.player = () => {
   const add = playerAdd || {};
+  // As in HidePlayerOverlayButtonsPatch: Control buttons background opacity is the alpha of the round
+  // background behind each control button and of the time pill (30 = YouTube's own), and Hide control
+  // buttons background removes those backgrounds. Player overlay opacity is the alpha of the dark scrim
+  // over the video (CustomPlayerOverlayOpacityPatch), not of the buttons (Max, Nov 28: correctness pass).
   const bgHidden = !!V("morphe_hide_player_control_buttons_background");
-  const shade = bgHidden ? 0 : (Number(V("morphe_player_control_buttons_background_opacity")) / 100);
-  const op = Number(V("morphe_player_overlay_opacity")) / 100;
+  const shade = bgHidden ? 0 : slid("morphe_player_control_buttons_background_opacity") / 100;
+  const op = slid("morphe_player_overlay_opacity") / 100;
   // "Show resolution on Quality button": 1080 instead of the FHD label
   const qual = `<span class="badge-txt">${V("morphe_video_quality_dialog_button_resolution") ? "1080" : "FHD"}</span>`;
   const list = [
@@ -43,11 +48,12 @@ SCENES.player = () => {
     ? `<div class="tray" role="group" aria-label="Buttons that are off"><div class="trayhead">Off · tap to preview, hold to add</div><div class="trayrow">${off.map(b => btn(b, "intray")).join("")}</div></div>` : "";
   return `<div class="video">
     ${videoFrame(0)}
-    ${C("hide_player_control_buttons_background", "", { also: "player_control_buttons_background_opacity", cls: "shade", style: `position:absolute;inset:0;background:rgba(0,0,0,${shade})` })}
-    <div class="ctrls" style="position:absolute;inset:0;opacity:${Math.max(op, .08)};pointer-events:none">
+    <div class="pscrim" style="position:absolute;inset:0;background:rgba(0,0,0,${(PLAYER_SCRIM * op).toFixed(3)});pointer-events:none"></div>
+    ${C("hide_player_control_buttons_background", "", { also: "player_control_buttons_background_opacity player_overlay_opacity", cls: "shade", style: "position:absolute;inset:0" })}
+    <div class="ctrls" style="position:absolute;inset:0;--pbg:rgba(0,0,0,${shade.toFixed(2)});pointer-events:none">
       <div style="position:absolute;left:6px;top:6px">${pb("hide_collapse_button", I("down"))}</div>
       <div style="position:absolute;right:6px;top:6px;display:flex;gap:2px;align-items:center">
-        ${C("hide_autoplay_button", `<div class="pbtn" style="width:48px"><div class="toggle-auto">${I("play")}</div></div>`)}
+        ${C("hide_autoplay_button", `<div class="pbtn nobg" style="width:48px"><div class="toggle-auto">${I("play")}</div></div>`)}
         ${pb("hide_captions_button", I("cc"))}${pb("hide_cast_button", I("cast"))}${pb("hide_settings_button", I("gear"))}
       </div>
       <div style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:flex;gap:28px;align-items:center">
@@ -255,7 +261,7 @@ function navBar(plain) {
   const iconOnly = !V("morphe_disable_icon_only_navigation_buttons");
   const lab = t => iconOnly ? "" : C("hide_navigation_button_labels", `<span style="font-size:10px;display:block;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${t}</span>`, { tag: "span", style: "max-width:100%;min-width:0;overflow:hidden" });
   const tab = (k, icon, t, extra = "") => C(k, `<div style="display:grid;justify-items:center;gap:2px;position:relative;min-width:0">${icon}${lab(t)}${extra}</div>`, { cls: "ntab" });
-  const dot = C("hide_navigation_new_content_dot", `<span style="position:absolute;left:calc(50% + 7px);top:-1px;width:7px;height:7px;border-radius:50%;background:#ff0033;display:block"></span>`, { tag: "span", style: "position:absolute;inset:0;pointer-events:auto" });
+  const dot = C("hide_navigation_new_content_dot", `<span style="position:absolute;left:calc(50% + 7px);top:-1px;width:7px;height:7px;border-radius:50%;background:${(indicatorColor(true) || {}).bg || "#ff0033"};display:block"></span>`, { tag: "span", style: "position:absolute;inset:0;pointer-events:auto" });
   const center = swap
     ? tab("hide_notifications_button", I("bell"), "Notifications")
     : C("hide_create_button", `<div style="width:40px;height:40px;border-radius:50%;border:1.5px solid #fff;display:grid;place-items:center;margin:0 auto">${I("plus")}</div>`, { cls: "ntab" });
@@ -348,7 +354,7 @@ SCENES.flyout = () => {
 };
 
 SCENES.captions = () => {
-  const scale = Number(V("morphe_caption_scale")) / 100;
+  const scale = slid("morphe_caption_scale") / 100;
   const sec = V("morphe_secondary_caption_language");
   const fs = (14 * scale).toFixed(1);
   return `<div class="video">${videoFrame(7)}<div class="scrim" style="opacity:.15"></div>
@@ -361,7 +367,7 @@ SCENES.captions = () => {
 SCENES.miniplayer = () => {
   const type = V("morphe_miniplayer_type");
   const round = !V("morphe_miniplayer_disable_rounded_corners");
-  const op = Number(V("morphe_miniplayer_opacity")) / 100;
+  const op = slid("morphe_miniplayer_opacity") / 100;
   const w = Math.max(140, Math.min(260, Number(V("morphe_miniplayer_width_dip")) || 192));
   let mini = "";
   if (type === "DISABLED") mini = `<div class="demo-label" style="top:auto;bottom:66px;left:12px">Miniplayer disabled: closing the player stops the video</div>`;
@@ -496,15 +502,17 @@ SCENES.description = () => {
 // (black bars above and below it). Ambient mode: a soft glow of the film's colours spills from under the
 // player onto the page. Disabled: a plain dark page. Enhanced: the whole page and the black bars are lit
 // with the film itself, as bright as Light strength, as soft as Light blur (0 keeps its shapes), with a
-// shade behind the text when Keep text readable is on.
+// shade behind the text when Keep text readable is on. Light strength is the light's opacity, as in
+// AmbientLightController (paint alpha = strength): 10% leaves only a trace of it (Max, Nov 28: the
+// slider seemed to do nothing, it only moved the light between 40% and 85%).
 const AMB_ART = "radial-gradient(circle at 72% 38%,#ffd36b 0 9%,transparent 10%),linear-gradient(180deg,#ff8a3d 0%,#e2456f 45%,#3b2a7a 100%)";
 const AMB_GLOW = "radial-gradient(ellipse at 50% 30%,rgba(255,138,61,.85) 0%,rgba(226,69,111,.55) 38%,transparent 70%)";
 SCENES.ambient = () => {
   const enh = !!V("morphe_enhanced_ambient_mode");
-  const strength = Math.max(0, Math.min(1, Number(V("morphe_enhanced_ambient_mode_strength") ?? 100) / 100));
-  const blur = Math.max(0, Number(V("morphe_enhanced_ambient_mode_blur")) || 0);
+  const strength = slid("morphe_enhanced_ambient_mode_strength") / 100;
+  const blur = slid("morphe_enhanced_ambient_mode_blur");
   const readable = enh && !!V("morphe_enhanced_ambient_mode_readable_text");
-  const light = enh ? `<div style="position:absolute;inset:-30px;background:${AMB_ART};background-size:100% 70%;background-repeat:no-repeat;filter:blur(${6 + blur * .6}px) saturate(1.3);opacity:${(.35 + .5 * strength).toFixed(2)}"></div><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,15,15,0) 0%,rgba(15,15,15,.25) 55%,rgba(15,15,15,.5) 100%)"></div>` : "";
+  const light = enh ? `<div style="position:absolute;inset:-30px;background:${AMB_ART};background-size:100% 70%;background-repeat:no-repeat;filter:blur(${6 + blur * .6}px) saturate(1.3);opacity:${strength.toFixed(2)}"></div><div style="position:absolute;inset:0;background:linear-gradient(180deg,rgba(15,15,15,0) 0%,rgba(15,15,15,.25) 55%,rgba(15,15,15,.5) 100%)"></div>` : "";
   return `<div style="background:#0f0f0f;height:300px;position:relative;overflow:hidden">
     ${C("enhanced_ambient_mode", light, { also: "enhanced_ambient_mode_strength enhanced_ambient_mode_blur enhanced_ambient_mode_smoothing enhanced_ambient_mode_dim_while_scrolling enhanced_ambient_mode_dim_duration", cls: "shade", style: "position:absolute;inset:0" })}
     ${C("disable_ambient_mode", enh ? "" : `<div style="position:absolute;inset:0;background:${AMB_GLOW};filter:blur(14px)"></div>`, { also: "bypass_ambient_mode_restrictions", cls: "shade", style: "position:absolute;left:-12%;right:-12%;top:104px;height:130px" })}
@@ -521,10 +529,10 @@ const DANMAKU = ["8888888", "the stove!!", "cosy", "草", "need this cabin", "wo
 const danmakuClock = { phase: 0, last: 0, period: 1 };
 SCENES.danmaku = () => {
   const on = !!V("morphe_niconico_comments");
-  const fs = Number(V("morphe_niconico_comments_font_size")) || 20;
-  const op = (Number(V("morphe_niconico_comments_opacity")) || 100) / 100;
-  const area = (Number(V("morphe_niconico_comments_display_area")) || 100) / 100;
-  const dur = Number(V("morphe_niconico_comments_travel_duration")) || 7;
+  const fs = slid("morphe_niconico_comments_font_size");
+  const op = slid("morphe_niconico_comments_opacity") / 100;
+  const area = slid("morphe_niconico_comments_display_area") / 100;
+  const dur = slid("morphe_niconico_comments_travel_duration");
   const lanes = Math.max(1, Math.floor(203 * area / (fs * .8)));
   // Keep the flight position across re-renders: phase advances with time at the old speed,
   // so changing size, opacity, area or duration never restarts the comments.

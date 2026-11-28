@@ -93,6 +93,9 @@
 .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.42); pointer-events: none; }
 .pbtn { width: 40px; height: 40px; display: grid; place-items: center; border-radius: 50%; }
 .bigbtn { width: 56px; height: 56px; }
+/* the round backgrounds behind the player's control buttons and its time pill (Control buttons background opacity) */
+.ctrls .pbtn:not(.nobg), .ctrls .time { background: var(--pbg, transparent); }
+.ctrls .time { padding: 2px 8px; border-radius: 999px; }
 .bigbtn .ico { width: 36px; height: 36px; }
 .seek { position: absolute; left: 12px; right: 12px; height: 3px; background: rgba(255,255,255,.3); border-radius: 2px; }
 .seek .played { position: absolute; left: 0; top: 0; bottom: 0; background: var(--seek-1, var(--yt-red)); border-radius: 2px; }

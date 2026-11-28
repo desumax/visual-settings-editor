@@ -284,6 +284,14 @@ const state = new Proxy(prefValues, {
   set(t, k) { throw new TypeError(`Change settings with setPref(${JSON.stringify(String(k))}, value), not state[k] = value`); },
   deleteProperty(t, k) { throw new TypeError(`Settings can't be deleted (${String(k)})`); },
 });
+// A slider's value as Morphe reads it: SeekBarPreference.clampToRange keeps every read inside the range the
+// slider registers (catalogue "range", from its SeekBarConfig); an empty or broken value reads as the default.
+// Every preview that draws a slider's value reads it through here, so it moves over Morphe's range only.
+function slid(k, raw = V(k)) {
+  const n = Number(raw), d = Number(defaults[k]), r = PREF[k] && PREF[k].range;
+  const v = raw === "" || raw == null || !Number.isFinite(n) ? (Number.isFinite(d) ? d : 0) : n;
+  return r ? Math.max(r.min, Math.min(r.max, v)) : v;
+}
 function setPref(k, v) { if (prefValues[k] === v && k in prefValues) return; prefValues[k] = v; changedPrefs.add(k); }
 function setPrefs(values) { for (const k in values) setPref(k, values[k]); }
 function loadPrefs(values) { for (const k in values) prefValues[k] = values[k]; }

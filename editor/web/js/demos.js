@@ -707,16 +707,19 @@ scen("watch", "open_system_share_sheet", (box, on) => {
 // The dialog sits high on the phone, over the player, so its "I understand" button is clear of the faded
 // cut at the bottom of the half phone (Max, Nov 28: the button was in the fade), and the hand presses
 // that button itself (it used to tap a fixed spot in the dialog's text).
+// the messages sit at the bottom of the part of the phone that is shown (above the crop's cut and fade),
+// under the dialog, on both phones (Max, Nov 28: move them to the bottom part)
+function dlgPill(dev, text) { toast7(dev, text); const t = dev.querySelector(".t7"); if (t) { t.style.top = "auto"; t.style.bottom = (dev.clientHeight - devBand(dev)[1] + 3) + "px"; } }
 scen("watch", "remove_viewer_discretion_dialog", (box, on) => {
   situation("Opening an age-sensitive video");
   box.innerHTML = device("port", playerArea(2));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger");
-  dev.insertAdjacentHTML("beforeend", `<div class="dlg7" style="position:absolute;left:8%;right:8%;top:9%;background:#282828;border-radius:6px;padding:6px;font-size:7px;display:grid;gap:4px;transition:opacity .25s"><b>Viewer discretion advised</b><span style="color:#aaa">This video may be inappropriate for some users.</span><span class="ok7" style="justify-self:end;color:#3ea6ff">I understand</span></div>`);
+  dev.insertAdjacentHTML("beforeend", `<div class="dlg7" style="position:absolute;left:8%;right:8%;top:3%;background:#282828;border-radius:6px;padding:6px;font-size:7px;display:grid;gap:4px;transition:opacity .25s"><b>Viewer discretion advised</b><span style="color:#aaa">This video may be inappropriate for some users.</span><span class="ok7" style="justify-self:end;color:#3ea6ff">I understand</span></div>`);
   const d = dev.querySelector(".dlg7");
-  if (on) { d.style.opacity = "0"; at(100, () => d.style.opacity = "1"); at(400, () => { d.style.opacity = "0"; toast7(dev, "Accepted for you", "70%"); }); return "The dialog is accepted automatically (age limits still apply)"; }
-  toast7(dev, "Playback waits for you", "82%");
+  if (on) { d.style.opacity = "0"; at(100, () => d.style.opacity = "1"); at(400, () => { d.style.opacity = "0"; dlgPill(dev, "Accepted for you"); }); return "The dialog is accepted automatically (age limits still apply)"; }
+  dlgPill(dev, "Playback waits for you");
   at(1300, () => fingerOn(dev, f, d.querySelector(".ok7"), .5, .5)); at(1900, () => tapF(f)); at(2100, () => { d.style.opacity = "0"; f.classList.remove("show"); dev.querySelectorAll(".t7").forEach(e => e.remove()); });
-  at(2300, () => toast7(dev, "Every time you open one", "82%"));
+  at(2300, () => dlgPill(dev, "Every time you open one"));
   return "You have to confirm the dialog each time (stock)";
 });
 

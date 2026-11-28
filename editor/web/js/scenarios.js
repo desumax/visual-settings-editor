@@ -341,7 +341,7 @@ let scTurns = false;
 let scPlaying = null, pairMemo = null; // the comparison on screen (setting and the values compared: another value has other labels, Nov 24 round 4), and the layout its pair has now (fitDev)
 const turnsPhone = fn => /\b(turn|turnTo|rotate)\(/.test(String(fn));
 const SCN_TURNS = new Set(); // stories whose turn is in a helper they are given (gestureScen's result)
-const toldInside = fn => /toast7\(|check7\(|toastin/.test(String(fn));
+const toldInside = fn => /toast7\(|check7\(|toastin|dlgPill\(/.test(String(fn)); // dlgPill: toast7 at the bottom of a cropped phone (demos.js)
 // The situation line: the first one of a story is there with the phones (it used to fade in 160 ms
 // after them); a later, different line crossfades; the same line again (each new run) stays put.
 // The blue line over a comparison only says what the drawing can't show: time passing, the app in the
@@ -931,9 +931,6 @@ function pillOffText(t) {
     range.selectNodeContents(n); add(range.getBoundingClientRect(), 1);
   }
   dev.querySelectorAll(".new7, .chg7").forEach(e => { if (!e.contains(t) && !e.closest(".toastin, .badge7, .check7") && shown(e)) add(e.getBoundingClientRect(), 1); });
-  // a dialog or a sheet is in the way as a whole, not only its words: a pill on its edge reads as part of it
-  // (Max, Nov 28: Remove viewer discretion dialog, the pill sat on the dialog's top edge)
-  dev.querySelectorAll(".dlg7, .sh7").forEach(e => { if (!e.contains(t) && shown(e)) add(e.getBoundingClientRect(), 1); });
   if (!boxes.length) return;
   const pad = 1.5 * k, cost = dy => { let c = 0; for (const [l, rr, tp, bt, wt] of boxes) { const ox = Math.min(a.r + pad, rr) - Math.max(a.l - pad, l), oy = Math.min(a.b + dy + pad, bt) - Math.max(a.t + dy - pad, tp); if (ox > 0 && oy > 0) c += ox * oy * wt; } return c; };
   const here = cost(0); if (here < 4 * k * k) return;

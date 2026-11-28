@@ -2012,6 +2012,22 @@ const CHECKS = [
     },
   },
   {
+    name: "discretion-pills-sit-under-the-dialog",
+    report: "Nov 28 (14:55): Remove viewer discretion dialog, move the pills on both sides to the bottom part (the first fix moved them above the dialog)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); goToSetting("morphe_remove_viewer_discretion_dialog"); await new Promise(r => setTimeout(r, 1500));
+        return [...document.querySelectorAll("#canvas .dev")].map(d => { const t = d.querySelector(".t7"), g = d.querySelector(".dlg7"), k = d.getBoundingClientRect().height / d.offsetHeight, b = d.getBoundingClientRect();
+          return { pill: t && t.getBoundingClientRect().top, pillB: t && t.getBoundingClientRect().bottom, dlg: g && g.getBoundingClientRect().bottom, bandB: b.top + (d.clientTop + devBand(d)[1]) * k }; });
+      });
+      ok(r.length === 2 && r.every(x => x.pill != null), "setup: two phones with a pill");
+      for (const x of r) ok(x.pill >= x.dlg + 1 && x.pillB <= x.bandB + .5 && x.bandB - x.pillB < 12, `a pill sits at ${Math.round(x.pill)}-${Math.round(x.pillB)}px; it belongs under the dialog (${Math.round(x.dlg)}px) at the bottom of the shown phone (${Math.round(x.bandB)}px)`);
+      ok(Math.abs(r[0].pillB - r[1].pillB) < 1, `the two pills end at ${Math.round(r[0].pillB)}px and ${Math.round(r[1].pillB)}px (the same height on both phones)`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

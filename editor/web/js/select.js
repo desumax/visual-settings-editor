@@ -20,12 +20,18 @@ function openFor(k) {
   else { lastOpen.add(par); document.querySelector(`[data-kids-of="${par}"]`)?.classList.add("open"); document.querySelector(`[data-kidtoggle="${par}"]`)?.setAttribute("aria-expanded", "true"); }
   return true;
 }
+// selQuiet: the setting is already selected and only its value moved (a wheel coming to rest, the next
+// press on the same wheel, a typed value): no green flash (Max, Nov 28: the part flashed at the end of
+// every turn of a wheel; it flashes on the first press and when the card is pressed, not after each change)
+let selQuiet = false;
+function selectQuiet(k, from) { selQuiet = true; try { select(k, from); } finally { selQuiet = false; } }
 function focusSetting(k, { from, arrive = false } = {}) {
   const par = PARENT_OF[k], hidden = !!par && !kidVisible(k);
   const bring = from === "stage" || arrive, opened = bring && openFor(k);
   const blocked = hidden || !parentsOk(k);
   if (arrive) quietFlashUntil = Date.now() + 700; // one synced flash on arrival instead of a first one mid-scroll
-  highlight(k, true, from !== "stage");
+  highlight(k, !selQuiet, from !== "stage" && !selQuiet);
+  if (selQuiet) return;
   if (bring) fT(() => scrollRowIntoView(k, true), opened ? 300 : 0);
   // arriving: the card, its element and its blockers flash together once everything is in place
   if (arrive) fT(() => blocked ? flashParents(k) : flashTarget(k), par ? 520 : 380);

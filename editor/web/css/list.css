@@ -340,9 +340,12 @@ html:not(.touchwait) .actpill:active { filter: brightness(1.25); }
    the height its title and description give it ---------- */
 .ctl.whl { position: relative; }
 .row .ctl.side.whl { align-self: stretch; margin: -9px 0; }
+/* the wheel is 16px (a fifth of a one-line card's 79px) shorter than its card; a card with a longer
+   description is taller, and the wheel takes that room (Max, Nov 28) */
+.row .ctl.side.whl { display: flex; align-items: center; }
 .ctl.whl .wsrc { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; left: 0; top: 0; }
 .ctl.whl .val { display: none; }
-.wheel { position: relative; width: 58px; height: 100%; min-height: 50px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; outline: none; border-radius: 14px;
+.wheel { position: relative; width: 58px; height: calc(100% - 16px); min-height: 50px; overflow: hidden; touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; outline: none; border-radius: 14px;
   background: var(--m-c-highest); -webkit-mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); mask-image: linear-gradient(180deg, transparent, #000 22%, #000 78%, transparent); }
 .wheel.turning { cursor: grabbing; }
 .wheel.off { opacity: .45; cursor: default; }

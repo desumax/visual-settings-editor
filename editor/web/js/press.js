@@ -221,7 +221,7 @@ $("list").addEventListener("change", e => {
   ensureMod();
   const before = "before" in t.dataset ? JSON.parse(t.dataset.before) : state[k]; delete t.dataset.before;
   setPref(k, t.type === "range" || t.type === "number" ? Number(t.value) : t.type === "color" ? fromColor(k, t.value) : coerce(k, t.value));
-  if (t.type === "range" || t.type === "color") { commit(); select(k); if (SCN[k] && t.type === "range") liveScenario(k, before); if (returnTo) afterChange(k, before); } else afterChange(k, before);
+  if (t.type === "range" || t.type === "color") { commit(); if (t.type === "range" && selected === k) selectQuiet(k); else select(k); if (SCN[k] && t.type === "range") liveScenario(k, before); if (returnTo) afterChange(k, before); } else afterChange(k, before);
 });
 
 $("secPill").onclick = () => setPicker(!pickerOpen);
@@ -372,13 +372,21 @@ $("list").addEventListener("input", e => {
   const w = wheelOf(el), i = (Number(t.value) - w.min) / w.step; if (isFinite(i)) wheelPaint(el, i);
 }, true);
 const wheelClamp = (w, p) => Math.max(0, Math.min(w.n, p));
-function wheelGlide(el, to, done) {
+// over: how far (in values) a fling carries past the value it comes to rest on before it settles back
+// (Max, Nov 28: a little more overshoot from flings); always under half a value, so it never ticks on to
+// the next one. The ease is a "back" curve whose peak is exactly that far: 4c^3 / (27 (c + 1)^2) of the turn.
+const backPeak = c => 4 * c ** 3 / (27 * (c + 1) ** 2);
+function backFor(frac) { let lo = 0, hi = 12; for (let i = 0; i < 30; i++) { const m = (lo + hi) / 2; if (backPeak(m) < frac) lo = m; else hi = m; } return lo; }
+function wheelGlide(el, to, done, over = 0) {
   cancelAnimationFrame(el._raf); el._turning = true;
-  const w = wheelOf(el), from = Number(el.dataset.pos), dist = to - from, dur = Math.min(900, 260 + Math.min(14, Math.abs(dist)) * 45), t0 = performance.now();
+  const w = wheelOf(el), from = Number(el.dataset.pos), dist = to - from, t0 = performance.now();
+  const c = over > 0 && Math.abs(dist) > .5 ? backFor(Math.min(.45, over) / Math.abs(dist)) : 0;
+  const dur = Math.min(900, 260 + Math.min(14, Math.abs(dist)) * 45) * (c ? 1.18 : 1);
+  const ease = c ? x => 1 + (c + 1) * (x - 1) ** 3 + c * (x - 1) ** 2 : x => 1 - Math.pow(1 - x, 3);
   const step = now => {
-    const x = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - x, 3), pos = from + dist * e;
+    const x = Math.min(1, (now - t0) / dur), pos = from + dist * ease(x);
     wheelPaint(el, pos); wheelSet(el, wheelClamp(w, Math.round(pos)), false);
-    if (x < 1) el._raf = requestAnimationFrame(step); else { el._turning = false; wheelSet(el, to, true); if (done) done(); }
+    if (x < 1) el._raf = requestAnimationFrame(step); else { el._turning = false; wheelPaint(el, to); wheelSet(el, to, true); if (done) done(); }
   };
   el._raf = requestAnimationFrame(step);
 }
@@ -389,7 +397,8 @@ function wheelGlide(el, to, done) {
     const el = e.target.closest(".wheel"); if (!el || el.classList.contains("off") || e.button > 0) return;
     cancelAnimationFrame(el._raf); el._turning = false;
     g = { el, id: e.pointerId, x: e.clientX, y: e.clientY, p0: Number(el.dataset.pos), on: false, pts: [[performance.now(), e.clientY]], t: performance.now() };
-    select(el.dataset.wheel, "list");
+    // the first press on a wheel selects its setting and flashes its part; later presses on it don't
+    if (selected === el.dataset.wheel) selectQuiet(el.dataset.wheel, "list"); else select(el.dataset.wheel, "list");
   });
   list.addEventListener("pointermove", e => {
     if (!g || e.pointerId !== g.id) return;
@@ -414,7 +423,9 @@ function wheelGlide(el, to, done) {
     if (on) {
       // it coasts on with the finger's speed, then rests on the nearest value
       const dt = (pts[pts.length - 1][0] - pts[0][0]) / 1000, v = dt > 0 && performance.now() - pts[pts.length - 1][0] < 60 ? -(pts[pts.length - 1][1] - pts[0][1]) / dt / wheelPx(w) : 0;
-      wheelGlide(el, wheelClamp(w, Math.round(Number(el.dataset.pos) + v * .28)));
+      const to = wheelClamp(w, Math.round(Number(el.dataset.pos) + v * .28));
+      // a fling (not a slow drag let go) overshoots a little, more for a longer turn
+      wheelGlide(el, to, null, Math.abs(v) > 3 ? Math.min(.42, .14 + .035 * Math.abs(to - Number(el.dataset.pos))) : 0);
       return;
     }
     if (e.type !== "pointerup") return;

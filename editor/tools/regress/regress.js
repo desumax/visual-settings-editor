@@ -1839,6 +1839,74 @@ const CHECKS = [
     },
   },
   {
+    name: "wheel-flashes-only-on-first-press",
+    report: "Nov 28: at the end of the wheel animation the UI element flashes green every time; for sliders the flash must happen only on the first press or a press on the setting's card, not after every adjustment",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const k = "morphe_caption_scale", wait = ms => new Promise(r => setTimeout(r, ms));
+        setPicker(false); goToSetting(k); await wait(1800);
+        let n = 0; const mo = new MutationObserver(ms => ms.forEach(m => { if (m.target.classList && m.target.classList.contains("flash") && !(m.oldValue || "").includes("flash")) n++; }));
+        mo.observe(document.getElementById("app"), { subtree: true, attributes: true, attributeFilter: ["class"], attributeOldValue: true });
+        const wh = () => document.querySelector(`#list .wheel[data-wheel="${k}"]`);
+        const press = el => { const b = el.getBoundingClientRect(), o = { bubbles: true, pointerId: 7, clientX: b.left + b.width / 2, clientY: b.top + b.height / 2, button: 0, isPrimary: true, pointerType: "touch" }; el.dispatchEvent(new PointerEvent("pointerdown", o)); el.dispatchEvent(new PointerEvent("pointercancel", o)); };
+        const out = {};
+        // a turn that comes to rest, then a second press on the same wheel
+        wheelGlide(wh(), Number(wh().dataset.pos) + 2); await wait(1200);
+        press(wh()); await wait(700);
+        out.adjust = n;
+        // pressing the wheel of a setting that is not selected yet: its first press flashes
+        setPicker(false); goToSetting("morphe_hide_captions_button"); await wait(1800); n = 0;
+        setPicker(false); quickSection("captions"); await wait(600);
+        const w2 = wh(); if (w2) { w2.scrollIntoView({ block: "center" }); await wait(300); press(w2); await wait(900); }
+        out.first = w2 ? n : -1; mo.disconnect();
+        return out;
+      });
+      ok(r.adjust === 0, `the preview flashed ${r.adjust} time(s) after the wheel came to rest or was pressed again`);
+      ok(r.first !== -1, "setup: the wheel was not in the list");
+      ok(r.first > 0, "the first press on the wheel did not flash its part");
+      await ctx.close();
+    },
+  },
+  {
+    name: "wheel-is-shorter-than-its-card",
+    report: "Nov 28: reduce the wheels' height by 20%, unless the description has more lines and so more room for the wheel (dynamic)",
+    async run() {
+      const { p, ctx } = await open();
+      const m = k => p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 700)); const w = document.querySelector(`#list .wheel[data-wheel="${k}"]`); if (!w) return null; return [w.getBoundingClientRect().height, w.closest(".row").getBoundingClientRect().height]; }, k);
+      const one = await m("morphe_caption_scale"), tall = await m("morphe_enhanced_ambient_mode_dim_duration");
+      ok(one && tall, "setup: wheels not found");
+      ok(one[0] <= 79 * .82, `a one-line card's wheel is ${one[0].toFixed(0)}px (79px less 20% is 63px)`);
+      ok(tall[0] >= tall[1] - 30, `a card with a long description (${tall[1].toFixed(0)}px) keeps a short ${tall[0].toFixed(0)}px wheel`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "wheel-fling-overshoots-a-little",
+    report: "Nov 28: make the wheel overshoot slightly more than it does from flings",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const k = "morphe_enhanced_ambient_mode_blur", wait = ms => new Promise(r => setTimeout(r, ms));
+        setPicker(false); goToSetting(k); await wait(900);
+        const el = document.querySelector(`#list .wheel[data-wheel="${k}"]`); if (!el) return null;
+        if (el.classList.contains("off")) { el.classList.remove("off"); }
+        const b = el.getBoundingClientRect(), x = b.left + b.width / 2; let y = b.top + b.height / 2;
+        const ev = (t, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, pointerId: 9, clientX: x, clientY: y, button: 0, isPrimary: true, pointerType: "touch" }));
+        ev("pointerdown", y); for (let i = 0; i < 6; i++) { await new Promise(r => requestAnimationFrame(r)); y -= 14; ev("pointermove", y); } ev("pointerup", y);
+        const p0 = Number(el.dataset.pos), seen = []; const t0 = performance.now();
+        while (performance.now() - t0 < 1400) { await new Promise(r => requestAnimationFrame(r)); seen.push(Number(el.dataset.pos)); }
+        const to = seen[seen.length - 1], dir = Math.sign(to - p0) || 1;
+        return { over: Math.max(...seen.map(v => (v - to) * dir)), moved: Math.abs(to - p0) };
+      });
+      ok(r, "setup: wheel not found");
+      ok(r.moved >= 1, `setup: the fling moved the wheel only ${r.moved.toFixed(2)} values`);
+      ok(r.over > .1, `the fling overshot by only ${r.over.toFixed(2)} of a value`);
+      ok(r.over < .5, `the fling overshot by ${r.over.toFixed(2)}: it would tick on to the next value`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

@@ -2029,6 +2029,83 @@ const CHECKS = [
     },
   },
   {
+    name: "toggle-glides-land-without-a-jump",
+    report: "Nov 28: at the end of the toggles' colour glide the round colour turned into the resting pill abruptly, like a dropped frame (every toggle style and design)",
+    async run() {
+      // Each kind of toggle in each UI design: near its end the glide plays at a tenth of its speed (DevTools'
+      // animation speed) and is filmed; from 60 ms before the end to 200 ms after it no frame may change much
+      // from the one before. The old end swapped the merged, rounder colour for the resting pill in one go.
+      const CASES = [["lt7", "yt"], ["lt7", "glass"], ["sw", "m3"], ["sw", "glass"], ["opt", "m3"], ["opt", "glass"], ["seg", "yt"], ["seg", "glass"]];
+      const LIMIT = 8, bad = [];
+      for (const [k, th] of CASES) {
+        const { p, ctx } = await open();
+        await p.evaluate(([th, k]) => {
+          theme = th; applyTheme(); if (k === "sw") design = "toggles"; setPicker(false); renderAll();
+          goToSetting(k === "opt" ? "morphe_shorts_player_type" : "morphe_hide_share_button");
+          document.head.insertAdjacentHTML("beforeend", "<style>#stick{visibility:hidden!important}</style>"); // the list under the preview
+        }, [th, k]);
+        await sleep(1000);
+        const cdp = await ctx.newCDPSession(p); await cdp.send("Animation.enable");
+        const err = await p.evaluate(k => {
+          const row = document.querySelector('[data-row="morphe_hide_share_button"]'); let el;
+          if (k === "lt7") { const x = row.querySelector(".lt7"), sp = [...x.querySelectorAll(":scope > span")]; el = x.dataset.at === "l" ? sp[sp.length - 1] : sp[0]; }
+          else if (k === "sw") el = row.querySelector(".sw");
+          else if (k === "opt") { const g = [...document.querySelectorAll("#list .ctl.optgrid")].find(e => e.offsetParent); el = g && g.querySelector('.opt:not([aria-pressed="true"])'); }
+          else el = document.querySelector('.appbar .seg button[aria-pressed="false"]');
+          if (!el) return "no " + k;
+          el.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true, isPrimary: true, pointerType: "mouse" })); el.click();
+          const box = document.querySelector(".gliding > .glayer")?.parentElement; if (!box || !box._glide) return "no glide for " + k;
+          const r = box.getBoundingClientRect(); window.__gl = { a: box._glide.anims[0], clip: [r.left - 4, r.top - 4, r.width + 8, r.height + 8] };
+          window.__gl.dur = window.__gl.a.effect.getTiming().duration; return "";
+        }, k);
+        if (err) { bad.push(`${k}/${th}: setup: ${err}`); await ctx.close(); continue; }
+        const now = () => p.evaluate(() => /finished|idle/.test(window.__gl.a.playState) ? null : window.__gl.a.currentTime);
+        const [dur, c] = await p.evaluate(() => [window.__gl.dur, window.__gl.clip]);
+        for (let i = 0; i < 300; i++) { const t = await now(); if (t === null || t >= dur - 150) break; await sleep(5); }
+        await cdp.send("Animation.setPlaybackRate", { playbackRate: .1 });
+        const shots = [], times = []; let endAt = 0;
+        for (let i = 0; i < 400; i++) {
+          const t = await now(); shots.push((await p.screenshot({ clip: { x: c[0], y: c[1], width: c[2], height: c[3] } })).toString("base64")); times.push(t);
+          if (t === null && !endAt) endAt = Date.now();
+          if (endAt && Date.now() - endAt > 2000) break; // 200 ms of glide time after the end
+        }
+        const diffs = await p.evaluate(async list => {
+          const imgs = await Promise.all(list.map(u => new Promise(r => { const i = new Image(); i.onload = () => r(i); i.src = "data:image/png;base64," + u; })));
+          const cv = document.createElement("canvas"); cv.width = imgs[0].width; cv.height = imgs[0].height; const cx = cv.getContext("2d", { willReadFrequently: true });
+          const px = imgs.map(i => { cx.clearRect(0, 0, cv.width, cv.height); cx.drawImage(i, 0, 0); return cx.getImageData(0, 0, cv.width, cv.height).data; });
+          return px.slice(1).map((q, i) => { const a = px[i]; let n = 0; for (let j = 0; j < a.length; j += 4) if (Math.max(Math.abs(a[j] - q[j]), Math.abs(a[j + 1] - q[j + 1]), Math.abs(a[j + 2] - q[j + 2])) > 24) n++; return n; });
+        }, shots);
+        const late = diffs.map((d, i) => [d, times[i]]).filter(([, t]) => t === null || t >= dur - 60);
+        ok(late.length > 4 && times.includes(null), `${k}/${th}: setup: the glide's end was not filmed (${shots.length} frames)`);
+        const worst = late.reduce((m, x) => x[0] > m[0] ? x : m, [0, 0]);
+        if (worst[0] > LIMIT) bad.push(`${k}/${th}: ${worst[0]} pixels changed in one frame at ${worst[1] === null ? "the end" : Math.round(worst[1]) + " of " + Math.round(dur) + " ms"}`);
+        await ctx.close();
+      }
+      ok(!bad.length, "a glide ends with a jump: " + bad.join("; "));
+    },
+  },
+  {
+    name: "two-way-toggle-label-turns-with-the-glide",
+    report: "Nov 28: on a two-way toggle (Hide | Show) the new label only changed colour after the colour glide had ended",
+    async run() {
+      const { p, ctx } = await open();
+      await p.evaluate(() => { setPicker(false); goToSetting("morphe_hide_share_button"); }); await sleep(900);
+      const lbl = () => p.evaluate(() => { const x = document.querySelector('[data-row="morphe_hide_share_button"] .lt7'); const sp = [...x.querySelectorAll(":scope > span:not(.glayer)")]; return { at: x.dataset.at, gliding: x.classList.contains("gliding"), c: sp.map(e => getComputedStyle(e).color) }; });
+      const before = await lbl();
+      // tap the other side: its label takes the picked colour while the colour still travels (.3 s)
+      await p.evaluate(() => { const x = document.querySelector('[data-row="morphe_hide_share_button"] .lt7'), sp = [...x.querySelectorAll(":scope > span")]; (x.dataset.at === "l" ? sp[sp.length - 1] : sp[0]).click(); });
+      await sleep(420);
+      const mid = await lbl();
+      await sleep(1200);
+      const fin = await lbl();
+      ok(fin.at !== before.at, `setup: the toggle did not change (${before.at} -> ${fin.at})`);
+      ok(mid.gliding, "setup: the glide was already over when the label was read");
+      const i = fin.at === "l" ? 0 : 1;
+      ok(mid.c[i] === fin.c[i], `the picked label is ${mid.c[i]} during the glide and ${fin.c[i]} only after it`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

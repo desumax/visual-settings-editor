@@ -298,7 +298,7 @@ function markTab(id) {
   // tab's fill was still the old dark one, so the glide was dark and the tab turned white only after it
   settled(tabs, () => { tabs.forEach(b => b.setAttribute("aria-selected", String(b.dataset.tab === id))); box.dataset.sel = id; });
   const cur = box.querySelector('[aria-selected="true"]'); if (!cur) return;
-  if (was) { const cs = getComputedStyle(cur); glideRun(box, was, gRect(cur, box), { bg: settledBg(cur), rim: settledRim(cur), radius: parseFloat(cs.borderTopLeftRadius) || 0, z: 0, done: () => { cur.style.transitionProperty = "transform"; requestAnimationFrame(() => { cur.style.transitionProperty = ""; }); } }); }
+  if (was) { const cs = getComputedStyle(cur); glideRun(box, was, gRect(cur, box), { bg: settledBg(cur), rim: settledRim(cur), paint: settledPaint(cur), radius: parseFloat(cs.borderTopLeftRadius) || 0, z: 0, to: cur, done: () => { cur.style.transitionProperty = "transform"; requestAnimationFrame(() => { cur.style.transitionProperty = ""; }); } }); }
   box.scrollTo({ left: cur.offsetLeft - (box.clientWidth - cur.offsetWidth) / 2, behavior: "smooth" });
 }
 // Screen menu order: Morphe's own order by default (its settings screens, then their sub-screens);
@@ -1583,9 +1583,31 @@ function glideNow(box) {
   return best;
 }
 const GLIDE_HANDOFF = 140;
-function glideStop(box) { if (box._handoff) { box._handoff.remove(); box._handoff = null; } const g = box._glide; if (g) { box._glide = null; g.anims.forEach(a => a.cancel()); g.layer.remove(); box.classList.remove("gliding"); (g.path || []).forEach(c => c.classList.remove("gpath")); } }
-// o: bg (the new colour), fromBg (the old one, if it differs), radius (the thumb's corner), z (layer
-// stacking), done (called once the colour has landed or the glide was replaced)
+// Nov 28 (Max: "the last frames the round colour transitions to the static squircle positions. this happens
+// abruptly, almost feels like a frame drop or hitch"): the goo filter draws the landed colour rounder and a
+// little larger than the part's own fill, and that difference went in one short fade after the colour had
+// stopped. Now the colour lands while it settles: over the glide's last GLIDE_LAND ms an unfiltered copy of
+// the part's own fill (its exact place, corners, colour and rim) comes in under the moving colour, which
+// then fades away, so the round merged shape melts into the part's own shape and the part takes over unseen.
+const GLIDE_LAND = 240;
+// The layer is its own element type, never a span or a b: a toggle's labels are spans styled by their place
+// (".lt7[data-at=l] > span:first-of-type"), and a span layer put first made the new label wait for the end.
+const GLIDE_TAG = "glide-layer";
+// what a part's fill carries besides its colour, for the landing copy: a background image (a Morphe switch
+// knob's check or cross) and a border (a Glass option pill's green edge)
+function fillPaint(cs) {
+  const o = {};
+  if (cs.backgroundImage && cs.backgroundImage !== "none") Object.assign(o, { backgroundImage: cs.backgroundImage, backgroundSize: cs.backgroundSize, backgroundPosition: cs.backgroundPosition, backgroundRepeat: cs.backgroundRepeat });
+  if (parseFloat(cs.borderTopWidth) > 0 && cs.borderTopStyle !== "none") Object.assign(o, { boxSizing: "border-box", borderWidth: cs.borderWidth, borderStyle: cs.borderStyle, borderColor: cs.borderColor });
+  return Object.keys(o).length ? o : null;
+}
+// the same for an element, read without its transitions (a value caught mid-change would land wrong)
+function settledPaint(el) { const keep = el.style.transition; el.style.transition = "none"; const p = fillPaint(getComputedStyle(el)); void el.offsetWidth; el.style.transition = keep; return p; }
+function glideStop(box) { if (box._handoff) { box._handoff.remove(); box._handoff = null; } const g = box._glide; if (g) { box._glide = null; g.anims.forEach(a => a.cancel()); g.layer.remove(); if (g.settle) g.settle.remove(); box.classList.remove("gliding", "glanding"); if (g.to) g.to.classList.remove("glto"); (g.path || []).forEach(c => c.classList.remove("gpath")); } }
+// o: bg (the new colour), fromBg (the old one, if it differs), rim (the part's box-shadow), paint (fillPaint:
+// its background image), radius (the thumb's corner), z (layer stacking), to (the element landed on, when it
+// has a look of its own while the colour moves), done (called once the colour has landed or the glide was
+// replaced)
 // Every glide takes the chosen element's final colour, never a value caught mid-transition (Max, Nov 24:
 // "there's a delay before it turns white"). settled(els, fn) runs a state change with the elements'
 // transitions off for that frame; settledBg(el) reads an element's settled background.
@@ -1622,8 +1644,9 @@ function glideRun(box, f, t, o) {
   // drawn opaque and the layer carries the colour's own see-through instead
   const split = c => { const m = /^rgba?\(([^,]+),([^,]+),([^,)]+)(?:,\s*([\d.]+))?\)$/.exec(String(c || "").replace(/\s/g, "")); return m ? [`rgb(${m[1]},${m[2]},${m[3]})`, m[4] === undefined ? 1 : +m[4]] : [c, 1]; };
   const [bgO, aTo] = split(o.bg), [fromO, aFrom] = o.fromBg ? split(o.fromBg) : [null, aTo];
+  const bgRest = o.bg; // the part's own colour, see-through included (the landing copy wears it)
   if (goo && (aTo < 1 || aFrom < 1)) o = { ...o, bg: bgO, fromBg: fromO, alpha: [aFrom, aTo] };
-  const layer = document.createElement("span"); layer.className = goo ? "glayer goo" : "glayer"; layer.setAttribute("aria-hidden", "true");
+  const layer = document.createElement(GLIDE_TAG); layer.className = goo ? "glayer goo" : "glayer"; layer.setAttribute("aria-hidden", "true");
   layer.style.cssText = `z-index:${o.z ?? 0};width:${box.scrollWidth}px;height:${box.scrollHeight}px${goo ? `;filter:url(#${goo})` : ""}`;
   // Only transform and opacity move, so the compositor plays the glide by itself: a phone draws the new
   // screen on the main thread while a tab's glide runs, and a glide that animated sizes and corners froze
@@ -1647,14 +1670,46 @@ function glideRun(box, f, t, o) {
     }
   }
   if (!anims.length) { if (o.done) o.done(false); return; }
-  if (o.alpha) anims.push(layer.animate([{ opacity: o.alpha[0] }, { opacity: o.alpha[1], offset: .4 }, { opacity: o.alpha[1] }], { duration: last * STEP, fill: "forwards" }));
+  // the landing (GLIDE_LAND): it starts once the colour covers its resting place for good, and no earlier
+  // than GLIDE_LAND ms before the end. Its first third brings the copy in under the still opaque colour (only
+  // an outer shadow of the part shows), the rest fades the moving colour out. A see-through colour keeps the
+  // same strength where the two overlap: the copy's share s makes (1 - a s)(1 - a g) = 1 - a at every frame.
+  let land = -1, settle = null;
+  if (goo) {
+    const covers = fr => fr.some(b => (b.o ?? 1) > .98 && b.x <= t.x + 1 && b.y <= t.y + 1 && b.x + b.w >= t.x + t.w - 1 && b.y + b.h >= t.y + t.h - 1);
+    let L = last; while (L > 0 && covers(frames[L - 1])) L--;
+    L = Math.max(L, last - Math.round(GLIDE_LAND / STEP));
+    if (last - L >= 6) land = L;
+  }
+  const alphaAt = j => !o.alpha ? 1 : j < last * .4 ? gLerp(o.alpha[0], o.alpha[1], j / (last * .4)) : o.alpha[1];
+  if (land >= 0) {
+    const P = land + (last - land) / 3, sm = x => { x = Math.max(0, Math.min(1, x)); return x * x * (3 - 2 * x); };
+    const g = j => 1 - sm((j - P) / (last - P));
+    const s = j => aTo < 1 ? (g(j) >= 1 ? 0 : (1 - (1 - aTo) / (1 - aTo * g(j))) / aTo) : sm((j - land) / (P - land));
+    settle = document.createElement(GLIDE_TAG); settle.className = "glayer"; settle.setAttribute("aria-hidden", "true");
+    settle.style.cssText = `z-index:${o.z ?? 0};width:${box.scrollWidth}px;height:${box.scrollHeight}px`;
+    const e = document.createElement("i");
+    e.style.cssText = `width:${t.w}px;height:${t.h}px;border-radius:${Math.max(0, Math.min(R, t.w / 2, t.h / 2))}px;left:${t.x}px;top:${t.y}px;transform:none;will-change:auto;contain:none`;
+    e.style.backgroundColor = bgRest; e.style.boxShadow = o.rim || "none"; if (o.paint) Object.assign(e.style, o.paint); settle.appendChild(e);
+    const js = frames.map((fr, j) => j);
+    anims.push(layer.animate(js.map(j => ({ opacity: alphaAt(j) * g(j), offset: j / last })), { duration: last * STEP, easing: "linear", fill: "forwards" }));
+    anims.push(e.animate(js.map(j => ({ opacity: Math.max(0, Math.min(1, s(j))), offset: j / last })), { duration: last * STEP, easing: "linear", fill: "forwards" }));
+    // the part it lands on (o.to: a pill or tab drawn unpicked while the colour moves) loses that look as the
+    // colour fades in over it (.glanding, motion.css), on the glide's own clock
+    if (o.to) {
+      o.to.classList.add("glto");
+      const cue = new Animation(new KeyframeEffect(null, null, P * STEP), document.timeline); anims.push(cue); cue.play();
+      cue.onfinish = () => { if (box._glide && box._glide.anims === anims) { box.style.setProperty("--land", Math.round((last - P) * STEP) + "ms"); box.classList.add("glanding"); } };
+    }
+  } else if (o.alpha) anims.push(layer.animate([{ opacity: o.alpha[0] }, { opacity: o.alpha[1], offset: .4 }, { opacity: o.alpha[1] }], { duration: last * STEP, fill: "forwards" }));
   // the parts the colour passes over lose their glass lens while it moves (a lens bends the fill into
   // streaks and lifts the part above it); the others keep theirs, so nothing else flickers when it ends
   const x0 = Math.min(f.x, t.x) - 4, x1 = Math.max(f.x + f.w, t.x + t.w) + 4, y0 = Math.min(f.y, t.y) - 4, y1 = Math.max(f.y + f.h, t.y + t.h) + 4;
   const path = [...box.children].filter(c => { if (c.classList.contains("glayer")) return false; const r = gRect(c, box); return r.x < x1 && r.x + r.w > x0 && r.y < y1 && r.y + r.h > y0; });
   path.forEach(c => c.classList.add("gpath"));
-  box.prepend(layer); box.classList.add("gliding");
-  const g = box._glide = { layer, anims, done: o.done, path };
+  box.prepend(layer); if (settle) box.prepend(settle); // the copy under the moving colour
+  box.classList.add("gliding");
+  const g = box._glide = { layer, settle, anims, done: o.done, path, to: settle && o.to };
   // the control's own fill comes back without its transitions (done turns them off for a frame)
   // Nov 24 (Max: the static part popped in at the end, and a glass thumb got its rim back at once): the
   // control's own fill, rim and label colour come back under the landed colour, which then fades out over
@@ -1665,8 +1720,10 @@ function glideRun(box, f, t, o) {
     // event runs just before the frame's rAF callbacks, so a "transitions off until the next rAF" in done
     // was undone before the style was worked out, and a glass tab faded from see-through grey to white
     // (and its label from light to dark) after the colour had landed: settled() works the style out at once.
-    settled([...box.children].filter(c => c !== layer), () => { if (o.done) o.done(false); box.classList.remove("gliding"); path.forEach(c => c.classList.remove("gpath")); });
+    settled([...box.children].filter(c => c !== layer && c !== settle), () => { if (o.done) o.done(false); box.classList.remove("gliding", "glanding"); if (g.to) g.to.classList.remove("glto"); path.forEach(c => c.classList.remove("gpath")); });
     if (box._handoff) box._handoff.remove();
+    // landed: the moving colour is gone and the copy looks exactly like the part now drawn under it
+    if (settle) { layer.remove(); settle.remove(); return; }
     // a see-through colour (a glass tab's white) over the same colour adds up to a brighter one while it
     // fades: it goes at once, as the colour now carries the part's rim and matches it
     if (aTo < 1) { layer.remove(); return; }
@@ -1685,7 +1742,7 @@ function thumbBox(x) {
   let r;
   if (th) r = gRect(th, x);
   else { const m = cs.transform && cs.transform !== "none" ? new window.DOMMatrixReadOnly(cs.transform) : null; r = { x: parseFloat(cs.left) + (m ? m.e : 0), y: parseFloat(cs.top) + (m ? m.f : 0), w: parseFloat(cs.width), h: parseFloat(cs.height) }; }
-  return { r, bg: cs.backgroundColor, rim: cs.boxShadow, rad: parseFloat(cs.borderTopLeftRadius) || 0 };
+  return { r, bg: cs.backgroundColor, rim: cs.boxShadow, rad: parseFloat(cs.borderTopLeftRadius) || 0, paint: fillPaint(cs) };
 }
 function toggleGlide(x, was, now, put) {
   if (!x || !x.isConnected || !x.offsetWidth || String(was) === String(now)) { put(now); return; }
@@ -1694,7 +1751,7 @@ function toggleGlide(x, was, now, put) {
   put(now); void x.offsetWidth; const t = thumbBox(x); // read at once: the style object is live
   if (running) f.r = running;
   put(was); void x.offsetWidth; x.classList.remove("still"); void x.offsetWidth; put(now); // the labels' colour still eases
-  glideRun(x, f.r, t.r, { bg: t.bg, fromBg: f.bg, rim: t.rim, radius: t.rad, z: x.matches(".sw") ? 1 : -1 });
+  glideRun(x, f.r, t.r, { bg: t.bg, fromBg: f.bg, rim: t.rim, paint: t.paint, radius: t.rad, z: x.matches(".sw") ? 1 : -1 });
 }
 // The Original/Morphe toggle in the top bar
 function modeButtons(was, now) {
@@ -1709,7 +1766,7 @@ function pickSnap(box, sel = ".on") {
 }
 function pickGlide(box, f, sel = ".on", z = -1) {
   const n = box && box.querySelector(`:scope > ${sel}`); if (!f || !n) return;
-  glideRun(box, f.r, gRect(n, box), { bg: settledBg(n), fromBg: f.bg, rim: settledRim(n), radius: f.rad, z });
+  glideRun(box, f.r, gRect(n, box), { bg: settledBg(n), fromBg: f.bg, rim: settledRim(n), paint: settledPaint(n), radius: f.rad, z, to: n });
 }
 // Option pills: optSnap runs before the state changes (the grid is redrawn), optGlide once the new grid
 // is laid out, in every option grid (list rows and the "needs" popup).
@@ -1731,7 +1788,7 @@ function optGlide() {
   const cs = getComputedStyle(on), t = gRect(on, box);
   // nothing was picked before: the colour grows out of the tapped pill
   const from = f.bg ? f : { x: t.x + t.w * .3, y: t.y + t.h * .25, w: t.w * .4, h: t.h * .5 };
-  glideRun(box, from, t, { bg: settledBg(on), fromBg: f.bg, rim: settledRim(on), radius: parseFloat(cs.borderTopLeftRadius) || 0, z: 1, done: () => {
+  glideRun(box, from, t, { bg: settledBg(on), fromBg: f.bg, rim: settledRim(on), paint: settledPaint(on), radius: parseFloat(cs.borderTopLeftRadius) || 0, z: 1, to: on, done: () => {
     // hand back to the pill without its background transition flashing it on the last frame
     on.style.transitionProperty = "transform"; requestAnimationFrame(() => { on.style.transitionProperty = ""; }); } });
 }
@@ -2208,7 +2265,7 @@ function placeSeg3(root = $("pickGrid")) {
     const to = [on.offsetLeft, on.offsetWidth], from = seg3From[seg.dataset.seg]; delete seg3From[seg.dataset.seg];
     seg.classList.add("th"); // shown first, so its starting place is drawn and the move animates
     th.style.transition = "none"; th.style.left = to[0] + "px"; th.style.width = to[1] + "px";
-    if (from) { const cs = getComputedStyle(th), y = th.offsetTop, h = th.offsetHeight; glideRun(seg, { x: from[0], y, w: from[1], h }, { x: to[0], y, w: to[1], h }, { bg: cs.backgroundColor, rim: cs.boxShadow, radius: parseFloat(cs.borderTopLeftRadius) || 0, z: -1 }); }
+    if (from) { const cs = getComputedStyle(th), y = th.offsetTop, h = th.offsetHeight; glideRun(seg, { x: from[0], y, w: from[1], h }, { x: to[0], y, w: to[1], h }, { bg: cs.backgroundColor, rim: cs.boxShadow, paint: fillPaint(cs), radius: parseFloat(cs.borderTopLeftRadius) || 0, z: -1 }); }
     requestAnimationFrame(() => { th.style.transition = ""; });
   });
 }

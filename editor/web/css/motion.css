@@ -19,6 +19,10 @@
 .sw > .glayer > i { box-shadow: 0 1px 3px rgba(0,0,0,.35); }
 /* blobs that merge (goo) carry no edge of their own: each blob's rim showed as rings inside the moving fill */
 .glayer.goo > i { box-shadow: none !important; }
+/* the landing (glideRun, GLIDE_LAND): the part the colour lands on (a pill or tab drawn unpicked while the colour
+   moves) loses that look while the colour fades in over it, so a see-through colour (Glass) does not change
+   when the part's own fill takes over. The repeated class outranks the parts' own !important gliding looks. */
+.gliding.glanding > .glto.glto.glto { background-color: transparent !important; border-color: transparent !important; box-shadow: none !important; transition: background-color var(--land, .16s) linear, border-color var(--land, .16s) linear, box-shadow var(--land, .16s) linear !important; }
 .tut .tseg3, .tut .ttabs { position: relative; isolation: isolate; }
 .tut .tseg3.gliding > b.on, .tut .ttabs.gliding > span.on { background: transparent; transition: none; }
 .tabs7 { position: relative; isolation: isolate; }

@@ -34,7 +34,7 @@ px (preview, tabs, the cards around the change), full-screen GIFs are 480 px wid
 | anim-reveal | anim-reveal.gif | Taps the hidden Autoplay button's card: the toggle appears in the player, pulsing in a red outline |
 | anim-compare | anim-compare.gif | Comments tab, taps Search comments: the Off / On comparison plays |
 | anim-demo | anim-demo.gif | Seekbar & gestures tab, taps Seekbar thumbnails: a finger drags the seekbar and the thumbnail follows |
-| original-vs-morphe | original-vs-morphe.gif | Watch page, taps Original (stock YouTube) then Morphe in the top bar |
+| original-vs-morphe | original-vs-morphe.gif | Watch page with a lived-in setup (compact action bar, dislikes as a percentage, Dark blue background, several parts hidden), taps Original (stock YouTube) then Morphe in the top bar |
 | search | search.gif | Search, types "dislike", picks Show dislikes as percentage, switches it on (2.1K becomes 4%) |
 | niconico | niconico.gif | Flying comments tab, switches Niconico comments on |
 | previews | previews.png | Nine live previews: Player, SponsorBlock, Flying comments, Watch page, Comments, Home feed, Shorts, Miniplayer, glass Navigation bar |

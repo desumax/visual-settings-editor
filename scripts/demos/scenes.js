@@ -149,8 +149,16 @@ SCENES["anim-demo"] = async () => {
 };
 
 // 8a. Original (stock YouTube) against Morphe (your settings), the compare switch in the top bar
+// a lived-in setup, so the flip shows a real difference: compact action bar, dislikes as a percentage, rarely used
+// buttons, the comment preview and the crowdfunding box hidden, Dark blue background
+const LIVED_IN = {
+  morphe_video_action_bar_layout: "MINIMAL", morphe_theme_color_dark: "DARK_BLUE", morphe_ryd_dislike_percentage: true,
+  morphe_hide_remix_button: true, morphe_hide_thanks_button: true, morphe_hide_download_button: true, morphe_hide_clip_button: true,
+  morphe_hide_ask_button: true, morphe_hide_hype_button: true, morphe_hide_shop_button: true,
+  morphe_hide_comments_preview_comment: true, morphe_hide_crowdfunding_box: true,
+};
 SCENES["original-vs-morphe"] = async () => {
-  const { ctx, p } = await L.open(GIF);
+  const { ctx, p } = await L.open({ ...GIF, prefs: { state: LIVED_IN } });
   await section(p, "watch");
   await capture(p, "original-vs-morphe.gif", async () => {
     await sleep(700);

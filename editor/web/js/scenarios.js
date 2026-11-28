@@ -31,6 +31,10 @@ const duo7 = (left, right, sides = [[false, "Off"], [true, "On"]]) => `<div clas
 // Not for stories that turn the phone with turn() / turnTo() (their slot is sized for the whole phone);
 // rotate() is fine.
 const CROP_CUT = 44, CROP_FADE = 26; // the same lengths as --cut7 and --fade7 in preview.css
+// a story whose phone keeps more of its lower half: a shorter cut (Max, Nov 28: Remove viewer discretion
+// dialog, its messages even lower, under the dialog)
+const CROP_CUT_OF = { morphe_remove_viewer_discretion_dialog: 20 };
+const cropCut = dev => (dev && +dev.dataset.cut) || CROP_CUT;
 const CROP7 = {};
 ("hide_album_cards hide_artist_cards hide_channel_buttons hide_get_premium_button hide_handle hide_help_feedback_menu "
   + "hide_history_shelf hide_image_shelf hide_invite_to_message_card hide_notifications_menu_header hide_latest_videos_button "
@@ -64,7 +68,8 @@ const cropOf = dev => !dev || !dev.classList.contains("crop7") ? "" : dev.classL
 // (without the fade, so a message there reads in full)
 function devBand(dev) {
   const H = dev.clientHeight, c = dev.classList.contains("port") ? cropOf(dev) : "";
-  return c === "top" ? [0, H - CROP_CUT - CROP_FADE] : c === "bot" ? [CROP_CUT + CROP_FADE, H] : [0, H];
+  const cut = cropCut(dev);
+  return c === "top" ? [0, H - cut - CROP_FADE] : c === "bot" ? [cut + CROP_FADE, H] : [0, H];
 }
 // A story phone's hand is sized from the phone (30% of its short side, at most the live preview's 40px):
 // a fixed 40px hand covered almost half of a portrait phone (Max, Nov 25: Rolling number animations,
@@ -74,8 +79,8 @@ function devBand(dev) {
 const FINGER_K = .3, FINGER_SCALE = { morphe_disable_rolling_number_animations: .8, morphe_open_system_share_sheet: .9 };
 const fingerSize = (w, h, k = FINGER_SCALE[scKey] || 1) => (Math.min(40, Math.min(w, h) * FINGER_K) * k).toFixed(1) + "px";
 function device(orient, inner, extra = "", crop = scKey && CROP7[scKey]) {
-  const [w, h] = DEV_SIZE[orient], c = crop === true ? "top" : crop || "";
-  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;--fz7:${fingerSize(w, h)};${extra}" data-fk="${FINGER_SCALE[scKey] || 1}"><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
+  const [w, h] = DEV_SIZE[orient], c = crop === true ? "top" : crop || "", cut = c && CROP_CUT_OF[scKey];
+  return `<div class="dev ${orient}${c ? ` crop7 c${c}7` : ""}" style="width:${w}px;height:${h}px;--fz7:${fingerSize(w, h)};${cut ? `--cut7:${cut}px;` : ""}${extra}" data-fk="${FINGER_SCALE[scKey] || 1}"${cut ? ` data-cut="${cut}"` : ""}><div class="waves l"></div><div class="waves r"></div>${inner}<div class="finger" id="scFinger">${I("gesture")}</div></div>`;
 }
 const playerArea = (i, overlay = "") => `<div class="dv-video" style="background:${ART[i]}">${overlay}</div><div class="dv-below"><i></i><i></i><i></i></div>`;
 function setOrient(dev, orient) { const [w, h] = DEV_SIZE[orient]; dev.classList.remove("port", "land"); dev.classList.add(orient); dev.style.width = w + "px"; dev.style.height = h + "px"; dev.style.setProperty("--fz7", fingerSize(w, h, +dev.dataset.fk || 1)); }
@@ -299,7 +304,7 @@ function fitDev(orient) {
     return;
   }
   const duo = box && box.querySelector(".duo7"), dev = duo || (box && box.querySelector(".dev")); if (!dev) return;
-  const o = duo ? "duo" : orient || (dev.classList.contains("land") ? "land" : "port"), [w, h0] = DEV_SIZE[o], h = h0 - (o === "port" && cropOf(dev) ? CROP_CUT : 0);
+  const o = duo ? "duo" : orient || (dev.classList.contains("land") ? "land" : "port"), [w, h0] = DEV_SIZE[o], h = h0 - (o === "port" && cropOf(dev) ? cropCut(dev) : 0);
   const sc = fitScale(w, h), first = !dev.style.getPropertyValue("--dsc");
   // a phone or a hand-built pair appears at its size; only later changes animate (the popup panels pair
   // used to zoom in from its unscaled size because .duo7 transitions its scale)
@@ -1719,7 +1724,7 @@ function playScenario(k, prevValue) {
     // its label keeps its room, unseen, so the outline sits level with the phone beside it
     cell.querySelector("span").style.visibility = "hidden";
     const dev = box.querySelector(".dl7 .dev"), c = cropOf(dev), dw = dev ? dev.style.width : "92px", dh = dev ? dev.style.height : "172px";
-    cell.querySelector(".side").innerHTML = `<div class="ask7${c ? " ask" + c + "7" : ""}" style="width:${dw};height:${c ? `calc(${dh} - ${CROP_CUT}px)` : dh}"><span>Select an option</span></div>`;
+    cell.querySelector(".side").innerHTML = `<div class="ask7${c ? " ask" + c + "7" : ""}" style="width:${dw};height:${c ? `calc(${dh} - ${cropCut(dev)}px)` : dh}"><span>Select an option</span></div>`;
   };
   const drawSides = () => {
     if (self) {

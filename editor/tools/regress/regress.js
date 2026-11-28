@@ -2013,16 +2013,17 @@ const CHECKS = [
   },
   {
     name: "discretion-pills-sit-under-the-dialog",
-    report: "Nov 28 (14:55): Remove viewer discretion dialog, move the pills on both sides to the bottom part (the first fix moved them above the dialog)",
+    report: "Nov 28 (14:55, 15:05): Remove viewer discretion dialog, move the pills on both sides to the bottom part (the first fix moved them above the dialog), then even lower",
     async run() {
       const { p, ctx } = await open();
       const r = await p.evaluate(async () => {
         setPicker(false); goToSetting("morphe_remove_viewer_discretion_dialog"); await new Promise(r => setTimeout(r, 1500));
         return [...document.querySelectorAll("#canvas .dev")].map(d => { const t = d.querySelector(".t7"), g = d.querySelector(".dlg7"), k = d.getBoundingClientRect().height / d.offsetHeight, b = d.getBoundingClientRect();
-          return { pill: t && t.getBoundingClientRect().top, pillB: t && t.getBoundingClientRect().bottom, dlg: g && g.getBoundingClientRect().bottom, bandB: b.top + (d.clientTop + devBand(d)[1]) * k }; });
+          return { k, pill: t && t.getBoundingClientRect().top, pillB: t && t.getBoundingClientRect().bottom, dlg: g && g.getBoundingClientRect().bottom, bandB: b.top + (d.clientTop + devBand(d)[1]) * k }; });
       });
       ok(r.length === 2 && r.every(x => x.pill != null), "setup: two phones with a pill");
       for (const x of r) ok(x.pill >= x.dlg + 1 && x.pillB <= x.bandB + .5 && x.bandB - x.pillB < 12, `a pill sits at ${Math.round(x.pill)}-${Math.round(x.pillB)}px; it belongs under the dialog (${Math.round(x.dlg)}px) at the bottom of the shown phone (${Math.round(x.bandB)}px)`);
+      for (const x of r) ok((x.pill - x.dlg) / x.k >= 18, `a pill is only ${((x.pill - x.dlg) / x.k).toFixed(0)} phone px under the dialog (it belongs well below it, 18 or more)`);
       ok(Math.abs(r[0].pillB - r[1].pillB) < 1, `the two pills end at ${Math.round(r[0].pillB)}px and ${Math.round(r[1].pillB)}px (the same height on both phones)`);
       await ctx.close();
     },

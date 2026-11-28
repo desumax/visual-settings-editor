@@ -231,7 +231,9 @@ function holdRow(k) {
     hold();
   };
 }
-function afterChange(k, before) {
+function afterChange(k, before, sure) {
+  // a setting Morphe asks about before it leaves its default: the editor asks first, in its own dialog
+  if (sure !== true && confirmChange(k, before, () => afterChange(k, before, true))) return;
   if (peekKid && kidVisible(peekKid)) peekKid = null;
   if (peekPar && sectionKeys().filter(x => PARENT_OF[x] === peekPar || DIRECT_PARENT[x] === peekPar).every(kidVisible)) peekPar = null; // unlocked: shown as usual
   const settle = holdRow(k);

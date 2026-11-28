@@ -75,6 +75,9 @@ final class LiveSettings {
                 m.put("rebootApp", s.rebootApp);
                 Object d = s.defaultValue;
                 m.put("default", d instanceof Enum<?> e ? e.name() : (d instanceof Boolean || d instanceof Number) ? d : String.valueOf(d));
+                // The question Morphe asks before this setting leaves its default: the page asks it
+                // in its own dialog (SettingsBridge.saveConfirmedByPage).
+                if (s.userDialogMessage != null) m.put("confirm", s.userDialogMessage.toString());
                 if (r != null) {
                     Preference p = r.pref;
                     putText(m, "title", p.getTitle());

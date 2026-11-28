@@ -176,6 +176,11 @@ input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer
 .dlg h2 { margin: 0 0 8px; font-size: 22px; font-weight: 500; text-align: center; color: var(--m-on); text-wrap: balance; }
 .dlg p { margin: 0 0 12px; color: var(--m-on-var); font-size: 14px; line-height: 1.5; text-align: center; }
 .dlg ul { margin: 0 0 16px; padding: 10px 14px; list-style: none; background: var(--m-c); border-radius: var(--r-m); max-height: 160px; overflow: auto; display: grid; gap: 6px; font-size: 13px; color: var(--m-on); }
+.dlg .dbody { max-height: min(46vh, 340px); overflow: auto; margin: 0 0 16px; overscroll-behavior: contain; } /* Morphe's own dialog texts (confirmChange, the app's mirrored dialogs): long ones scroll inside the dialog */
+.dlg .dbody > :last-child { margin-bottom: 0; }
+.dlg .dbody ul { max-height: none; margin-bottom: 12px; text-align: left; }
+.dlg .dbody .ndin { display: block; width: 100%; box-sizing: border-box; margin: 4px 0 0; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--m-c-highest, #303134); color: inherit; font: inherit; font-size: 15px; }
+.dlg .dbody textarea.ndin { min-height: 120px; resize: vertical; }
 .dlg .acts { display: grid; gap: 8px; }
 .dbtn { height: 52px; border-radius: 999px; border: 0; font-size: 14px; font-weight: 600; cursor: pointer; }
 .dbtn.primary { background: var(--m-primary); color: var(--m-on-primary); }

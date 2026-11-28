@@ -669,13 +669,91 @@ scen("ambient", "enhanced_ambient_mode_dim_while_scrolling", (box, on) => {
   at(2000, () => { if (on) { lit.style.transition = `opacity ${1600 * scStretch}ms ease`; lit.style.opacity = .8; } }); // nothing touched: the light comes back
   return "";
 });
+// The sample film of the two stories below (Max, Nov 28: "a good animation to change live with a sample video on
+// repeat"): three shots with strong colours, a cut every AMB_CUT ms, over and over. The light follows them the way
+// AmbientLightController blends each captured picture into the shown one: with Light smoothing at 0 a cut is taken
+// over at once (SCENE_CUT_DIFFERENCE), otherwise keep = exp(-elapsed / smoothing), so about a third of a change is
+// left after that many seconds. The film runs on one clock for every phone, and each phone's light is remembered
+// between redraws, so moving the slider changes how the light follows without starting anything over.
+const AMB_FILM = [["#ff8a3d", "#e2456f", "#3b2a7a"], ["#8fdcff", "#2f7fd0", "#10305c"], ["#d8e86b", "#3f9a4a", "#0f3b2e"]].map(sh => sh.map(c => [1, 3, 5].map(i => parseInt(c.slice(i, i + 2), 16))));
+const AMB_CUT = 1500, AMB_STEP = 33, AMB_T0 = performance.now(), ambLit = {};
+const ambGrad = c => `linear-gradient(180deg,${c.map((x, i) => `rgb(${x.map(Math.round).join(",")}) ${[0, 45, 100][i]}%`).join(",")})`;
+function ambFilm(dev, tenths) {
+  const vid = dev.querySelector(".apl7 > div"), lit = dev.querySelector(".aml7"), tau = Math.max(0, Number(tenths) || 0) * 100;
+  const st = ambLit[scKey + "|" + (scSide ? scSide.i : 0)] ??= { c: null, t: 0 };
+  let shot = -1, drawn = "";
+  vid.dataset.film7 = lit.dataset.film7 = ""; // a playing film and its light: their pictures change by themselves (animcheck)
+  const tick = () => {
+    if (!lit.isConnected) return;
+    const now = performance.now(), n = Math.floor((now - AMB_T0) / AMB_CUT) % AMB_FILM.length, to = AMB_FILM[n];
+    if (n !== shot) { shot = n; vid.style.background = `radial-gradient(circle at ${[72, 30, 55][n]}% 38%,rgba(255,255,255,.75) 0 7%,transparent 8%),${ambGrad(to)}`; }
+    if (!st.c || !tau) st.c = to.map(x => x.slice());
+    else if (now - st.t >= AMB_STEP) { const keep = Math.exp(-(now - st.t) / tau); st.c = st.c.map((x, i) => x.map((y, j) => to[i][j] + (y - to[i][j]) * keep)); }
+    else return void requestAnimationFrame(tick);
+    st.t = now;
+    const g = ambGrad(st.c); if (g !== drawn) { drawn = g; lit.style.backgroundImage = g; }
+    requestAnimationFrame(tick);
+  };
+  tick();
+}
+// Light smoothing: the film plays on repeat, the light takes this long to follow each cut. No sentences.
+SCN_HOLD.morphe_enhanced_ambient_mode_smoothing = 9000; // one drawing a round: the film and the light run on their own clock
+scen("ambient", "enhanced_ambient_mode_smoothing", (box, v) => {
+  box.innerHTML = device("port", ambPage(true));
+  ambFilm(box.querySelector(".dev"), v);
+  return "";
+});
+// Dim duration (AmbientLightController.onInteraction): a touch on the page or a scroll dims the light to a quarter
+// (DIMMED_STRENGTH 64 of 256) in 180 ms, and every further scroll starts the wait again; the light comes back, over
+// 1.6 s (RESTORE_DURATION_MS), once nothing has been touched for this many seconds. With 0 only the scroll itself
+// dims it (a touch does not) and it comes back 200 ms after the scroll ends (SCROLL_END_MS). The story runs in real
+// time: the page is scrolled up, the light waits and returns, then the page is scrolled back down, on repeat, with
+// both phones scrolled at the same moments. Everything is placed from one clock (ambDim), so a redraw or a move of
+// the slider carries on where the story was. No sentences.
+SCN_HOLD.morphe_enhanced_ambient_mode_dim_duration = 9000;
+const ambDim = { t0: 0, half: 0 };
+scen("ambient", "enhanced_ambient_mode_dim_duration", (box, v, other) => {
+  box.innerHTML = device("port", ambPage(true));
+  const dev = box.querySelector(".dev"), lit = dev.querySelector(".aml7"), f = box.querySelector("#scFinger"), W = dev.clientWidth, H = dev.clientHeight;
+  const pl = dev.querySelector(".apl7"), cn = dev.querySelector(".acn7"); pl.style.zIndex = 2; // the page scrolls under the player
+  cn.insertAdjacentHTML("beforeend", row7(3, "Up next · Fjord drive") + row7(5, "Up next · Coffee jazz") + row7(0, "Up next · Cabin tour"));
+  ambFilm(dev, VE("morphe_enhanced_ambient_mode_smoothing"));
+  const sec = x => Math.max(0, Number(x) || 0), wait = x => Math.max(sec(x) * 1000, 200);
+  // one scroll: touch at 500, drag 650 to 1400, a short fling to 1900; then the longer of the two waits, the light's return, a rest
+  const END = 1900, half = END + wait(Math.max(sec(v), sec(other))) + 1600 + 700, C = half * 2, now = document.timeline.currentTime ?? performance.now(); // the frame's time: both phones get the same
+  // the same moment of the story when its length changes with the slider (the first phone drawn sets the clock)
+  if (ambDim.half !== half) { const e = ambDim.half ? (now - ambDim.t0) % (ambDim.half * 2) : 0; ambDim.t0 = now - (e % C); ambDim.half = half; }
+  const o = { duration: C, iterations: Infinity, delay: -((now - ambDim.t0) % C) }, at2 = (t, h) => (t + h * half) / C;
+  const run = (el, frames) => el.animate(frames.sort((a, b) => a.offset - b.offset), o);
+  const ease = "cubic-bezier(.3,0,.3,1)", coast = "cubic-bezier(.1,.6,.3,1)";
+  // the page: up by 46px under the finger and 12 more on the fling, then back down the same way
+  const y = [0, -46, -58, -12], page = (px, t, h, easing = "linear") => ({ offset: at2(t, h), transform: `translateY(${px}px)`, clipPath: `inset(${-px}px 0 0 0)`, easing });
+  run(cn, [page(y[0], 0, 0), page(y[0], 650, 0, ease), page(y[1], 1400, 0, coast), page(y[2], END, 0), page(y[2], 650, 1, ease), page(y[3], 1400, 1, coast), page(y[0], END, 1), page(y[0], half, 1)]);
+  const tall = (px, t, h, easing = "linear") => ({ offset: at2(t, h), height: px + "px", easing });
+  run(pl, [tall(44, 0, 0), tall(44, 650, 0, ease), tall(28, 1400, 0), tall(28, 650, 1), tall(28, 846, 1, ease), tall(40, 1400, 1, coast), tall(44, END, 1), tall(44, half, 1)]);
+  // the light: dimmed by the touch (by the scroll with 0), kept dim for the wait after the scroll's end, back in 1.6 s
+  const R = .8, dim = sec(v) ? 500 : 650, back = END + wait(v), op = (x, t, h) => ({ offset: at2(t, h), opacity: x });
+  lit.style.transition = "none"; lit.dataset.wait7 = sec(v); // (the phones differ only in their timing: said in the markup too)
+  run(lit, [0, 1].flatMap(h => [op(R, 0, h), op(R, dim, h), op(R * .25, dim + 180, h), op(R * .25, back, h), op(R, back + 1600, h), op(R, half, h)]));
+  // the finger: down at the bottom and up the page, then down at the top and back down the page
+  const fy = [H * .82, H * .38], fing = (yy, x, t, h, easing = "linear") => ({ offset: at2(t, h), translate: `${W * .55}px ${yy}px`, opacity: x, easing });
+  f.classList.add("hold"); f.style.left = f.style.top = "0px"; f.style.transition = "none";
+  run(f, [0, 1].flatMap(h => [fing(fy[h], 0, 0, h), fing(fy[h], 0, 300, h), fing(fy[h], 1, 450, h), fing(fy[h], 1, 650, h, ease), fing(fy[1 - h], 1, 1400, h), fing(fy[1 - h], 0, 1520, h), fing(fy[1 - h], 0, half, h)]));
+  return "";
+});
+// Ambient mode in fullscreen (Max, Nov 28: check it against Morphe's code). AmbientModePatch.getFullScreenBackgroundColor:
+// in fullscreen YouTube tints the player's background with the video's colours, and the patch forces it to plain
+// black. The background only shows where the video does not fill the screen, so the light sits in the bars beside
+// the video and nowhere else (the old drawing had a glow all around a small video). The bars take the share of the
+// screen they have on a long phone. With Enhanced Ambient mode its light is what lights the bars, and the same
+// switch turns it off in fullscreen (AmbientLightController.update, fullscreenOff). No sentences: the bars say it.
 scen("ambient", "disable_fullscreen_ambient_mode", (box, on) => {
-  situation("Ambient glow in fullscreen");
-  box.innerHTML = device("land", `<div class="am7" style="position:absolute;inset:0;background:radial-gradient(ellipse at 50% 50%,rgba(255,138,61,.8) 0%,rgba(226,69,111,.5) 35%,#000 68%);transition:opacity .5s"></div><div style="position:absolute;left:28%;right:28%;top:14%;bottom:14%;background:${AMB_ART};border-radius:2px"></div>`); // the film of the live preview
+  const enh = !!VE("morphe_enhanced_ambient_mode"), op = enh ? Math.max(.1, slid("morphe_enhanced_ambient_mode_strength") / 100) * .9 : .8;
+  const fade = "linear-gradient(90deg,rgba(0,0,0,.35),#000 10%,#000 90%,rgba(0,0,0,.35))";
+  box.innerHTML = device("land", `<div style="position:absolute;inset:0;background:#000"></div><div class="am7" style="position:absolute;inset:0;background:linear-gradient(180deg,#ff8a3d 0%,#e2456f 45%,#3b2a7a 100%);filter:blur(2px) saturate(1.3);opacity:${op.toFixed(2)};-webkit-mask-image:${fade};mask-image:${fade};transition:opacity .5s"></div><div class="fsv7" style="position:absolute;top:0;bottom:0;left:10%;right:10%;background:${AMB_ART}"></div>`); // the film of the live preview
   const dev = box.querySelector(".dev");
-  toast7(dev, on ? "Plain black around the video" : "Colours glow around the video", "86%");
   at(300, () => { if (on) dev.querySelector(".am7").style.opacity = 0; });
-  return on ? "No ambient glow in fullscreen" : "Ambient glow in fullscreen too (stock)";
+  return "";
 });
 // Auto captions visibility (Max, Nov 23 PM): a video with auto-generated captions starts muted, then the
 // sound comes on. The caption line shows in the part of the story the choice allows: always, never, only
@@ -739,7 +817,12 @@ for (const [k, sit, html] of [
   hidePage("comments", k, sit, player7(5) + (isChat ? (/donators/.test(k) ? tgt7(html) + msgs : msgs + tgt7(html)) + input("Chat…")
     : top7("Comments", ["sort", "close"]) + tgt7(html) + (/zero_state/.test(k) ? input("Add a comment…") : cmt7(2, "Lovely build!"))));
 }
-hidePage("comments", "hide_comments_section_in_home_feed", "Home feed with inline comments", feed7(big7(3, "Building a tiny cabin") + tgt7(`<div style="padding:3px;border-radius:3px;background:#1b1b1b">${cmt7(2, "Lovely build!")}</div>`) + row7(4, "Night train to Bodø")));
+// Comments section in Home feed (Max, Nov 28: refine from Morphe's code). CommentsFilter.isFiltered: the comments
+// group (video_metadata_carousel, _comments, teaser_carousel_with_controller) inside a path that starts with
+// video_lockup_with_attachment.e, the feed's video card that carries an attachment. So it is the comments teaser
+// attached to a video's own card (its count, a top comment, the pager of the teaser carousel), and only that part
+// goes: the video above it stays and the next video moves up. No blue line (redrawn).
+hidePage("comments", "hide_comments_section_in_home_feed", "", feed7(`<div style="display:grid;gap:3px">${big7(3, "Building a tiny cabin")}${tgt7(`<div class="hfc7" style="padding:3px 4px;border-radius:4px;background:#1b1b1b;display:grid;gap:2px"><div style="display:flex;gap:3px;align-items:baseline;font-size:6px"><b>Comments</b><span style="color:#aaa">1.2K</span></div><div style="display:flex;gap:3px;align-items:center;font-size:6px;color:#ddd"><span style="width:8px;height:8px;border-radius:50%;background:${AV[2]};flex:none"></span><span style="min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Lovely build! That stove…</span></div><div style="display:flex;gap:2px;justify-content:center">${[1, 0, 0].map(o => `<i style="width:3px;height:3px;border-radius:50%;background:${o ? "#f1f1f1" : "#555"}"></i>`).join("")}</div></div>`)}</div>` + big7(4, "Night train to Bodø")));
 scen("comments", "minimal_comments_button", (box, on) => {
   box.innerHTML = device("port", pageRows(player7(3) + `<b style="font-size:7px">Building a tiny cabin</b><div class="cb7${on ? " new7" : ""}" style="transition:all .3s;overflow:hidden;border-radius:5px;background:#272727;padding:${on ? "2px 6px" : "4px"};font-size:6px;${on ? "width:max-content" : ""}">${on ? `${ico7("comment", 7)} 341` : `<b>Comments 341</b>${cmt7(2, "Lovely build!")}`}</div>${row7(2, "Up next")}`));
   return on ? "A small comments button instead of the preview card" : "A large comments card with a preview (stock)";

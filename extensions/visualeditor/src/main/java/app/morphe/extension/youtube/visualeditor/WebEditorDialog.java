@@ -97,6 +97,8 @@ final class WebEditorDialog extends Dialog {
     private boolean importRan;
     /** The editor's whole screen (dark background and page): invisible until the page is ready. */
     private final FrameLayout root;
+    /** Morphe's own simple dialogs (a row's "reset?", a text to enter), shown by the page in its design. */
+    private final NativeDialogMirror mirror;
 
     @SuppressLint({"SetJavaScriptEnabled", "AddJavascriptInterface"})
     WebEditorDialog(Activity activity) {
@@ -166,9 +168,34 @@ final class WebEditorDialog extends Dialog {
         });
         root.addView(web, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setContentView(root);
+        mirror = new NativeDialogMirror(activity, new NativeDialogMirror.Page() {
+            @Override
+            public void show(int id, String json) {
+                if (destroyed) {
+                    WebEditorDialog.this.mirror.shown(id, false);
+                    return;
+                }
+                // The page answers true once it draws the dialog; anything else (an older page, an error)
+                // and the dialog stays as Morphe shows it.
+                web.evaluateJavascript("(function(){try{return !!(window.morpheNativeDialog&&morpheNativeDialog(" + json + "))}catch(e){return false}})()",
+                        v -> WebEditorDialog.this.mirror.shown(id, "true".equals(v)));
+            }
+
+            @Override
+            public void closed(int id) {
+                js("window.morpheNativeDialogClosed && morpheNativeDialogClosed(" + id + ")");
+                // The editor's window kept the focus while the dialog was mirrored, so nothing else tells
+                // the page that the row's dialog is done: note what it changed and reload the values.
+                if (actionRan) {
+                    afterAction();
+                    js("window.morpheReloadValues && morpheReloadValues()");
+                }
+            }
+        });
 
         Window w = getWindow();
         if (w != null) {
+            mirror.setOwnRoot(w.getDecorView());
             // Transparent and undimmed while loading, so the settings list shows through; dark
             // once the editor is in (reveal), so nothing behind it can show through later.
             w.setBackgroundDrawable(new ColorDrawable(0));
@@ -333,6 +360,7 @@ final class WebEditorDialog extends Dialog {
                 out.put("values", values);
                 out.put("version", appVersion(activity));
                 out.put("meta", new JSONObject(meta));
+                out.put("confirmTitle", confirmTitle());
                 return out.toString();
             } catch (Exception ex) {
                 Logger.printException(() -> "Visual editor: state failed", ex);
@@ -390,11 +418,46 @@ final class WebEditorDialog extends Dialog {
         public void action(String key) {
             Utils.runOnMainThread(() -> {
                 java.util.Map<String, String> before = snapshot();
+                mirror.mark();
                 if (LiveSettings.runAction(key)) {
                     actionRan = true;
                     if (beforeAction == null) beforeAction = before;
                     if (key != null && key.contains("import_export")) importRan = true;
+                    mirror.scanSoon();
                 } else Utils.showToastShort("Not available right now");
+            });
+        }
+
+        /** A button of a Morphe dialog the page is showing in its own design (NativeDialogMirror). */
+        @JavascriptInterface
+        public void dialogButton(int id, int index, String inputsJson) {
+            Utils.runOnMainThread(() -> mirror.button(id, index, inputsJson));
+        }
+
+        /** The page's copy of a Morphe dialog was dismissed (back, a tap beside it). */
+        @JavascriptInterface
+        public void dialogCancel(int id) {
+            Utils.runOnMainThread(() -> mirror.cancel(id));
+        }
+
+        /**
+         * Saves a change the page has already asked the user to confirm, in its own dialog with
+         * Morphe's text (the setting's "confirm" in the metadata), so no second dialog is shown here.
+         */
+        @JavascriptInterface
+        public void setConfirmed(String key, String json) {
+            Utils.runOnMainThread(() -> {
+                Setting<?> s = editable.contains(key) ? Setting.getSettingFromPath(key) : null;
+                if (s == null) return;
+                String value = fromJson(s, json);
+                if (value == null) {
+                    sendBack(s);
+                    return;
+                }
+                bridge.saveConfirmedByPage(key, value, () -> {
+                    if (!value.equals(String.valueOf(asJsonValue(s)))) sendBack(s);
+                    pushAvailability();
+                });
             });
         }
 
@@ -616,10 +679,24 @@ final class WebEditorDialog extends Dialog {
     @Override
     public void onWindowFocusChanged(boolean hasFocus) {
         super.onWindowFocusChanged(hasFocus);
+        // another window took the focus: if it is a simple dialog of Morphe's, the page shows it instead
+        if (!hasFocus && actionRan && !destroyed) mirror.scan();
         if (hasFocus && actionRan) {
             // not cleared: a row's dialog can open a second one (the file picker of an import)
             afterAction();
             js("window.morpheReloadValues && morpheReloadValues()");
+        }
+    }
+
+    /** The title Morphe gives the question it asks before some changes ("Do you wish to proceed?"). */
+    private static String confirmTitle() {
+        try {
+            // Looked up by name, so a Morphe that moves or renames it costs only the translated title.
+            Object t = Class.forName("app.morphe.extension.shared.StringRef").getMethod("str", String.class)
+                    .invoke(null, "morphe_settings_confirm_user_dialog_title");
+            return t == null ? "" : t.toString();
+        } catch (Throwable ex) {
+            return "";
         }
     }
 
@@ -739,6 +816,7 @@ final class WebEditorDialog extends Dialog {
     @Override
     public void dismiss() {
         unregisterPredictiveBack();
+        mirror.revealAll(); // a Morphe dialog the page was showing is Morphe's again, never left unseen
         super.dismiss();
         if (hiddenList != null) {
             hiddenList.setVisibility(View.VISIBLE);

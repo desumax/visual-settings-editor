@@ -13,6 +13,7 @@ if (INAPP) {
   let liveOk = false;
   const some = o => !!o && typeof o === "object" && Object.keys(o).length > 0;
   try { LIVE = JSON.parse(MorpheApp.state()); liveOk = !!LIVE && some(LIVE.values) && some(LIVE.meta); } catch (e) { /* handled below */ }
+  if (liveOk && LIVE.confirmTitle) window.__confirmTitle = LIVE.confirmTitle; // Morphe's "Do you wish to proceed?", in the app's language
   if (!liveOk && !MorpheApp.preview) {
     LIVE = { values: {}, version: "" };
     window.MORPHE_STOP = true; // boot.js draws nothing while the app swaps in its regular list
@@ -146,6 +147,9 @@ if (INAPP) {
       }
       if ("default" in m) { p.default = m.default; delete p.versionDefault; }
       if (typeof m.rebootApp === "boolean") p.rebootApp = m.rebootApp;
+      // the question Morphe asks before this setting leaves its default, in this build's words; an app that
+      // sends them (confirmTitle) is the one to follow, so a question Morphe dropped is dropped here too
+      if (typeof LIVE.confirmTitle === "string") { if (m.confirm) p.dialog = m.confirm; else delete p.dialog; }
       if (typeof m.available === "boolean") {
         __liveAvail[p.key] = m.available;
         // The value comes from the native map; the catalogue rule stays in the text (never
@@ -159,7 +163,7 @@ if (INAPP) {
     for (const [k, m] of Object.entries(meta)) {
       if (known.has(k) || !TYPE_WIDGET[m.type] || /^morphe_visual_editor_/.test(k)) continue;
       const entries = Array.isArray(m.entries) && m.entries.length ? m.entries.map(([label, value]) => ({ label, value })) : undefined;
-      cat.preferences.push({ key: k, title: m.title || "", summary: m.summary ?? null, summaryOn: m.summaryOn ?? null, summaryOff: m.summaryOff ?? null,
+      cat.preferences.push({ key: k, title: m.title || "", summary: m.summary ?? null, summaryOn: m.summaryOn ?? null, summaryOff: m.summaryOff ?? null, dialog: m.confirm || null,
         widget: entries ? "ListPreference" : TYPE_WIDGET[opensInMorphe(k, m) ? "action" : m.type], type: m.type === "action" || opensInMorphe(k, m) ? null : m.type, default: m.default, rebootApp: !!m.rebootApp, parents: [], customAvailability: [],
         screen: null, screenTitle: m.screenTitle || null, subScreen: null, subScreenTitle: m.subScreenTitle || null, entries, live: true });
       if (opensInMorphe(k, m)) __liveActions.add(k);

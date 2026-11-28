@@ -66,6 +66,16 @@ final class SettingsBridge {
         after.run();
     }
 
+    /**
+     * Saves a value whose confirmation the page has already shown, in its own design, with the same
+     * text ({@code confirm} in the metadata). {@link #save} keeps asking for every other caller.
+     */
+    void saveConfirmedByPage(String key, String newValue, Runnable after) {
+        Setting<?> s = setting(key);
+        if (s != null && !newValue.equals(String.valueOf(s.get())) && s.isAvailable()) saveConfirmed(s, newValue);
+        after.run();
+    }
+
     private void saveConfirmed(Setting<?> s, String newValue) {
         try {
             PendingChanges.beforeSave(s, String.valueOf(s.get()));

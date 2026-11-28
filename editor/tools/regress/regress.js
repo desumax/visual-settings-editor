@@ -2106,6 +2106,211 @@ const CHECKS = [
     },
   },
   {
+    name: "sub-settings-pill-never-blinks",
+    report: "Nov 28: hiding/unhiding the locked settings dropdown flashes while the parent is Off (fixed earlier only for a parent that is On)",
+    async run() {
+      const { p, ctx } = await open();
+      // the pill of a parent, watched every frame through a tap on it: it must stay, and never be fainter than both
+      // of its resting looks (swapped out and faded in from nothing, it blinked)
+      const watch = (k, on) => p.evaluate(async ([k, on]) => {
+        setPicker(false); peekPar = null; collapsed.clear(); setPref(k, on); commit(); quickSection(sectionOf(k)); await new Promise(r => setTimeout(r, 800));
+        document.querySelector(`#list [data-row="${k}"]`).scrollIntoView({ block: "center" }); await new Promise(r => setTimeout(r, 400));
+        const pill = () => document.querySelector(`#list [data-row="${k}"] .ttl .kidbtn`), out = [];
+        for (const step of ["show", "hide"]) {
+          const b = pill(); if (!b) return { err: "no sub-settings pill on " + k };
+          const kind = b.matches("[data-kidpeek]") ? "lock" : b.matches("[data-kidtoggle]") ? "count" : "other", from = +getComputedStyle(b).opacity;
+          let low = 9, gone = 0; const t0 = performance.now(); b.click();
+          await new Promise(res => { const f = () => { const x = pill(); if (!x) gone++; else low = Math.min(low, +getComputedStyle(x).opacity); if (performance.now() - t0 < 700) requestAnimationFrame(f); else res(); }; requestAnimationFrame(f); });
+          out.push({ step, kind, from, to: +getComputedStyle(pill()).opacity, low, gone });
+        }
+        return { out };
+      }, [k, on]);
+      for (const [k, on, kind] of [["morphe_niconico_comments", false, "lock"], ["morphe_niconico_comments", true, "count"], ["morphe_enhanced_ambient_mode", false, "lock"]]) {
+        const r = await watch(k, on); ok(!r.err, "setup: " + r.err);
+        for (const s of r.out) {
+          ok(s.kind === kind, `setup: ${k} ${on ? "On" : "Off"} shows a ${s.kind} pill, expected a ${kind} pill`);
+          ok(!s.gone, `${k} ${on ? "On" : "Off"}, ${s.step}: the pill was missing for ${s.gone} frames`);
+          ok(s.low >= Math.min(s.from, s.to) - .03, `${k} ${on ? "On" : "Off"}, ${s.step}: the pill dropped to ${s.low.toFixed(2)} between ${s.from} and ${s.to} (a blink)`);
+        }
+      }
+      await ctx.close();
+    },
+  },
+  {
+    name: "ambient-fullscreen-lights-only-the-bars",
+    report: "Nov 28: inspect code and animation for Ambient mode in fullscreen (the glow was drawn all around a small video; Morphe only blackens the fullscreen player's background, seen in the bars beside the video)",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        setPicker(false); quickSection("ambient"); await new Promise(r => setTimeout(r, 500)); select("morphe_disable_fullscreen_ambient_mode", "list"); await new Promise(r => setTimeout(r, 1400));
+        return [...document.querySelectorAll("#canvas .dev")].map(dev => {
+          const d = dev.getBoundingClientRect(), v = dev.querySelector(".fsv7")?.getBoundingClientRect(), g = dev.querySelector(".am7");
+          return v && g ? { land: dev.classList.contains("land"), top: (v.top - d.top) / d.height, bottom: (d.bottom - v.bottom) / d.height, left: (v.left - d.left) / d.width, right: (d.right - v.right) / d.width, glow: +getComputedStyle(g).opacity, words: dev.querySelectorAll(".toastin").length } : null;
+        });
+      });
+      ok(r.length === 2 && r.every(Boolean), "setup: the story did not draw two fullscreen phones with a video and a light");
+      for (const d of r) {
+        ok(d.land, "the phone is not in fullscreen (landscape)");
+        ok(d.top < .06 && d.bottom < .06, `the video does not fill the screen's height (gaps ${d.top.toFixed(2)} / ${d.bottom.toFixed(2)}): fullscreen has no light above or below it`);
+        ok(d.left > .04 && d.right > .04 && d.left < .2 && d.right < .2, `the bars beside the video are ${d.left.toFixed(2)} / ${d.right.toFixed(2)} of the screen`);
+        ok(!d.words, "a sentence is drawn on the phone (no sentences in redrawn animations)");
+      }
+      const glow = r.map(d => d.glow).sort();
+      ok(glow[0] < .05 && glow[1] > .4, `one phone should have black bars and the other lit bars, the lights are ${glow.join(" and ")}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "light-smoothing-and-dim-duration-play-live-over-a-film",
+    report: "Nov 28: Light smoothing and Dim duration need a good animation that changes live, with a sample video on repeat",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms));
+        setPicker(false); setPref("morphe_enhanced_ambient_mode", true); commit(); quickSection("ambient"); await wait(500);
+        const devs = () => [...document.querySelectorAll("#canvas .dev")], rgb = s => (s.match(/rgb\((\d+), ?(\d+), ?(\d+)\)/) || []).slice(1).map(Number);
+        const gap = dev => { const a = rgb(dev.querySelector(".apl7 > div").style.background), b = rgb(dev.querySelector(".aml7").style.backgroundImage); return a.length && b.length ? Math.max(...a.map((x, i) => Math.abs(x - b[i]))) : -1; };
+        // Light smoothing: the film cuts on, the light of the 0 s phone is on it, the other one trails
+        const SM = "morphe_enhanced_ambient_mode_smoothing"; select(SM, "list"); await wait(900);
+        if (!SCN[SM] || devs().length !== 2) return { err: "Light smoothing has no comparison of its own" };
+        const shots = new Set(), gaps = [[], []], labels = [...document.querySelectorAll("#canvas .dl7 > span")].map(e => e.textContent.trim());
+        for (let i = 0; i < 40; i++) { devs().forEach((d, n) => { shots.add(d.querySelector(".apl7 > div").style.background); gaps[n].push(gap(d)); }); await wait(100); }
+        // live: the slider goes to 0 and the trailing phone's light closes in on its film, the film carrying on
+        const film0 = devs()[1].querySelector(".apl7 > div").style.background;
+        const src = document.querySelector(`#list input.wsrc[data-set="${SM}"]`); src.value = "1"; src.dispatchEvent(new Event("input", { bubbles: true })); await wait(450);
+        const liveLabel = [...document.querySelectorAll("#canvas .dl7 > span")].map(e => e.textContent.trim()), liveGap = gap(devs()[1]);
+        // Dim duration: the page is scrolled, the light dims on both, comes back early with 0 s and late with 3 s
+        const DD = "morphe_enhanced_ambient_mode_dim_duration"; setPref(SM, 0); commit(); select(DD, "list"); await wait(600);
+        if (!SCN[DD] || devs().length !== 2) return { err: "Dim duration has no comparison of its own" };
+        const dl = [...document.querySelectorAll("#canvas .dl7 > span")].map(e => e.textContent.trim()), op = [[], []], moved = new Set(), dshots = new Set(), finger = new Set();
+        for (let i = 0; i < 62; i++) { devs().forEach((d, n) => { op[n].push(+getComputedStyle(d.querySelector(".aml7")).opacity); if (!n) { moved.add(Math.round(new DOMMatrix(getComputedStyle(d.querySelector(".acn7")).transform).m42)); dshots.add(d.querySelector(".apl7 > div").style.background); finger.add(getComputedStyle(d.querySelector(".finger")).opacity > .5); } }); await wait(100); }
+        return { shots: shots.size, gaps, labels, film0, liveLabel, liveGap, dl, op, moved: moved.size, dshots: dshots.size, finger: finger.size };
+      });
+      ok(!r.err, r.err);
+      ok(r.shots >= 3, `the sample film showed ${r.shots} shots in 4 s, it does not play on repeat`);
+      ok(r.labels[0] === "0 s" && r.labels[1] === "1.5 s", `the phones are labelled ${r.labels.join(" | ")}, expected 0 s | 1.5 s (Morphe shows the stored 15 as 1.5 s)`);
+      ok(Math.max(...r.gaps[0]) <= 2, `with 0 s the light is up to ${Math.max(...r.gaps[0])} levels off its film: it should follow it closely`);
+      ok(Math.max(...r.gaps[1]) > 40 && Math.min(...r.gaps[1]) < Math.max(...r.gaps[1]) - 20, `with 1.5 s the light does not trail the film and close in (gaps ${Math.min(...r.gaps[1])} to ${Math.max(...r.gaps[1])})`);
+      ok(r.liveLabel[1] === "0.1 s", `moving the slider did not redraw the comparison (label ${r.liveLabel[1]})`);
+      ok(r.dl.join("|") === "3 s|0 s", `Dim duration's phones are labelled ${r.dl.join(" | ")}, expected 3 s | 0 s`);
+      ok(r.moved >= 5 && r.finger === 2, "Dim duration: the page is not scrolled by a finger");
+      ok(r.dshots >= 3, "Dim duration: the sample film does not play on repeat");
+      const low = r.op.map(o => Math.min(...o)), hi = r.op.map(o => Math.max(...o)), dimmed = r.op.map(o => o.filter(x => x < .3).length);
+      ok(low.every(x => x < .3) && hi.every(x => x > .7), `Dim duration: the light should dim to a quarter and come back on both phones (lowest ${low.join(" / ")}, highest ${hi.join(" / ")})`);
+      ok(dimmed[0] > dimmed[1] + 15, `Dim duration: with 3 s the light stayed dim for ${dimmed[0] / 10} s, with 0 s for ${dimmed[1] / 10} s: the wait is not shown`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "comments-stories-fit-and-point",
+    report: "Nov 28: Copy comments' finger icon is offset; Search comments' search box is cut off; Comments section in Home feed refined from Morphe's code",
+    async run() {
+      const { p, ctx } = await open();
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), go = async (k, ms) => { quickSection(sectionOf(k)); await wait(500); select(k, "list"); await wait(ms); };
+        setPicker(false);
+        await go("morphe_copy_comments", 800);
+        const hold = [...document.querySelectorAll("#canvas .dev")].map(dev => { const f = dev.querySelector(".finger").getBoundingClientRect(), c = dev.querySelector(".cm7").getBoundingClientRect(); return { in: (f.top - c.top) / c.height, x: (f.left - c.left) / c.width, held: dev.querySelector(".finger").classList.contains("hold") }; });
+        // every dialog a story draws inside a phone stays inside it, with all it holds
+        const dialogs = {};
+        for (const [k, ms] of [["morphe_search_comments", 1300], ["morphe_copy_select_text", 1300], ["morphe_remove_viewer_discretion_dialog", 300]]) {
+          await go(k, ms);
+          const out = []; document.querySelectorAll("#canvas .dev").forEach(dev => dev.querySelectorAll(".dlg7").forEach(d => { const b = dev.getBoundingClientRect(), q = d.getBoundingClientRect(); const far = Math.max(q.right, ...[...d.querySelectorAll("*")].map(e => e.getBoundingClientRect().right)); out.push({ over: far - (b.right - dev.clientLeft * b.width / dev.offsetWidth), left: q.left - b.left }); }));
+          dialogs[k] = out;
+        }
+        await go("morphe_hide_comments_section_in_home_feed", 300);
+        const home = [...document.querySelectorAll("#canvas .dev")].map(dev => { const t = dev.querySelector(".tgt7"); return { teaser: !!t?.querySelector(".hfc7"), count: /Comments\s*1\.2K/.test(t?.textContent || ""), dots: t?.querySelectorAll("i").length || 0, video: !!t?.previousElementSibling?.querySelector(".th7"), sit: document.querySelector("#canvas .sit")?.textContent.trim() || "" }; });
+        await wait(1500);
+        const after = [...document.querySelectorAll("#canvas .dev")].map(dev => ({ gone: dev.querySelector(".tgt7").getBoundingClientRect().height < 2, videos: [...dev.querySelectorAll(".th7")].filter(e => e.getBoundingClientRect().height > 5).length }));
+        return { hold, dialogs, home, after };
+      });
+      ok(r.hold.length === 2, "setup: Copy comments did not draw two phones");
+      for (const h of r.hold) ok(h.held && h.in > .25 && h.in < .75 && h.x > .1 && h.x < .9, `Copy comments: the finger holds ${(h.in * 100).toFixed(0)}% down the comment (${(h.x * 100).toFixed(0)}% across), not its middle`);
+      for (const [k, ds] of Object.entries(r.dialogs)) { ok(ds.length, `setup: ${k} drew no dialog`); for (const d of ds) ok(d.over <= .5 && d.left >= 0, `${k}: the dialog runs ${d.over.toFixed(1)}px out of the phone's right side`); }
+      ok(r.home.length === 2 && r.home.every(h => h.teaser && h.count && h.dots >= 2 && h.video), `Comments section in Home feed is not drawn as the teaser attached to a video's card: ${JSON.stringify(r.home)}`);
+      ok(r.home.every(h => !h.sit), "Comments section in Home feed still has a blue line");
+      ok(r.after.filter(a => a.gone).length === 1 && r.after.every(a => a.videos === 2), `only the teaser should go on the Hide phone, both videos stay: ${JSON.stringify(r.after)}`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "morphe-questions-and-dialogs-in-the-editors-design",
+    report: "Nov 28: \"Videos hidden, all time\" opened a plain white box that doesn't follow the redesign; do a pass for similar boxes (Morphe's confirmations before a change, its rows' own simple dialogs)",
+    async run() {
+      // 1. a setting Morphe asks about before it leaves its default: asked in the editor's dialog, web and App view
+      for (const page of ["index.html", "app/index.html"]) {
+        const { p, ctx, errors } = await open(page, { touch: page !== "index.html" });
+        const r = await p.evaluate(async () => {
+          const wait = ms => new Promise(r => setTimeout(r, ms)), K = "morphe_spoof_video_streams", F = "morphe_change_form_factor";
+          const calls = []; let native = 0; window.confirm = () => { native++; return true; }; window.alert = () => { native++; };
+          if (window.MorpheApp) { Object.assign(window.MorpheApp, { set: (k, v) => calls.push(["set", k, v]), setConfirmed: (k, v) => calls.push(["setConfirmed", k, v]) }); LIVE.values[K] = true; LIVE.values[F] = defaults[F]; }
+          setPicker(false); if (state[K] !== true) return { err: "setup: Spoof video streams is not on by default" };
+          goToSetting(K); await wait(1200);
+          const sw = () => document.querySelector(`#list [data-row="${K}"] [data-sw], #list [data-row="${K}"] .lt7`), on = () => sw()?.getAttribute("aria-checked");
+          const open = () => $("dlg").classList.contains("open") && $("dlgBox").dataset.confirm === K, out = { was: on() };
+          toggle(K); await wait(500);
+          out.asked = open(); out.text = $("dlgBox").textContent; out.design = $("dlgBox").querySelectorAll(".dbtn.primary[data-dlg-ok], .dbtn.tonal[data-dlg-cancel]").length; out.drawnWhileAsking = on(); out.sentWhileAsking = calls.length;
+          $("dlgBox").querySelector("[data-dlg-cancel]").click(); await wait(500);
+          out.afterCancel = [state[K], on(), $("dlg").classList.contains("open"), calls.length];
+          toggle(K); await wait(400); $("dlg").click(); await wait(500); // left by a tap beside it
+          out.afterLeave = [state[K], on(), $("dlg").classList.contains("open")];
+          toggle(K); await wait(400); $("dlgBox").querySelector("[data-dlg-ok]").click(); await wait(700);
+          out.afterOk = [state[K], on(), $("dlg").classList.contains("open")]; out.calls = calls.slice();
+          toggle(K); await wait(500); out.backToDefault = [state[K], $("dlg").classList.contains("open")]; // to its default: Morphe does not ask
+          // a list setting: its option pills ask too
+          goToSetting(F); await wait(1200);
+          const pill = [...document.querySelectorAll(`#list [data-row="${F}"] button.opt[data-set]`)].find(b => b.getAttribute("aria-pressed") !== "true");
+          if (pill) { pill.click(); await wait(500); out.pillAsked = $("dlg").classList.contains("open") && $("dlgBox").dataset.confirm === F; out.list = $("dlgBox").querySelectorAll(".dbody li").length; $("dlgBox").querySelector("[data-dlg-cancel]").click(); await wait(400); out.pillBack = sameVal(state[F], defaults[F]); }
+          out.native = native; return out;
+        });
+        ok(!r.err, r.err); const at = page === "index.html" ? "web" : "App view";
+        ok(r.asked && r.design === 2, `${at}: turning Spoof video streams off did not ask in the editor's dialog (OK and Cancel in its buttons)`);
+        ok(/may cause playback issues/.test(r.text) && /proceed/i.test(r.text), `${at}: the dialog does not carry Morphe's question and text: "${r.text.slice(0, 80)}"`);
+        ok(r.drawnWhileAsking === r.was && r.sentWhileAsking === 0, `${at}: the change was drawn or sent before it was confirmed`);
+        ok(r.afterCancel[0] === true && r.afterCancel[1] === r.was && !r.afterCancel[2] && r.afterCancel[3] === 0, `${at}: Cancel did not put the setting back (${JSON.stringify(r.afterCancel)})`);
+        ok(r.afterLeave[0] === true && !r.afterLeave[2], `${at}: leaving the dialog did not put the setting back (${JSON.stringify(r.afterLeave)})`);
+        ok(r.afterOk[0] === false && r.afterOk[1] !== r.was && !r.afterOk[2], `${at}: OK did not make the change (${JSON.stringify(r.afterOk)})`);
+        if (page !== "index.html") ok(r.calls.length === 1 && r.calls[0][0] === "setConfirmed", `App view: the confirmed change should be saved once, without the app asking again: ${JSON.stringify(r.calls)}`);
+        ok(r.backToDefault[0] === true && !r.backToDefault[1], `${at}: going back to the default asked, Morphe does not`);
+        ok(r.pillAsked && r.list >= 3 && r.pillBack, `${at}: Change form factor's options did not ask with Morphe's list of changes, or Cancel kept the choice (${r.pillAsked}, ${r.list}, ${r.pillBack})`);
+        ok(!r.native, `${at}: a browser dialog was used`);
+        ok(!errors.length, `${at}: page errors: ${errors.join("; ")}`);
+        await ctx.close();
+      }
+      // 2. a simple dialog of Morphe's own, handed over by the app: drawn as the editor's dialog, answered through the app
+      const { p, ctx, errors } = await open("app/index.html", { touch: true });
+      const r = await p.evaluate(async () => {
+        const wait = ms => new Promise(r => setTimeout(r, ms)), calls = [];
+        Object.assign(window.MorpheApp, { dialogButton: (id, i, typed) => calls.push(["button", id, i, typed]), dialogCancel: id => calls.push(["cancel", id]) });
+        const out = {};
+        out.handled = morpheNativeDialog({ id: 7, title: "Reset the count of videos hidden?", texts: [], inputs: [], buttons: [{ label: "Cancel", primary: false }, { label: "OK", primary: true }] }); await wait(500);
+        const box = $("dlgBox"), btns = () => [...box.querySelectorAll(".acts .dbtn")].map(b => [b.textContent, b.classList.contains("primary")]);
+        out.open = $("dlg").classList.contains("open"); out.title = box.querySelector("h2")?.textContent; out.btns = btns(); out.bg = getComputedStyle(box).backgroundColor; out.radius = parseFloat(getComputedStyle(box).borderRadius);
+        box.querySelector(".dbtn.primary").click(); await wait(400);
+        out.afterOk = [$("dlg").classList.contains("open"), calls.slice()]; calls.length = 0;
+        // one with a text to type, left by a tap beside it; then one Morphe closes itself
+        morpheNativeDialog({ id: 8, title: "Change API URL", texts: ["The address to use"], inputs: [{ value: "https://a", hint: "URL", multi: false, number: false }], buttons: [{ label: "Reset", primary: false }, { label: "Cancel", primary: false }, { label: "OK", primary: true }] }); await wait(450);
+        const inp = box.querySelector("input.ndin"); out.input = inp && inp.value; if (inp) inp.value = "https://b"; out.msg = box.querySelector(".dbody p")?.textContent; out.btns3 = btns();
+        [...box.querySelectorAll(".dbtn")].find(b => b.textContent === "Reset").click(); await wait(400); out.typed = calls.slice(); calls.length = 0;
+        morpheNativeDialog({ id: 9, title: "A", texts: ["b"], inputs: [], buttons: [{ label: "OK", primary: true }] }); await wait(400); $("dlg").click(); await wait(400); out.left = [$("dlg").classList.contains("open"), calls.slice()]; calls.length = 0;
+        morpheNativeDialog({ id: 10, title: "A", texts: ["b"], inputs: [], buttons: [{ label: "OK", primary: true }] }); await wait(400); morpheNativeDialogClosed(10); await wait(400); out.closed = [$("dlg").classList.contains("open"), calls.length];
+        out.bad = morpheNativeDialog({ id: 11, title: "x", buttons: [] });
+        return out;
+      });
+      ok(r.handled === true && r.open && r.title === "Reset the count of videos hidden?", "a dialog handed over by the app is not shown as the editor's dialog");
+      ok(r.btns.length === 2 && r.btns[0][0] === "OK" && r.btns[0][1] && !r.btns[1][1], `its buttons are not the editor's (main action first): ${JSON.stringify(r.btns)}`);
+      ok(r.radius >= 12 && !/255, 255, 255/.test(r.bg), `it is a plain white box (${r.bg}, radius ${r.radius})`);
+      ok(!r.afterOk[0] && JSON.stringify(r.afterOk[1]) === JSON.stringify([["button", 7, 1, "[]"]]), `OK should close it and press Morphe's own button 1: ${JSON.stringify(r.afterOk)}`);
+      ok(r.input === "https://a" && r.msg === "The address to use" && r.btns3.length === 3, "a dialog with a field does not show its text, value and three buttons");
+      ok(JSON.stringify(r.typed) === JSON.stringify([["button", 8, 0, '["https://b"]']]), `the typed text is not passed on with the button: ${JSON.stringify(r.typed)}`);
+      ok(!r.left[0] && JSON.stringify(r.left[1]) === JSON.stringify([["cancel", 9]]), `leaving the dialog should cancel Morphe's: ${JSON.stringify(r.left)}`);
+      ok(!r.closed[0] && r.closed[1] === 0, "a dialog Morphe closed itself stays open in the editor, or is cancelled a second time");
+      ok(r.bad === false, "a dialog without buttons must be left to Morphe");
+      ok(!errors.length, `page errors: ${errors.join("; ")}`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

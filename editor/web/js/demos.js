@@ -556,14 +556,21 @@ const cmt7 = (i, txt) => `<div class="cm7" style="display:flex;gap:4px;align-ite
 function toast7(dev, text, top = "78%") { dev.querySelectorAll(".t7").forEach(n => n.remove()); dev.insertAdjacentHTML("beforeend", `<div class="toastin t7" style="top:${top}">${text}</div>`); keepPillIn(dev.lastElementChild); /* fitted at once, not a frame later */ }
 // a sheet in a scenario phone dims what it opens over, like the player menu sheets in the preview
 function sheet7(dev, rows) { dev.insertAdjacentHTML("beforeend", `<div class="shs7" style="position:absolute;inset:0;background:rgba(0,0,0,.5);animation:ghostin .25s var(--ease);z-index:5"></div><div class="sh7" style="position:absolute;left:0;right:0;bottom:0;background:#212121;border-radius:8px 8px 0 0;padding:6px;display:grid;gap:4px;font-size:7.5px;animation:sheetup .25s var(--ease);z-index:5">${rows}</div>`); }
+// A dialog in a story phone: one box for all of them, sized so a title and three buttons fit a phone 92px wide
+// (Max, Nov 28: Search comments' dialog ran out of the phone's right side). One column that may not grow past
+// the box, so nothing in it pushes the box wider than the phone.
+const DLG7_BOX = "position:absolute;left:5%;right:5%;box-sizing:border-box;background:#282828;border-radius:7px;padding:6px;display:grid;grid-template-columns:minmax(0,1fr);gap:5px;font-size:6px;color:#ddd;z-index:6;animation:dlgin7 .25s var(--ease)";
 function holdAt(f, x, y) { fingerTo(f, x, y); f.classList.add("hold"); }
+// the middle of a part of a story phone, in the phone's own px: where the hand goes to press it (a spot typed in
+// by hand drifts off its part when the page above it changes; Max, Nov 28: Copy comments held the gap over the comment)
+function midOf(dev, el, fx = .5, fy = .5) { const r = el.getBoundingClientRect(), d = dev.getBoundingClientRect(), z = d.width / dev.offsetWidth || 1; return [(r.left - d.left + r.width * fx) / z - dev.clientLeft, (r.top - d.top + r.height * fy) / z - dev.clientTop]; } // (the hand is placed from inside the phone's frame)
 
 scen("comments", "copy_comments", (box, on) => {
   situation("Holding a comment");
   box.innerHTML = device("port", pageRows(`<b style="font-size:8px">Comments</b>${cmt7(2, "The wood stove at 12:04 is pure cosiness")}${cmt7(5, "Kom igjen! Taket trenger en egen video.")}${cmt7(3, "Subscribed for part 2")}`));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"); const W = dev.clientWidth, H = dev.clientHeight;
   const c = dev.querySelectorAll(".cm7")[0];
-  at(200, () => holdAt(f, W * .55, H * .13)); at(700, () => { c.style.background = "rgba(255,255,255,.12)"; });
+  at(200, () => holdAt(f, ...midOf(dev, c, .6))); at(700, () => { c.style.background = "rgba(255,255,255,.12)"; });
   at(1100, () => { f.classList.remove("hold", "show"); if (on) toast7(dev, "Comment copied"); else sheet7(dev, ["Report", "Block user"].map(t => `<div>${t}</div>`).join("")); });
   return on ? "Hold a comment: its text is copied" : "Hold a comment: only the report menu (stock)";
 });
@@ -581,7 +588,7 @@ scen("comments", "search_comments", (box, on) => {
   at(T(150), () => fingerTo(f, ...spot(".srch7"))); at(T(450), () => tapF(f));
   at(T(650), () => {
     f.classList.remove("show");
-    dev.insertAdjacentHTML("beforeend", `<div class="dim7" style="position:absolute;inset:0;background:rgba(0,0,0,.55);animation:ghostin .2s var(--ease);z-index:5"></div><div class="dlg7" style="position:absolute;left:8%;right:8%;top:24%;background:#282828;border-radius:7px;padding:7px;display:grid;gap:6px;font-size:6.5px;color:#ddd;z-index:6;animation:dlgin7 .25s var(--ease)"><b style="font-size:8px;color:#fff">Search comments</b><div style="border-bottom:1px solid #3ea6ff;padding:2px 1px;font-size:7px"><span class="q7" style="color:#fff"></span><span class="ph7" style="color:#888">Words to search for</span></div><div style="display:flex;gap:7px;font-weight:600;color:#3ea6ff"><span style="flex:1">Clear</span><span>Cancel</span><span class="go7">Search</span></div></div>`);
+    dev.insertAdjacentHTML("beforeend", `<div class="dim7" style="position:absolute;inset:0;background:rgba(0,0,0,.55);animation:ghostin .2s var(--ease);z-index:5"></div><div class="dlg7" style="${DLG7_BOX};top:24%"><b style="font-size:7.5px;color:#fff">Search comments</b><div style="border-bottom:1px solid #3ea6ff;padding:2px 1px;font-size:6.5px;white-space:nowrap;overflow:hidden"><span class="q7" style="color:#fff"></span><span class="ph7" style="color:#888">Words to search for</span></div><div style="display:flex;gap:5px;font-weight:600;color:#3ea6ff"><span style="flex:1">Clear</span><span>Cancel</span><span class="go7">Search</span></div></div>`);
   });
   "stove".split("").forEach((ch, i) => at(T(950 + i * 110), () => { dev.querySelector(".ph7")?.remove(); const q = dev.querySelector(".q7"); if (q) q.textContent += ch; }));
   at(T(1650), () => fingerTo(f, ...spot(".go7"))); at(T(1900), () => tapF(f));

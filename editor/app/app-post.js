@@ -15,7 +15,10 @@ if (INAPP) {
     if (!started) { started = true; carryPending(); return; }
     for (const k of keys) {
       if (!(k in LIVE.values)) continue;
-      try { MorpheApp.set(__morpheKey(k), JSON.stringify(state[k])); } catch (e) { /* ignore */ }
+      // a change the editor already asked about in its own dialog (confirmChange) is saved without Morphe
+      // asking again; every other change of such a setting still gets the app's question
+      const sure = confirmedKeys.delete(k) && typeof MorpheApp.setConfirmed === "function";
+      try { if (sure) MorpheApp.setConfirmed(__morpheKey(k), JSON.stringify(state[k])); else MorpheApp.set(__morpheKey(k), JSON.stringify(state[k])); } catch (e) { /* ignore */ }
     }
   };
   // Changes saved earlier that still wait for a restart (Morphe keeps the values YouTube runs with):
@@ -184,6 +187,35 @@ if (INAPP) {
   // app (MorpheApp.pending) and count as changed here too, so leaving shows the editor's own restart
   // prompt and never Morphe's dialog. MorpheApp.state is the same read the editor starts with; the
   // app calls morpheReloadValues itself once it has noted them.
+  // A simple dialog of Morphe's own (a row's "Reset?", a value to type), opened by one of its rows: the app
+  // keeps it open but unseen and hands its title, texts, fields and buttons over, and the editor shows it as
+  // one of its own dialogs, growing out of the row that was tapped (Max, Nov 28: "Videos hidden, all time"
+  // opened a plain white box; every such box should follow the redesign). A button here presses Morphe's
+  // button with what was typed, so Morphe's own code does the work; leaving the dialog cancels Morphe's.
+  // Returns true: the app shows Morphe's dialog itself when the page does not answer.
+  let nativeDlg = 0;
+  window.morpheNativeDialog = d => {
+    if (!d || !Array.isArray(d.buttons) || !d.buttons.length) return false;
+    const fields = (d.inputs || []).map((f, i) => f.multi
+      ? `<textarea class="ndin" data-ni="${i}" placeholder="${esc(f.hint || "")}" aria-label="${esc(f.hint || d.title || "")}">${esc(f.value || "")}</textarea>`
+      : `<input class="ndin" data-ni="${i}" type="text" ${f.number ? 'inputmode="decimal"' : ""} value="${esc(f.value || "")}" placeholder="${esc(f.hint || "")}" aria-label="${esc(f.hint || d.title || "")}" autocomplete="off">`).join("");
+    // the main action first, as in the editor's own dialogs
+    const btns = d.buttons.map((b, i) => ({ label: String(b.label || ""), primary: !!b.primary, i })).sort((a, b) => b.primary - a.primary);
+    const body = (d.texts || []).map(dialogBody).join("") + fields;
+    openDialog(`<h2 id="dlgTitle">${esc(d.title || "")}</h2>${body ? `<div class="dbody">${body}</div>` : ""}<div class="acts">${btns.map(b => `<button class="dbtn ${b.primary ? "primary" : "tonal"}" data-nb="${b.i}">${esc(b.label)}</button>`).join("")}</div>`);
+    const box = $("dlgBox"); box.onchange = null; nativeDlg = d.id;
+    dlgOnClose = () => { nativeDlg = 0; try { MorpheApp.dialogCancel(d.id); } catch (e) { /* older app */ } };
+    box.onclick = e => {
+      const b = e.target.closest("[data-nb]"); if (!b) return;
+      const typed = [...box.querySelectorAll("[data-ni]")].map(x => x.value);
+      dlgOnClose = null; nativeDlg = 0; closeDialog();
+      try { MorpheApp.dialogButton(d.id, +b.dataset.nb, JSON.stringify(typed)); } catch (e) { /* older app */ }
+    };
+    const first = box.querySelector("[data-ni]"); if (first) setTimeout(() => { first.focus(); try { first.setSelectionRange(first.value.length, first.value.length); } catch (e) { /* not a text field */ } }, 80);
+    return true;
+  };
+  // Morphe closed its dialog itself: the editor's copy goes too
+  window.morpheNativeDialogClosed = id => { if (nativeDlg !== id) return; nativeDlg = 0; dlgOnClose = null; closeDialog(); };
   let actionRan = false;
   window.morpheReloadValues = () => {
     let live; try { live = JSON.parse(MorpheApp.state()); } catch (e) { return; }

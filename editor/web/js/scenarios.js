@@ -1630,10 +1630,12 @@ const FOOT_OFF = new Set([
   "morphe_minimal_comments_button", "morphe_sanitize_comments_highlighted_search_links", // the button and the link are drawn: no white lines, the phones get the room (Max, Nov 24)
 ]);
 let askOnly = false; // drawing only the default side while the other waits for a choice
-const SCN_NO_FLASH = new Set(["morphe_disable_drc_audio", "morphe_post_buttons_layout"]); // its differences are the whole text card: no blue flash (Max, Nov 23)
+const SCN_NO_FLASH = new Set(["morphe_disable_drc_audio", "morphe_post_buttons_layout", "morphe_enhanced_ambient_mode_smoothing", "morphe_enhanced_ambient_mode_dim_duration"]); // its differences are the whole text card: no blue flash (Max, Nov 23)
 const SCN_SELF_DUO = new Set(["morphe_disable_player_popup_panels", "morphe_playback_buffer_size", "morphe_skip_silence_minimum_pause", "morphe_hide_account_menu_filter_strings", "morphe_hide_comments_carousel_filter_strings"]); // one phone that tells all values itself (a text: what it holds now)
-const DUO_OTHER = { morphe_speed_tap_and_hold: 4, morphe_quick_actions_top_margin: 24, morphe_niconico_comments_max_length: 30 };
-const DUO_UNIT = { morphe_quick_actions_top_margin: " dp", morphe_niconico_comments_max_length: " characters" }; // the slider's unit on its Off / On labels
+const DUO_OTHER = { morphe_speed_tap_and_hold: 4, morphe_quick_actions_top_margin: 24, morphe_niconico_comments_max_length: 30, morphe_enhanced_ambient_mode_smoothing: 15, morphe_enhanced_ambient_mode_dim_duration: 0 };
+const DUO_UNIT = { morphe_quick_actions_top_margin: " dp", morphe_niconico_comments_max_length: " characters", morphe_enhanced_ambient_mode_smoothing: " s", morphe_enhanced_ambient_mode_dim_duration: " s" }; // the slider's unit on its Off / On labels
+// a slider Morphe shows divided (Light smoothing: 0 to 30 stored, 0.0 to 3.0 s shown, its SeekBarConfig divisor)
+const duoShown = (k, v) => { const dv = DUO_UNIT[k] && PREF[k].range && PREF[k].range.divisor; return dv > 1 && isFinite(Number(v)) ? String(Number(v) / dv) : String(v); };
 // Short words beside the phones where Morphe's option names don't read as a contrast on their own
 // ("Default" next to "Disabled, always show the autoplay countdown"; Max, Nov 20). Only the comparison
 // labels change; the list keeps Morphe's names.
@@ -1651,7 +1653,7 @@ function duoValues(k, prev) {
     if (!c) return [[false, "Off"], [true, "On"]];
     const [l0, l1] = c.labels; return NEG_WORD.has(l0) ? [[false, l0], [true, l1]] : [[true, l1], [false, l0]];
   }
-  const ents = entriesFor(k), lab = v => DUO_LABEL[k]?.[v] || ents.find(e => sameVal(e.value, v))?.label || String(v) + (DUO_UNIT[k] || (/speed/.test(k) ? "×" : ""));
+  const ents = entriesFor(k), lab = v => DUO_LABEL[k]?.[v] || ents.find(e => sameVal(e.value, v))?.label || duoShown(k, v) + (DUO_UNIT[k] || (/speed/.test(k) ? "×" : ""));
   const d = defaults[k], cur = V(k);
   // a clearer contrast than the next step up for a few settings (2x vs 4x speed)
   if (DUO_OTHER[k] !== undefined && sameVal(cur, d) && (prev === undefined || sameVal(prev, d))) return [[d, lab(d)], [DUO_OTHER[k], lab(DUO_OTHER[k])]];

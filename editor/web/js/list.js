@@ -201,7 +201,7 @@ function centreIcons(root) {
 // Screens Max has signed off ("lock it"). Shown as a small check in the screen menu and on the tabs.
 // To remove before shipping: delete this block, the .devdone CSS rule, and the three devMark /
 // devMarkGroup calls (screen menu card, group card, tab).
-const DEV_DONE = new Set(["player", "seekbar", "fullscreen", "flyout", "endscreen", "playback", "behaviour", "captions", "sponsorblock"]); // section ids, e.g. "player"
+const DEV_DONE = new Set(["player", "seekbar", "fullscreen", "flyout", "endscreen", "playback", "behaviour", "captions", "sponsorblock", "watch", "description"]); // section ids, e.g. "player"
 // settings Max approved without a preview: a tab id approves all of its settings that have none, a key one setting
 const NO_PREVIEW_OK = new Set(["fullscreen", "player", "morphe_custom_seekbar_thumb_file", "morphe_swipe_seek_sensitivity"]);
 const devMark = id => DEV_DONE.has(id) ? `<span class="devdone" title="Finished (development marker)">✓</span>` : "";
@@ -1225,6 +1225,7 @@ function placeDependents(lists, movable) {
 const swKey = x => x.dataset.sw ?? `${x.closest("[data-lst]")?.dataset.lst}|${x.dataset.lch}`;
 let lastVis = { sec: null, keys: new Set() };
 const pickedFiles = {}; // images chosen with a file picker, kept for this visit only
+const KID_TURN_MS = 280; // a sub-settings pill changing its look: as long as its arrow takes to turn (workbench.css)
 const foldingKids = new Map(); // sub-option groups still folding away: their old rows, and until when
 // peekPar: a parent whose locked sub-settings are shown, locked, after a tap on its lock pill (Max, Nov 20:
 // the pill looked like a button and did nothing). Each one says what unlocks it.
@@ -1297,6 +1298,9 @@ function renderList() {
   if (lastVis.sec !== section) foldingKids.clear();
   foldingKids.forEach((v, grp) => { if (v.until > now0 && !wantOpen.has(grp)) closingOld.set(grp, v.old); else foldingKids.delete(grp); });
   if (lastVis.sec === section) list.querySelectorAll(".kids.open").forEach(b => { if (!wantOpen.has(b.dataset.kidsOf)) { const old = b.querySelector(".kin").innerHTML, btn = list.querySelector(`[data-row="${b.dataset.kidsOf}"] .kidbtn`)?.outerHTML; closingOld.set(b.dataset.kidsOf, old); foldingKids.set(b.dataset.kidsOf, { old, btn, until: now0 + 320 }); } });
+  // a lock pill that stays a lock pill through the redraw (its locked sub-settings shown or hidden again by a tap
+  // on it) keeps its old look for a frame, so its change eases like the count pill of a parent that is on
+  const kidWas = new Map(); if (lastVis.sec === section) list.querySelectorAll("[data-row] .kidbtn.kidoff[data-kidpeek]").forEach(x => kidWas.set(x.dataset.kidpeek, [x.getAttribute("aria-expanded"), getComputedStyle(x).opacity]));
   // switches keep their old position for a frame so the change slides instead of snapping
   const swWas = new Map(); list.querySelectorAll("[data-sw], [data-lch]").forEach(x => swWas.set(swKey(x), [x.getAttribute("aria-checked"), x.dataset.at, x.dataset.tone]));
   // groups caught mid-fold by this render: their new box carries on from the height it had
@@ -1331,7 +1335,9 @@ function renderList() {
     // lock pill: switching it at once drew the lock mid-fold. It fades in to its own resting opacity (the
     // lock pill is dimmed): fading to full and dropping to the dim value made it flash (Max, Nov 24)
     const fold = foldingKids.get(grp), nb = list.querySelector(`[data-row="${grp}"] .kidbtn`);
-    if (fold && fold.btn && nb && nb.outerHTML !== fold.btn) {
+    // (a lock pill that stays one never leaves: swapped out and faded in from nothing it flashed, Max, Nov 28;
+    // it eases between its two looks below, see kidWas)
+    if (fold && fold.btn && nb && nb.outerHTML !== fold.btn && !(nb.matches(".kidoff") && /class="kidbtn kidoff"/.test(fold.btn))) {
       const fresh = nb.outerHTML; nb.outerHTML = fold.btn;
       setTimeout(() => { const cur = list.querySelector(`[data-row="${grp}"] .kidbtn`); if (cur && !list.querySelector(`[data-kids-of="${grp}"]`)?.classList.contains("open")) { cur.outerHTML = fresh; const n = list.querySelector(`[data-row="${grp}"] .kidbtn`); if (n) n.animate([{ opacity: 0 }, { opacity: getComputedStyle(n).opacity }], { duration: 160 }); } }, Math.max(0, fold.until - performance.now()) + 20);
     }
@@ -1341,6 +1347,12 @@ function renderList() {
     kin.querySelectorAll(".row").forEach(r => r.classList.remove("sel", "attn", "nudge"));
     const left = Math.max(0, (foldingKids.get(grp)?.until ?? now0) - performance.now());
     setTimeout(() => { if (kin.isConnected && !kin.parentElement.classList.contains("open")) kin.innerHTML = fresh; }, left + 20);
+  });
+  list.querySelectorAll("[data-row] .kidbtn.kidoff[data-kidpeek]").forEach(x => {
+    const was = kidWas.get(x.dataset.kidpeek), now = x.getAttribute("aria-expanded"); if (!was || was[0] === now) return;
+    // the icon turns through its own transition (old state for one style pass), the pill's strength eases with it
+    x.setAttribute("aria-expanded", was[0]); void getComputedStyle(x.querySelector("svg") || x).transform; x.setAttribute("aria-expanded", now);
+    x.animate([{ opacity: was[1] }, { opacity: getComputedStyle(x).opacity }], { duration: KID_TURN_MS, easing: "cubic-bezier(.2,0,0,1)" });
   });
   const keepOpen = [...list.querySelectorAll(".row > .txt > .sum")].filter(e => wasOpen.has(e.closest(".row").dataset.row));
   keepOpen.forEach(e => { e.style.transition = "none"; e.style.maxHeight = wasOpen.get(e.closest(".row").dataset.row) + "px"; });
@@ -2141,7 +2153,12 @@ function cardPlay(frames, o, done) {
   const a = cardAnim = box.animate(frames, o);
   a.onfinish = () => { if (cardAnim !== a) return; cardAnim = null; box.style.transition = ""; if (done) done(); };
 }
+// What a dialog does when it is left without one of its buttons (the scrim, Back, Escape, or another dialog
+// taking its place): a question that was asked before a change counts as answered "no" (confirmChange).
+let dlgOnClose = null;
+function dlgLeft() { const f = dlgOnClose; dlgOnClose = null; if (f) f(); }
 function openDialog(html) {
+  dlgLeft();
   const dlg = $("dlg"), box = $("dlgBox"), was = dlg.classList.contains("open");
   let r = null;
   if (!was) {
@@ -2157,6 +2174,7 @@ function openDialog(html) {
 function closeDialog() {
   const dlg = $("dlg"), box = $("dlgBox");
   if (!dlg.classList.contains("open")) return;
+  dlgLeft();
   cardStop(); // measured at its open place, not mid-spring
   const r = !GLIDE_REDUCED.matches && cardRect(cardOrigin), f = r && cardFrames(box, r);
   cardOrigin = null;
@@ -2277,6 +2295,31 @@ $("btnBack").onclick = () => {
   if (pendingRestart().length) return restartDialog();
   webLeave("Back to Morphe settings");
 };
+// Morphe's own dialog texts in the editor's dialogs: paragraphs, and lines that start with a bullet as a list.
+function dialogBody(t) {
+  const out = []; let items = [];
+  const flush = () => { if (items.length) { out.push(`<ul>${items.map(i => `<li>${esc(i)}</li>`).join("")}</ul>`); items = []; } };
+  for (const l of String(t ?? "").split("\n")) { const m = /^\s*[\u2022\u00b7]\s*(.*)$/.exec(l); if (m) items.push(m[1]); else { flush(); if (l.trim()) out.push(`<p>${esc(l.trim())}</p>`); } }
+  flush(); return out.join("");
+}
+// Some settings ask before they leave their default (Morphe's userDialogMessage: Spoof video streams, Change
+// form factor, the launcher icon...). Morphe shows its own dialog for that, a plain box in the phone's colours;
+// in the app the editor showed Android's (Max, Nov 28: every such box should follow the redesign). The question
+// is asked here, in the editor's dialog and with Morphe's text, before the change is drawn or saved: OK goes on
+// with it, anything else puts the value back. confirmedKeys: changes already confirmed here, so the app saves
+// them without asking a second time (app-post.js). Returns true while it is asking.
+const confirmedKeys = new Set();
+function confirmChange(k, before, go) {
+  const p = PREF[k];
+  if (!p || !p.dialog || sameVal(state[k], defaults[k]) || sameVal(state[k], before)) return false;
+  openDialog(`<h2 id="dlgTitle">${esc(window.__confirmTitle || "Do you wish to proceed?")}</h2><div class="dbody">${dialogBody(p.dialog)}</div>
+    <div class="acts"><button class="dbtn primary" data-dlg-ok>OK</button><button class="dbtn tonal" data-dlg-cancel>Cancel</button></div>`);
+  const box = $("dlgBox"); box.onclick = box.onchange = null; box.dataset.confirm = k;
+  dlgOnClose = () => { delete box.dataset.confirm; setPref(k, before); changedPrefs.delete(k); commit(); };
+  box.querySelector("[data-dlg-cancel]").onclick = closeDialog;
+  box.querySelector("[data-dlg-ok]").onclick = () => { dlgOnClose = null; delete box.dataset.confirm; closeDialog(); confirmedKeys.add(k); go(); };
+  return true;
+}
 // Settings from other screens changed through the popup count as part of this screen for Reset.
 const borrowed = {};
 function borrowPopup(k, target) {
@@ -2287,7 +2330,9 @@ function borrowPopup(k, target) {
     <div class="dlglist">${rowHTML(target, false).replace('class="row', 'class="row inpop')}</div>
     <div class="acts"><button class="dbtn tonal" id="dDone">Done</button></div>`);
   const box = $("dlgBox");
-  const after = () => {
+  let was = state[target];
+  const after = sure => {
+    if (sure !== true && confirmChange(target, was, () => after(true))) return; // asks first (the question takes the popup's place)
     (borrowed[section] = borrowed[section] || new Set()).add(target);
     const r = box.querySelector(".dlglist"); if (r) r.innerHTML = rowHTML(target, false).replace('class="row', 'class="row inpop');
     commit();
@@ -2296,10 +2341,10 @@ function borrowPopup(k, target) {
   box.onclick = e => {
     if (e.target.id === "dDone") return closeDialog();
     const sw = e.target.closest("[data-sw]"), opt = e.target.closest("button.opt[data-set]");
-    if (sw) { ensureMod(); setPref(target, !state[target]); after(); }
-    else if (opt) { ensureMod(); optSnap(opt); setPref(target, coerce(target, opt.dataset.val)); after(); optGlide(); }
+    if (sw) { ensureMod(); was = state[target]; setPref(target, !state[target]); after(); }
+    else if (opt) { ensureMod(); was = state[target]; optSnap(opt); setPref(target, coerce(target, opt.dataset.val)); after(); optGlide(); }
   };
-  box.onchange = e => { const t = e.target; if (!t.dataset || t.dataset.set !== target) return; ensureMod(); setPref(target, t.type === "range" || t.type === "number" ? Number(t.value) : coerce(target, t.value)); after(); };
+  box.onchange = e => { const t = e.target; if (!t.dataset || t.dataset.set !== target) return; ensureMod(); was = state[target]; setPref(target, t.type === "range" || t.type === "number" ? Number(t.value) : coerce(target, t.value)); after(); };
 }
 // Reset sits next to search and asks whether to reset this preview's screen or every setting.
 const changedKeys = keys => keys.filter(k => JSON.stringify(state[k]) !== JSON.stringify(defaults[k]));

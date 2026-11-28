@@ -123,7 +123,7 @@
     for (const el of [root, ...root.querySelectorAll("*")]) {
       const cs = getComputedStyle(el); if (cs.backgroundImage === "none") continue;
       const r = rect(el); if (r.w * r.h < min) continue;
-      out.push({ id: idOf(el), bg: cs.backgroundImage, r, op: parseFloat(cs.opacity), root: idOf(root) });
+      out.push({ id: idOf(el), bg: cs.backgroundImage, r, op: parseFloat(cs.opacity), root: idOf(root), film: el.hasAttribute("data-film7") });
     }
   }
 
@@ -134,7 +134,9 @@
     if (row && row.getBoundingClientRect().height > 0) { pe(row, "pointerdown"); pe(row, "pointerup"); if (selected === k) return "tap"; }
     select(k, "list"); return "select()";
   }
-  function pick(k, v) {
+  // Morphe's "Do you wish to proceed?" (confirmChange) is answered OK: the change is what is being checked
+  function pick(k, v) { const how = pick0(k, v); const sure = document.querySelector("#dlgBox[data-confirm] [data-dlg-ok]"); if (sure) sure.click(); return how; }
+  function pick0(k, v) {
     const p = PREF[k];
     if (p.type === "boolean") {
       if (!!state[k] === !!v) return "same";
@@ -274,6 +276,7 @@
       // a picture replaced in place: the same part shows another picture from one step to the next
       if (prev) for (const a of s.art) {
         const p = prev.art.find(o => o.id === a.id); if (!p || p.bg === a.bg) continue;
+        if (a.film) continue; // a sample film that is playing, or the light that follows it (data-film7): its cuts are the story
         if (Math.abs(p.r.l - a.r.l) < 1 && Math.abs(p.r.t - a.r.t) < 1 && Math.abs(p.r.w - a.r.w) < 1 && a.op > .5 && p.op > .5) add("picture-swap", s.t, "a picture is replaced in place, with no motion");
       }
       // a flashing pill must grow around its own middle

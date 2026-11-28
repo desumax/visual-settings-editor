@@ -283,7 +283,7 @@ function setGlassForce(v) {
 // Morphe's theme patch (Pure black / AMOLED, Material You, Catppuccin, custom) changes YouTube's background,
 // and Morphe's own settings take the same colour (ThemeColorPatch hands it to Morphe), so the preview and
 // the editor follow it in every design (Max, Nov 25): Original takes it as YouTube does (page, sheets and
-// raised surfaces), Morphe as its page with its surfaces a step lighter, Glass as the ground under its glows.
+// raised surfaces), Glass as the ground under its glows. Morphe keeps Morphe Manager's colours (Nov 28).
 // (The light theme's colour shows in the App look preview; the editor itself is drawn in the dark theme.)
 function appBg() { return themeColor(true, k => state[k]); }
 function lift(hex, amt) { const n = parseInt(hex.slice(1), 16); const c = [n >> 16, (n >> 8) & 255, n & 255].map(v => Math.min(255, Math.round(v + (255 - v) * amt))); return "#" + c.map(v => v.toString(16).padStart(2, "0")).join(""); }
@@ -292,6 +292,9 @@ function applyAppColors() {
   const ph = $("phone"), bg = appBg();
   ph.style.setProperty("--app-bg", bg);
   APP_VARS.forEach(v => ph.style.removeProperty(v));
+  // Morphe (Max, Nov 28: "match exactly what the manager uses") keeps Morphe Manager's own dark scheme
+  // (base.css :root, Manager's ui/theme/Color.kt) whatever colour the app's theme gives YouTube
+  if (theme === "m3") return;
   ph.style.setProperty("--m-bg", bg); ph.style.setProperty("--m-surface", bg);
   if (theme === "glass") { ph.style.setProperty("--g-bg", bg); return; }
   const [c, hi, top] = theme === "yt" ? [0, .13, .22] : [.016, .055, .1];

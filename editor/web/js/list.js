@@ -558,9 +558,13 @@ function summaryFor(k) { const p = PREF[k]; const v = V(k);
 // automatically" under "Player popup panels: On | Off" said the opposite of the toggle; Max, Nov 23, again).
 // One rule for every such setting: the description names the state it describes ("Off: disables ...").
 // A setting with its own On and Off descriptions keeps them.
+// A description that says what the switch prevents by doing something ("Prevents dragging ...") reads as what
+// On allows instead, with no state in front (Max, Nov 28: remove the "Off" tag from Drag and drop and Horizontal
+// drag gesture). Others ("Prevents feeds from refreshing ...") would not read right turned round, and keep it.
 function cleanSum(k, t) {
   const p = PREF[k], c = design === "clean" && cleanOf(k);
   if (!t || !c || c.labels[0] !== "On" || p.summaryOn || p.summaryOff) return t;
+  if (/^prevents [a-z]+ing\b/i.test(t)) return "Allows " + t.replace(/^prevents\s+/i, "");
   return `${c.labels[1]}: ${t.charAt(0).toLowerCase()}${t.slice(1)}`;
 }
 // Morphe fills some descriptions at run time (String.format: "Saved videos: %s"). The preview fills the

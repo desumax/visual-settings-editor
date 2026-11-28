@@ -322,6 +322,11 @@ html:not(.touchwait) .dbtn:active { transform: scale(.98); }
 .theme-glass .actpill { background-color: var(--g-ctl); box-shadow: var(--g-ctl-edge); }
 html:not(.touchwait) .actpill:active { filter: brightness(1.25); }
 /* Morphe design: the same card list as Glass (Max, Nov 24): every setting its own rounded card, a hair apart; rows that belong together (a unit, a shared sub-screen, a zone grid) stay one card */
+/* Morphe design = Morphe Manager's settings cards (Max, Nov 28): the fill is Manager's cardFill(), surface raised
+   3dp (surface #1A1C1E with its primary tint at 8%), and every card has Manager's 1dp edge (CardBorder: the outline
+   variant lifted to 2.5:1 contrast on the background) */
+.phone.theme-m3:not(.theme-glass) { --m-c: #252A30; --m-card-edge: #5B5E65; }
+.phone.theme-m3:not(.theme-glass) .group > :is(.row, .unit, .zgrid, .shared) { box-shadow: inset 0 0 0 1px var(--m-card-edge); }
 .theme-m3 .group { background: none; margin: 0 10px 2px; overflow: visible; }
 .theme-m3 .group > :is(.row, .unit, .zgrid, .shared) { background-color: var(--m-c); border-radius: 22px; margin-bottom: 2px; overflow: hidden; }
 .theme-m3 .group > .row, .theme-m3 .group > .shared, .theme-m3 .group > .unit > .row:first-child, .theme-m3 .group > .zgrid, .theme-m3 .group > * + .zgrid, .theme-m3 .zgrid + * { border-top: 0; }

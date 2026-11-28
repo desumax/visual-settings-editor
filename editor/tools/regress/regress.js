@@ -1662,6 +1662,48 @@ const CHECKS = [
     },
   },
   {
+    name: "drag-and-drop-settles-in-a-corner",
+    report: "Nov 28: Drag and drop's animation doesn't actually snap to a corner, as the description says",
+    async run() {
+      const { p, ctx } = await open("index.html");
+      await p.evaluate(() => { setPicker(false); goToSetting("morphe_miniplayer_disable_drag_and_drop"); }); await sleep(2900);
+      const r = await p.evaluate(() => [...document.querySelectorAll("#canvas .dev")].map(d => { const m = d.querySelector(".mp2"); if (!m) return null; const k = d.getBoundingClientRect().width / d.clientWidth, a = d.getBoundingClientRect(), b = m.getBoundingClientRect();
+        return { l: (b.left - a.left) / k - d.clientLeft, t: (b.top - a.top) / k - d.clientTop, r: (a.right - b.right) / k - d.clientLeft, b: (a.bottom - b.bottom) / k - d.clientTop }; }));
+      ok(r.length === 2 && r.every(Boolean), `setup: expected two phones with a miniplayer, got ${JSON.stringify(r)}`);
+      const corner = q => Math.min(q.l, q.r) <= 12 && Math.min(q.t, q.b) <= 12, home = q => q.r <= 12 && q.b <= 40;
+      ok(r.some(q => corner(q) && !home(q)), `no phone shows the miniplayer let go in a corner of the screen: ${r.map(q => `left ${Math.round(q.l)} top ${Math.round(q.t)}`).join(" / ")}`);
+      ok(r.some(home), "the phone with drag and drop off should keep the miniplayer in its corner");
+      await ctx.close();
+    },
+  },
+  {
+    name: "prevents-descriptions-read-as-allows",
+    report: "Nov 28: remove the \"Off\" tag from Drag and drop and Horizontal drag gesture",
+    async run() {
+      const { p, ctx } = await open("index.html");
+      const r = await p.evaluate(() => { design = "clean"; return ["morphe_miniplayer_disable_drag_and_drop", "morphe_miniplayer_disable_horizontal_drag", "morphe_disable_notification_media_seekbar"].map(k => [k, summaryFor(k)]); });
+      for (const [k, t] of r) ok(/^Allows /.test(t) && !/^Off:/.test(t), `${k}: the description reads "${t}"`);
+      await ctx.close();
+    },
+  },
+  {
+    name: "morphe-design-uses-manager-colours",
+    report: "Nov 28: the Morphe design's colours should match exactly what Morphe Manager uses",
+    async run() {
+      for (const page of ["app/index.html", "index.html"]) {
+        const { p, ctx } = await open(page);
+        await p.evaluate(() => { uiPick("m3"); setPicker(false); quickSection("miniplayer"); }); await sleep(1200);
+        const c = await p.evaluate(() => { const g = (sel, pr) => { const e = document.querySelector(sel); return e ? getComputedStyle(e)[pr] : "none"; };
+          return { bar: g(".appbar", "backgroundColor"), card: g("#list .group > .row", "backgroundColor"), edge: g("#list .group > .row", "boxShadow"), title: g("#list .row .ttl", "color"), sum: g("#list .row .sum", "color"), primary: getComputedStyle($("phone")).getPropertyValue("--m-primary").trim() }; });
+        const want = { bar: "rgb(26, 28, 30)", card: "rgb(37, 42, 48)", title: "rgb(227, 226, 230)", sum: "rgb(195, 198, 207)" };
+        for (const [k, v] of Object.entries(want)) ok(c[k] === v, `${page}: ${k} is ${c[k]}, Manager draws ${v}`);
+        ok(/rgb\(91, 94, 101\)/.test(c.edge), `${page}: cards have no Manager edge (${c.edge})`);
+        ok(/^#a4c9ff$/i.test(c.primary), `${page}: primary is ${c.primary}`);
+        await ctx.close();
+      }
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {
@@ -1816,7 +1858,9 @@ const CHECKS = [
       ok(r.bad === "rgb(15, 15, 15)", `a custom colour that isn't one falls back to #0F0F0F: ${r.bad}`);
       ok(r.named === "rgb(0, 0, 128)", `a colour name (Navy), as Android reads it: ${r.named}`);
       ok(r.dark === "rgb(41, 0, 0)", `Dark theme background Dark red: ${r.dark}`);
-      ok(r.ed_m3 === "#290000" && r.ed_glass === "#290000", `the Morphe and Glass designs follow the dark theme: ${r.ed_m3} / ${r.ed_glass}`);
+      // (Nov 28: the Morphe design keeps Morphe Manager's own colours instead; the App look preview still follows)
+      ok(r.ed_glass === "#290000", `the Glass design follows the dark theme: ${r.ed_glass}`);
+      ok(/^#1a1c1e$/i.test(r.ed_m3), `the Morphe design keeps Morphe Manager's background: ${r.ed_m3}`);
       await ctx.close();
     },
   },

@@ -1362,14 +1362,19 @@ SCN_HOLD.morphe_navigation_bar_animations = 1800;
 
 // ------------------------------------------------------------------ miniplayer gestures (scenarios)
 const miniDev = () => `${playerArea(3)}<div class="mp2" style="position:absolute;right:6px;bottom:20px;width:40px;height:23px;border-radius:4px;background:${ART[0]};box-shadow:0 2px 6px #000;transition:all .55s var(--ease)"></div><div style="position:absolute;left:0;right:0;bottom:0;height:14px;background:#0f0f0f;border-top:1px solid #333"></div>`;
+// Drag and drop (Max, Nov 28: "doesn't actually do a snap to corner"): YouTube's modern miniplayer follows the
+// finger anywhere and, let go, settles into the nearest corner of the screen (Morphe's MiniplayerPatch only
+// switches that drag on or off: getMiniplayerDragAndDrop). Off, the finger slides over it and it stays put.
+// No sentences in the phones (Max, Nov 25: redrawn animations carry none).
 scen("miniplayer", "miniplayer_disable_drag_and_drop", (box, disabled) => {
-  situation("Dragging the miniplayer");
   box.innerHTML = device("port", miniDev());
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger"), m = box.querySelector(".mp2"); const W = dev.clientWidth, H = dev.clientHeight;
+  const mw = 40, mh = 23, gap = 6, rx = W * .34, ry = H * .42; // let go up and to the left of the middle: the top left corner is nearest
   at(150, () => { fingerTo(f, W - 26, H - 31); f.classList.add("hold"); });
-  at(500, () => { fingerTo(f, 26, H * .45, 700); if (!disabled) { m.style.right = (W - 46) + "px"; m.style.bottom = (H * .55 - 11) + "px"; } });
-  at(1300, () => { f.classList.remove("hold"); if (disabled) dev.insertAdjacentHTML("beforeend", `<div class="toastin" style="top:20%">Stays put</div>`); });
-  return disabled ? "The miniplayer stays in its corner" : "Drag it to any corner";
+  at(450, () => { fingerTo(f, rx, ry, 650 * scStretch); if (!disabled) { m.style.transition = `right ${650 * scStretch}ms var(--ease), bottom ${650 * scStretch}ms var(--ease)`; m.style.right = (W - rx - mw / 2) + "px"; m.style.bottom = (H - ry - mh / 2) + "px"; } });
+  at(1150, () => { f.classList.remove("hold"); if (!disabled) { m.style.transition = `right ${420 * scStretch}ms var(--spring), bottom ${420 * scStretch}ms var(--spring)`; m.style.right = (W - mw - gap) + "px"; m.style.bottom = (H - mh - gap) + "px"; } });
+  at(1450, () => f.classList.remove("show"));
+  return "";
 });
 scen("miniplayer", "miniplayer_disable_horizontal_drag", (box, disabled) => {
   situation("Flinging the miniplayer sideways");

@@ -711,7 +711,7 @@ scen("watch", "remove_viewer_discretion_dialog", (box, on) => {
   situation("Opening an age-sensitive video");
   box.innerHTML = device("port", playerArea(2));
   const dev = box.querySelector(".dev"), f = box.querySelector("#scFinger");
-  dev.insertAdjacentHTML("beforeend", `<div class="dlg7" style="position:absolute;left:8%;right:8%;top:8%;background:#282828;border-radius:6px;padding:6px;font-size:7px;display:grid;gap:4px;transition:opacity .25s"><b>Viewer discretion advised</b><span style="color:#aaa">This video may be inappropriate for some users.</span><span class="ok7" style="justify-self:end;color:#3ea6ff">I understand</span></div>`);
+  dev.insertAdjacentHTML("beforeend", `<div class="dlg7" style="position:absolute;left:8%;right:8%;top:9%;background:#282828;border-radius:6px;padding:6px;font-size:7px;display:grid;gap:4px;transition:opacity .25s"><b>Viewer discretion advised</b><span style="color:#aaa">This video may be inappropriate for some users.</span><span class="ok7" style="justify-self:end;color:#3ea6ff">I understand</span></div>`);
   const d = dev.querySelector(".dlg7");
   if (on) { d.style.opacity = "0"; at(100, () => d.style.opacity = "1"); at(400, () => { d.style.opacity = "0"; toast7(dev, "Accepted for you", "70%"); }); return "The dialog is accepted automatically (age limits still apply)"; }
   toast7(dev, "Playback waits for you", "82%");

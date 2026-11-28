@@ -1981,6 +1981,37 @@ const CHECKS = [
     },
   },
   {
+    name: "story-pills-stay-off-dialogs-and-sheets",
+    report: "Nov 28 (14:35): Remove viewer discretion dialog, the black pill overlaps the dialog in the animation; the same rule for every story that opens a dialog or a sheet",
+    async run() {
+      const { p, ctx } = await open();
+      const keys = await p.evaluate(() => Object.keys(SCN).filter(k => inVersion(k) && /sheet7\(|dlg7/.test(String(SCN[k]))));
+      ok(keys.includes("morphe_remove_viewer_discretion_dialog"), "setup: the discretion story was not found");
+      const bad = [];
+      for (const k of keys) {
+        const r = await p.evaluate(async k => {
+          setPicker(false); goToSetting(k); const out = new Set(), t0 = performance.now();
+          const box = e => e.getBoundingClientRect(), op = e => { let o = 1; for (let x = e; x && !x.classList.contains("dev"); x = x.parentElement) o *= parseFloat(getComputedStyle(x).opacity); return o; };
+          while (performance.now() - t0 < 3600) {
+            await new Promise(r => setTimeout(r, 60));
+            for (const dev of document.querySelectorAll("#canvas .dev")) {
+              const panels = [...dev.querySelectorAll(".dlg7, .sh7")].filter(e => op(e) > .6).map(box);
+              for (const t of dev.querySelectorAll(".toastin")) {
+                if (op(t) < .6 || t.getAnimations().some(a => a.playState === "running")) continue;
+                const a = box(t);
+                for (const b of panels) { const w = Math.min(a.right, b.right) - Math.max(a.left, b.left), h = Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top); if (w > 2 && h > 2) out.add(`"${t.textContent.trim()}" on a ${b.height > 0 ? "panel" : ""} by ${Math.round(h)}px`); }
+              }
+            }
+          }
+          return [...out];
+        }, k);
+        if (r.length) bad.push(`${k.slice(7)}: ${r.join(", ")}`);
+      }
+      ok(!bad.length, `pills drawn over a dialog or sheet: ${bad.join("; ")}`);
+      await ctx.close();
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

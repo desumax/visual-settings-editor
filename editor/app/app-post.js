@@ -75,11 +75,65 @@ if (INAPP) {
   // Reset order (list.js, shown while the menu is open) sits between the title and search
   menuTitle.after($("barOrd"));
   $("secPill").onclick = null; $("secPill").removeAttribute("aria-haspopup"); $("secPill").tabIndex = -1;
+  // One owner for every motion between the menu page and a screen (Max, Nov 28: App > Miscellaneous, Back,
+  // then Browsing quickly flashed the main menu over the new screen, and the opening animation was skipped).
+  // The screen's growth took its card from the press recorded at pointerdown (cardTap). A tap that landed
+  // while the Back motion was still finishing had no card (the menu behind a sliding screen takes no
+  // presses, and the menu page taking over cleared the record), so the screen appeared at once and the
+  // menu, still above it, faded out over it. Now:
+  // - a press while a Back motion is still finishing ends that motion at once (settle), so the page under
+  //   the finger is still and the tap goes to what is there;
+  // - the card is the one the click reaches, measured on the still page (opened), so every card tap grows;
+  // - a growth still running is put in place before the next motion starts (stopGrow).
+  let opened = null, resettled = false, quietN = 0;
+  // a few frames without transitions: what changes now is in place at once (the menu put away or taking over)
+  const quiet = () => {
+    const root = document.documentElement, n = ++quietN; root.classList.add("peekreset");
+    requestAnimationFrame(() => requestAnimationFrame(() => { if (n === quietN) root.classList.remove("peekreset"); }));
+  };
+  // where a card rests: without the press look that scales it under the finger, and without the few px
+  // it still rises while the menu comes in (.pick, base.css)
+  const stillRect = el => {
+    const r = el.getBoundingClientRect(), t = getComputedStyle(el).transform, m = t && t !== "none" ? new DOMMatrixReadOnly(t) : null;
+    const w = r.width / (m && m.a > 0 ? m.a : 1), h = r.height / (m && m.d > 0 ? m.d : 1);
+    return { left: r.left - (m ? m.e : 0) + (r.width - w) / 2, top: r.top - (m ? m.f : 0) + (r.height - h) / 2, width: w, height: h };
+  };
+  function stopGrow() { const e = document.querySelector(".editor"); if (e._grow) { const a = e._grow; e._growEnd(); a.cancel(); } }
+  // Whatever still moves toward the menu page reaches its end now. True when something did.
+  const settle = () => {
+    let did = false; const menu = $("picker");
+    if (peek && peek.leaving && peek.timer) { const done = peek.done; clearTimeout(peek.timer); peek.timer = 0; done(); did = true; } // the screen sliding away after a Back swipe
+    if (menuPage && menu._pop) { menu._pop.finish(); did = true; } // the menu growing out of the Back arrow
+    return did;
+  };
+  const menuPart = x => (x && x.closest ? x.closest("#picker button, #picker [data-sec], #picker [data-group], #picker input, #picker a, #picker label") : null);
+  // (From the moment a Back swipe is let go the menu is the page, also where the old screen still slides
+  // over it: a quick tap is aimed at the card that is about to be there.)
+  document.addEventListener("pointerdown", e => {
+    opened = null; resettled = settle();
+    if (!resettled) return;
+    // the tap belongs to what rests under the finger now
+    const real = document.elementFromPoint(e.clientX, e.clientY);
+    if (menuPart(real) !== menuPart(e.target)) e.stopPropagation(); // no press look or hold on a part that only passed under the finger
+  }, true);
+  document.addEventListener("click", e => {
+    const was = resettled; resettled = false;
+    if (was && e.isTrusted) {
+      const real = menuPart(document.elementFromPoint(e.clientX, e.clientY));
+      if (real !== menuPart(e.target)) { e.stopPropagation(); e.preventDefault(); if (real) real.click(); return; }
+    }
+    settle(); // (a click without a press: a key, a script)
+    const c = menuPage && e.target.closest && e.target.closest("#picker .pick");
+    opened = c ? { rect: stillRect(c), radius: getComputedStyle(c).borderRadius, t: performance.now() } : null;
+  }, true);
   // src (opening): the button the menu grows from, null when it is already in place (after a Back swipe)
   function setMenu(on, src) {
     if (!on && window.__drawBehind) window.__drawBehind(); // the screen behind the menu, not drawn yet at start (boot.js)
+    stopGrow(); // a screen still growing out of its card is in place at once
+    if ($("picker")._pop) $("picker")._pop.finish(); // and so is a menu still growing out of the Back arrow
     // the card just tapped, before the menu goes: its screen grows out of it (cardGrow)
-    const tap = !on && menuPage && cardTap && performance.now() - cardTap.t < 1500 && cardTap.card;
+    const tap = !on && menuPage && opened && performance.now() - opened.t < 1000 && opened;
+    opened = null;
     menuPage = on;
     document.documentElement.classList.toggle("menupage", on);
     if (on) { $("scroller").scrollTop = 0; $("app").classList.remove("barhidden"); }
@@ -121,10 +175,9 @@ if (INAPP) {
     // the screen for 200 ms. It goes at once instead, the way the Back swipe puts it away (peekreset).
     const end = () => {
       if (ed._grow !== a) return; ed._grow = null; ed.style.transformOrigin = "";
-      root.classList.add("peekreset"); root.classList.remove("cardgrow");
-      requestAnimationFrame(() => requestAnimationFrame(() => { if (!ed._grow) root.classList.remove("peekreset"); }));
+      quiet(); root.classList.remove("cardgrow");
     };
-    a.onfinish = end; a.oncancel = end;
+    a.onfinish = end; a.oncancel = end; ed._growEnd = end; // (stopGrow ends it early: Back, or another motion, while it grows)
   }
   // Every caller that closed the dropdown (a card, search, the scrim) now leaves the menu page.
   setPicker = (open, src) => setMenu(open, src);
@@ -267,19 +320,18 @@ if (INAPP) {
   // behind is put away at once (a cancelled swipe); otherwise it stays as the page (the swipe went through).
   const peekEnd = closeMenu => {
     const root = document.documentElement;
-    root.classList.add("peekreset");
+    quiet();
     if (closeMenu) pk.classList.remove("open");
     root.classList.remove("peekback");
     ed.style.transition = ed.style.transform = ed.style.boxShadow = ed.style.opacity = pk.style.opacity = pk.style.transform = pk.style.transition = "";
     void pk.offsetWidth; void ed.offsetWidth; // the final look is worked out now, with transitions off
     peek = null;
-    requestAnimationFrame(() => requestAnimationFrame(() => root.classList.remove("peekreset")));
   };
   // from where the screen is to f, then done (the spring when it comes back, a quick glide when it leaves)
   const peekTo = (f, ms, ease, done) => {
     const t = `${ms}ms ${ease}`;
     ed.style.transition = `transform ${t}, box-shadow ${t}`; pk.style.transition = `transform ${t}, opacity ${t}`;
-    peekDraw(f); peek.timer = setTimeout(done, ms + 20);
+    peekDraw(f); peek.done = done; peek.timer = setTimeout(done, ms + 20);
   };
   // The menu page under a Back swipe: the whole editor shrinks toward the finger with round corners (as
   // Android shows the screen it goes back to), and letting go leaves (leaveOut). Not while a restart waits:
@@ -302,8 +354,10 @@ if (INAPP) {
   }
   const leaveAt = (p, x) => typeof x === "number" && isFinite(x) ? Math.min(1, Math.max(0, (lp.edge === 1 ? lp.x - x : x - lp.x) / peekW())) : Math.min(1, Math.max(0, p));
   window.morpheBackStart = (edge, x) => {
+    settle(); // a Back that already went through is the menu page now, so this one starts from it
     if (canLeavePeek()) { lp = { edge: edge === 1 ? 1 : 0, x: typeof x === "number" && isFinite(x) ? x : (edge === 1 ? peekW() : 0), f: 0 }; phone.style.transition = "none"; lpDraw(0); return; }
     if (!canPeek()) return;
+    stopGrow(); // a screen still growing out of its card is in place before it follows the finger
     if (peek) { clearTimeout(peek.timer); peekEnd(true); }
     peek = { edge: edge === 1 ? 1 : 0, x: typeof x === "number" && isFinite(x) ? x : (edge === 1 ? peekW() : 0), f: 0 };
     pk.classList.add("open"); // the menu, drawn behind the screen
@@ -324,6 +378,7 @@ if (INAPP) {
     if (peek.timer) return;
     // the gesture was let go: the screen slides the rest of the way, then the menu page takes over
     const left = 1 - peek.f;
+    peek.leaving = true; // from here the menu is the page: a press ends the slide at once (settle)
     peekTo(1, Math.round(140 + 160 * left), "cubic-bezier(.2, .8, .3, 1)", () => { peekEnd(); setMenu(true, null); });
   };
   // the page's own edge swipe (where the system doesn't take the edge)

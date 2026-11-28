@@ -2311,6 +2311,65 @@ const CHECKS = [
     },
   },
   {
+    name: "card-opens-with-its-growth-right-after-back",
+    report: "Nov 28: App > Miscellaneous, Back, then Browsing quickly: the main menu flashed over the new screen, or the opening animation was skipped",
+    async run() {
+      const { p, ctx } = await open("app/index.html", { viewport: { width: 412, height: 915 }, touch: true });
+      const cdp = await ctx.newCDPSession(p), bad = [];
+      await p.evaluate(() => { lastTab.g_app = "misc"; if (!pickerOpen) setPicker(true); }); await sleep(800);
+      // where each card rests on the still menu page: a quick tap aims there, wherever the menu is on its way in
+      const rest = await p.evaluate(() => Object.fromEntries(["g_browse", "g_app"].map(g => { const r = document.querySelector(`#pickGrid [data-group="${g}"]`).getBoundingClientRect(); return [g, [r.left, r.top, r.right, r.bottom]]; })));
+      const mid = g => [(rest[g][0] + rest[g][2]) / 2, (rest[g][1] + rest[g][3]) / 2];
+      const cases = [];
+      for (const back of ["swipe", "arrow", "key"]) for (const wait of [0, 60, 150, 300]) for (const to of ["g_browse", "g_app"]) cases.push({ back, wait, to });
+      // the finger goes down while the Back motion is still finishing and lifts after it (what Max's quick taps do)
+      cases.push({ back: "swipe", wait: 120, to: "g_browse", hold: 250 }, { back: "swipe", wait: 120, to: "g_app", hold: 250 }, { back: "arrow", wait: 40, to: "g_browse", hold: 250 });
+      // Back while the screen is still growing out of its card, then the next card at once
+      cases.push({ back: "arrow", wait: 80, to: "g_browse", early: 90 }, { back: "swipe", wait: 80, to: "g_browse", early: 90 }, { back: "key", wait: 0, to: "g_app", early: 150 });
+      // a mouse (the App view in a browser): the press and the release can land on different parts of a moving menu
+      cases.push({ back: "arrow", wait: 60, to: "g_browse", mouse: true }, { back: "key", wait: 0, to: "g_browse", mouse: true });
+      for (const c of cases) {
+        const tag = `${c.back} back, ${c.to === "g_app" ? "same" : "other"} card after ${c.wait} ms${c.hold ? ", finger down " + c.hold + " ms" : ""}${c.early ? ", Back " + c.early + " ms into the growth" : ""}${c.mouse ? ", mouse" : ""}`;
+        if (await p.evaluate(() => document.documentElement.classList.contains("menupage"))) { await p.touchscreen.tap(...mid("g_app")); await sleep(c.early || 900); }
+        else if (await p.evaluate(() => section !== "misc")) { await p.evaluate(() => { setPicker(true); }); await sleep(700); await p.touchscreen.tap(...mid("g_app")); await sleep(c.early || 900); }
+        await p.evaluate(() => {
+          const ed = document.querySelector(".editor"), pk = $("picker"), root = document.documentElement, out = window.__nav = { fr: [], tap: -1, first: null }, t0 = performance.now();
+          const f = () => {
+            if (window.__nav !== out || performance.now() - t0 > 2500) return;
+            const es = getComputedStyle(ed), m = /matrix\(([\d.]+)/.exec(es.transform);
+            if (!out.first && ed._grow && out.tap >= 0) { // the growth's first frame: it waits there, as the card
+              const b = ed.getBoundingClientRect(), k = b.height / ed.offsetHeight, v = ((/inset\(([^)]*?)(?: round|\))/.exec(es.clipPath) || [])[1] || "0").trim().split(/\s+/).map(parseFloat), q = [v[0], v[1] ?? v[0], v[2] ?? v[0], v[3] ?? v[1] ?? v[0]];
+              out.first = [b.left + q[3] * k, b.top + q[0] * k, b.right - q[1] * k, b.bottom - q[2] * k];
+            }
+            out.fr.push({ grow: root.classList.contains("cardgrow"), menu: root.classList.contains("menupage") || root.classList.contains("peekback"), op: +es.opacity, sc: m ? +m[1] : 1, pk: +getComputedStyle(pk).opacity });
+            requestAnimationFrame(f);
+          };
+          requestAnimationFrame(f);
+        });
+        if (c.back === "arrow") { const b = await p.evaluate(() => { const r = $("btnBack").getBoundingClientRect(); return [r.x + r.width / 2, r.y + r.height / 2]; }); if (c.mouse) await p.mouse.click(b[0], b[1]); else await p.touchscreen.tap(b[0], b[1]); }
+        else if (c.back === "key") await p.evaluate(() => morpheBack());
+        else { await p.evaluate(() => morpheBackStart(0, 0)); for (let i = 1; i <= 6; i++) { await p.evaluate(i => morpheBackProgress(i / 12, i * 30), i); await sleep(16); } await p.evaluate(() => morpheBack()); }
+        await sleep(c.wait);
+        const xy = mid(c.to);
+        await p.evaluate(() => { window.__nav.tap = window.__nav.fr.length; });
+        if (c.hold) { await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: xy[0], y: xy[1] }] }); await sleep(c.hold); await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] }); }
+        else if (c.mouse) await p.mouse.click(xy[0], xy[1]);
+        else await p.touchscreen.tap(xy[0], xy[1]);
+        await sleep(1100);
+        const r = await p.evaluate(() => ({ ...window.__nav, menu: document.documentElement.classList.contains("menupage"), group: groupOf(section).id }));
+        if (r.menu) { bad.push(`${tag}: the tap was lost, the menu is still the page`); continue; }
+        if (r.group !== c.to) { bad.push(`${tag}: opened ${r.group}, not the card under the finger`); continue; }
+        const fr = r.fr.slice(r.tap);
+        if (!fr.some(x => x.grow && x.op > .05 && x.sc < .7)) bad.push(`${tag}: the opening animation was skipped`);
+        else if (!r.first || Math.max(...r.first.map((v, j) => Math.abs(v - rest[c.to][j]))) > 4) bad.push(`${tag}: the screen grew from ${r.first ? Math.round(Math.max(...r.first.map((v, j) => Math.abs(v - rest[c.to][j])))) + "px beside" : "somewhere other than"} its card`);
+        const flash = fr.find(x => !x.grow && !x.menu && x.pk > .02);
+        if (flash) bad.push(`${tag}: the main menu showed over the new screen (opacity ${flash.pk.toFixed(2)})`);
+      }
+      await ctx.close();
+      ok(!bad.length, bad.join("; "));
+    },
+  },
+  {
     name: "gesture-hint-not-stuck",
     report: "Nov 25 (12:49): the 'Pull up for precise seeking' pill stayed on screen in Slide to seek, Precise seeking gesture and others",
     async run() {

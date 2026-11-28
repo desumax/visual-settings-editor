@@ -1869,15 +1869,15 @@ const CHECKS = [
     },
   },
   {
-    name: "wheel-is-shorter-than-its-card",
-    report: "Nov 28: reduce the wheels' height by 20%, unless the description has more lines and so more room for the wheel (dynamic)",
+    name: "wheel-fills-its-card-height",
+    report: "Nov 28 (14:15): revert the 20% shorter wheels; a wheel runs the full height of its card again",
     async run() {
       const { p, ctx } = await open();
-      const m = k => p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 700)); const w = document.querySelector(`#list .wheel[data-wheel="${k}"]`); if (!w) return null; return [w.getBoundingClientRect().height, w.closest(".row").getBoundingClientRect().height]; }, k);
-      const one = await m("morphe_caption_scale"), tall = await m("morphe_enhanced_ambient_mode_dim_duration");
-      ok(one && tall, "setup: wheels not found");
-      ok(one[0] <= 79 * .82, `a one-line card's wheel is ${one[0].toFixed(0)}px (79px less 20% is 63px)`);
-      ok(tall[0] >= tall[1] - 30, `a card with a long description (${tall[1].toFixed(0)}px) keeps a short ${tall[0].toFixed(0)}px wheel`);
+      const m = k => p.evaluate(async k => { setPicker(false); goToSetting(k); await new Promise(r => setTimeout(r, 700)); const w = document.querySelector(`#list .wheel[data-wheel="${k}"]`); if (!w) return null; return [w.getBoundingClientRect().height, w.parentElement.getBoundingClientRect().height]; }, k);
+      for (const k of ["morphe_caption_scale", "morphe_enhanced_ambient_mode_dim_duration"]) {
+        const r = await m(k); ok(r, `setup: ${k} wheel not found`);
+        ok(Math.abs(r[0] - r[1]) < 1.5, `${k}: the wheel is ${r[0].toFixed(0)}px in a ${r[1].toFixed(0)}px control (it should fill it)`);
+      }
       await ctx.close();
     },
   },
